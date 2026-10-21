@@ -1,0 +1,20 @@
+{
+  "name": "onchain-fishing-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "sync": "node scripts/sync-abi.mjs",
+    "dev": "node scripts/sync-abi.mjs && vite --port 5173 --strictPort",
+    "build": "node scripts/sync-abi.mjs && tsc --noEmit && vite build",
+    "preview": "vite preview --port 4173",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "viem": "2.57.2"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3",
+    "vite": "8.3.2"
+  }
+}

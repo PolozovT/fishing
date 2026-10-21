@@ -362,6 +362,11 @@ contract FishingGame is Ownable {
         delete casts[player];
         rodNft.setLocked(c.rodId, false);
 
+        // Wear is charged even for an expired cast, so letting a known-bad outcome expire is never cheaper.
+        RodNFT.Rod memory r = rodNft.rods(c.rodId);
+        r.durability -= 1; // checked > 0 at cast, and the rod was locked since
+        rodNft.setRod(c.rodId, r);
+
         bytes32 bh = blockhash(c.targetBlock);
         if (bh == bytes32(0)) {
             // older than 256 blocks: the randomness is gone, so is the fish
@@ -369,10 +374,6 @@ contract FishingGame is Ownable {
             return;
         }
         uint256 seed = uint256(keccak256(abi.encode(bh, player, c.nonce, address(this))));
-
-        RodNFT.Rod memory r = rodNft.rods(c.rodId);
-        r.durability -= 1; // checked > 0 at cast, and the rod was locked since
-        rodNft.setRod(c.rodId, r);
 
         Bait memory usedBait = _baits[c.baitId];
         if (seed % 10_000 >= catchChanceBps(r.level, c.baitId)) {

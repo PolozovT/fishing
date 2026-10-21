@@ -210,7 +210,7 @@ contract FishingGameTest is BaseTest {
         game.reel();
         assertEq(fish.balanceOf(alice), 0);
         assertFalse(rod.locked(id));
-        assertEq(rod.rods(id).durability, 60); // nothing happened to the rod either
+        assertEq(rod.rods(id).durability, 59); // wear is charged: expiring a bad outcome is never free
         assertEq(game.currentEnergy(alice), 19); // energy stays spent
     }
 
