@@ -66,6 +66,14 @@ contract FishingGame is Ownable {
         uint96 rodPrice;
         uint96 repairPricePerPoint; // per missing durability point, multiplied by rod level
         uint256 emissionSoftCap; // PEARL per UTC day from selling fish; above it payouts shrink. 0 = off
+        uint32 refillPriceGrowthBps; // each further refill on the same UTC day costs this much more (20000 = x2)
+        uint8 minRepairLevel; // rods below this level cannot be repaired (1 = every rod is repairable)
+        uint96 starterRodFee; // native-currency (ETH) price of the starter rod: the main lever against sybil farms
+    }
+
+    struct RefillState {
+        uint32 day;
+        uint32 count;
     }
 
     struct WeeklyRecord {
@@ -89,6 +97,7 @@ contract FishingGame is Ownable {
     mapping(address => Player) public players;
     mapping(address => Cast) public casts;
     mapping(address => mapping(uint256 => uint256)) public baitBalance;
+    mapping(address => RefillState) public refillState;
     mapping(uint256 => uint256) public mintedOnDay;
     mapping(uint256 => WeeklyRecord) public weeklyBest; // week index => heaviest fish (any species)
     uint256 public totalCasts;
@@ -112,6 +121,9 @@ contract FishingGame is Ownable {
     error NotFishOwner();
     error BadConfig();
     error RodInUse();
+    error RepairNotAllowed();
+    error WrongFee();
+    error WithdrawFailed();
 
     event Casted(address indexed player, uint256 indexed rodId, uint8 spotId, uint8 baitId, uint64 targetBlock);
     event Caught(
@@ -146,7 +158,7 @@ contract FishingGame is Ownable {
     function _setConfig(Config memory c) internal {
         if (
             c.maxEnergy == 0 || c.energyRegenSeconds == 0 || c.revealDelay == 0 || c.maxRodLevel == 0
-                || c.maxCatchBps > 10_000 || c.baseCatchBps > c.maxCatchBps
+                || c.maxCatchBps > 10_000 || c.baseCatchBps > c.maxCatchBps || c.refillPriceGrowthBps < 10_000
         ) revert BadConfig();
         config = c;
     }
@@ -203,9 +215,15 @@ contract FishingGame is Ownable {
         _baits[id] = b;
     }
 
+    function withdraw(address payable to) external onlyOwner {
+        (bool ok,) = to.call{value: address(this).balance}("");
+        if (!ok) revert WithdrawFailed();
+    }
+
     // ------------------------------------------------------------------ rods
 
-    function claimStarterRod() external returns (uint256 rodId) {
+    function claimStarterRod() external payable returns (uint256 rodId) {
+        if (msg.value != config.starterRodFee) revert WrongFee();
         Player storage p = players[msg.sender];
         if (p.starterClaimed) revert StarterAlreadyClaimed();
         p.starterClaimed = true;
@@ -239,6 +257,7 @@ contract FishingGame is Ownable {
 
     function repairRod(uint256 rodId) external {
         RodNFT.Rod memory r = _ownedIdleRod(rodId);
+        if (r.level < config.minRepairLevel) revert RepairNotAllowed();
         if (r.durability == r.maxDurability) revert NothingToRepair();
         uint256 cost = repairCost(rodId);
         pearl.gameBurn(msg.sender, cost);
@@ -263,8 +282,26 @@ contract FishingGame is Ownable {
         emit BaitBought(msg.sender, baitId, amount, cost);
     }
 
+    /// @notice Price of the next refill today: base * growth^(refills already bought today).
+    function refillPrice(address player) public view returns (uint256 price) {
+        RefillState memory st = refillState[player];
+        uint256 n = st.day == block.timestamp / 1 days ? st.count : 0;
+        price = config.energyRefillPrice;
+        uint256 g = config.refillPriceGrowthBps;
+        for (uint256 i; i < n && price < type(uint128).max; i++) {
+            price = (price * g) / 10_000;
+        }
+    }
+
     function refillEnergy() external {
-        uint256 cost = config.energyRefillPrice;
+        uint256 cost = refillPrice(msg.sender);
+        uint32 today = uint32(block.timestamp / 1 days);
+        RefillState storage st = refillState[msg.sender];
+        if (st.day != today) {
+            st.day = today;
+            st.count = 0;
+        }
+        st.count += 1;
         pearl.gameBurn(msg.sender, cost);
         Player storage p = players[msg.sender];
         p.energy = config.maxEnergy;

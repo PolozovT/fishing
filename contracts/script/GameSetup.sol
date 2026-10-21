@@ -32,10 +32,13 @@ library GameSetup {
             rarityBoostPerLevel: 35,
             starterDurability: 60,
             durabilityPerLevel: 30,
-            energyRefillPrice: uint96(12 * E),
+            energyRefillPrice: uint96(20 * E),
             rodPrice: uint96(25 * E),
             repairPricePerPoint: uint96(E / 10),
-            emissionSoftCap: 0
+            emissionSoftCap: 0,
+            refillPriceGrowthBps: 20_000,
+            minRepairLevel: 1,
+            starterRodFee: 0
         });
     }
 
@@ -57,10 +60,10 @@ library GameSetup {
         _seedBaits(d.game);
 
         uint96[] memory up = new uint96[](4);
-        up[0] = uint96(60 * E);
-        up[1] = uint96(220 * E);
-        up[2] = uint96(700 * E);
-        up[3] = uint96(2000 * E);
+        up[0] = uint96(80 * E);
+        up[1] = uint96(450 * E);
+        up[2] = uint96(1500 * E);
+        up[3] = uint96(5000 * E);
         d.game.setUpgradePrices(up);
     }
 
@@ -72,29 +75,29 @@ library GameSetup {
 
     function _seedSpecies(FishNFT f) private {
         // Village Pond
-        _sp(f, "Roach", 0, 50, 450, E / 2, 0x9fb3c8); //                 0
-        _sp(f, "Crucian Carp", 0, 100, 900, E * 7 / 10, 0xc9a227); //    1
-        _sp(f, "Perch", 0, 60, 700, E * 6 / 10, 0x6b8e23); //            2
-        _sp(f, "Tench", 1, 300, 2500, 2 * E, 0x556b2f); //               3
-        _sp(f, "Golden Carp", 3, 1000, 6000, 25 * E, 0xffd700); //       4
+        _sp(f, "Roach", 0, 50, 450, E * 9 / 10, 0x9fb3c8); //                 0
+        _sp(f, "Crucian Carp", 0, 100, 900, E * 12 / 10, 0xc9a227); //    1
+        _sp(f, "Perch", 0, 60, 700, E, 0x6b8e23); //            2
+        _sp(f, "Tench", 1, 300, 2500, 3 * E, 0x556b2f); //               3
+        _sp(f, "Golden Carp", 3, 1000, 6000, 30 * E, 0xffd700); //       4
         // Forest River
-        _sp(f, "Pike", 1, 1000, 12000, 3 * E, 0x3c6e47); //              5
-        _sp(f, "Trout", 1, 300, 4000, 3 * E, 0xd98c8c); //               6
-        _sp(f, "Zander", 2, 1000, 9000, 8 * E, 0x8a9a5b); //             7
-        _sp(f, "Grayling", 2, 200, 1500, 7 * E, 0x7d6fa8); //            8
+        _sp(f, "Pike", 1, 1000, 12000, 2 * E, 0x3c6e47); //              5
+        _sp(f, "Trout", 1, 300, 4000, 2 * E, 0xd98c8c); //               6
+        _sp(f, "Zander", 2, 1000, 9000, 5 * E, 0x8a9a5b); //             7
+        _sp(f, "Grayling", 2, 200, 1500, E * 45 / 10, 0x7d6fa8); //            8
         _sp(f, "Taimen", 4, 8000, 50000, 120 * E, 0xb5523b); //          9
         // Deep Lake
-        _sp(f, "Bream", 0, 500, 4000, 2 * E, 0xa89060); //               10
-        _sp(f, "Burbot", 1, 500, 5000, 5 * E, 0x5d4e37); //              11
-        _sp(f, "Whitefish", 2, 300, 3000, 12 * E, 0xdfe6ee); //          12
-        _sp(f, "Wels Catfish", 3, 5000, 90000, 45 * E, 0x3b3b3b); //     13
-        _sp(f, "Lake Spirit", 4, 3000, 30000, 250 * E, 0x7fffd4); //     14
+        _sp(f, "Bream", 0, 500, 4000, E * 12 / 10, 0xa89060); //               10
+        _sp(f, "Burbot", 1, 500, 5000, E * 26 / 10, 0x5d4e37); //              11
+        _sp(f, "Whitefish", 2, 300, 3000, 6 * E, 0xdfe6ee); //          12
+        _sp(f, "Wels Catfish", 3, 5000, 90000, 22 * E, 0x3b3b3b); //     13
+        _sp(f, "Lake Spirit", 4, 3000, 30000, 120 * E, 0x7fffd4); //     14
         // Northern Sea
-        _sp(f, "Herring", 0, 100, 700, 3 * E, 0x9ab0c2); //              15
-        _sp(f, "Cod", 1, 1000, 20000, 9 * E, 0x8b7d6b); //               16
-        _sp(f, "Atlantic Salmon", 2, 2000, 20000, 25 * E, 0xfa8072); //  17
-        _sp(f, "Halibut", 3, 5000, 150000, 70 * E, 0x6e6157); //         18
-        _sp(f, "Bluefin Tuna", 4, 50000, 400000, 500 * E, 0x1e3f66); //  19
+        _sp(f, "Herring", 0, 100, 700, E * 18 / 10, 0x9ab0c2); //              15
+        _sp(f, "Cod", 1, 1000, 20000, E * 54 / 10, 0x8b7d6b); //               16
+        _sp(f, "Atlantic Salmon", 2, 2000, 20000, 15 * E, 0xfa8072); //  17
+        _sp(f, "Halibut", 3, 5000, 150000, 40 * E, 0x6e6157); //         18
+        _sp(f, "Bluefin Tuna", 4, 50000, 400000, 300 * E, 0x1e3f66); //  19
     }
 
     function _table(uint16[5] memory ids, uint16[5] memory w)

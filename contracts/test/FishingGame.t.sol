@@ -21,6 +21,30 @@ contract FishingGameTest is BaseTest {
         game.claimStarterRod();
     }
 
+    function test_starterRodFee() public {
+        FishingGame.Config memory c = GameSetupConfig.get(game);
+        c.starterRodFee = 0.001 ether;
+        vm.prank(owner);
+        game.setConfig(c);
+        vm.deal(alice, 1 ether);
+        vm.startPrank(alice);
+        vm.expectRevert(FishingGame.WrongFee.selector);
+        game.claimStarterRod();
+        vm.expectRevert(FishingGame.WrongFee.selector);
+        game.claimStarterRod{value: 0.002 ether}();
+        game.claimStarterRod{value: 0.001 ether}();
+        vm.stopPrank();
+        assertEq(address(game).balance, 0.001 ether);
+
+        vm.prank(alice);
+        vm.expectRevert();
+        game.withdraw(payable(alice));
+        address treasury = makeAddr("treasury");
+        vm.prank(owner);
+        game.withdraw(payable(treasury));
+        assertEq(treasury.balance, 0.001 ether);
+    }
+
     function test_buyRodBurnsPearl() public {
         _fund(alice, 25e18);
         vm.prank(alice);
@@ -37,7 +61,7 @@ contract FishingGameTest is BaseTest {
 
     function test_upgradeRod() public {
         uint256 id = _starter(alice);
-        _fund(alice, 60e18);
+        _fund(alice, 80e18);
         vm.prank(alice);
         game.upgradeRod(id);
         RodNFT.Rod memory r = rod.rods(id);
@@ -56,7 +80,7 @@ contract FishingGameTest is BaseTest {
         vm.expectRevert(FishingGame.MaxLevel.selector);
         game.upgradeRod(id);
         vm.stopPrank();
-        assertEq(pearl.balanceOf(alice), 10_000e18 - (60 + 220 + 700 + 2000) * 1e18);
+        assertEq(pearl.balanceOf(alice), 10_000e18 - (80 + 450 + 1500 + 5000) * 1e18);
     }
 
     function test_onlyOwnerCanUpgrade() public {
@@ -334,11 +358,45 @@ contract FishingGameTest is BaseTest {
         for (uint256 i; i < 5; i++) {
             _fishOnce(alice, id, 0, 0, keccak256(abi.encode(i)));
         }
-        _fund(alice, 12e18);
+        _fund(alice, 20e18);
         vm.prank(alice);
         game.refillEnergy();
         assertEq(game.currentEnergy(alice), 20);
         assertEq(pearl.balanceOf(alice), 0);
+    }
+
+    function test_refillPriceGrowsWithinDayAndResets() public {
+        FishingGame.Config memory c = GameSetupConfig.get(game);
+        _fund(alice, 1_000e18);
+        uint256 base = c.energyRefillPrice;
+        vm.startPrank(alice);
+        assertEq(game.refillPrice(alice), base);
+        game.refillEnergy();
+        assertEq(game.refillPrice(alice), base * 2);
+        game.refillEnergy();
+        assertEq(game.refillPrice(alice), base * 4);
+        vm.stopPrank();
+        assertEq(pearl.balanceOf(alice), 1_000e18 - base * 3);
+        vm.warp(block.timestamp + 1 days);
+        assertEq(game.refillPrice(alice), base);
+    }
+
+    function test_repairBlockedBelowMinLevel() public {
+        FishingGame.Config memory c = GameSetupConfig.get(game);
+        c.minRepairLevel = 2;
+        vm.prank(owner);
+        game.setConfig(c);
+        uint256 id = _starter(alice);
+        _fishOnce(alice, id, 0, 0, bytes32(uint256(3)));
+        _fund(alice, 100e18);
+        vm.prank(alice);
+        vm.expectRevert(FishingGame.RepairNotAllowed.selector);
+        game.repairRod(id);
+        vm.prank(alice);
+        game.upgradeRod(id); // upgrading turns the consumable into a repairable rod
+        _fishOnce(alice, id, 0, 0, bytes32(uint256(4)));
+        vm.prank(alice);
+        game.repairRod(id);
     }
 
     // ------------------------------------------------------------- selling
@@ -531,7 +589,10 @@ library GameSetupConfig {
             c.energyRefillPrice,
             c.rodPrice,
             c.repairPricePerPoint,
-            c.emissionSoftCap
+            c.emissionSoftCap,
+            c.refillPriceGrowthBps,
+            c.minRepairLevel,
+            c.starterRodFee
         ) = g.config();
     }
 }
