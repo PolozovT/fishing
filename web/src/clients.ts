@@ -12,7 +12,7 @@ import {
   type WalletClient,
 } from 'viem';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
-import { CHAIN_ID, IS_LOCAL, RPC_URL, chain } from './config';
+import { CHAIN_ID, EXPLORER_URL, IS_LOCAL, RPC_URL, chain } from './config';
 
 export const publicClient: PublicClient = createPublicClient({
   chain,
@@ -141,6 +141,7 @@ export async function connectInjected(): Promise<Wallet> {
               chainName: chain.name,
               nativeCurrency: chain.nativeCurrency,
               rpcUrls: [RPC_URL],
+              ...(EXPLORER_URL ? { blockExplorerUrls: [EXPLORER_URL] } : {}),
             },
           ],
         }),

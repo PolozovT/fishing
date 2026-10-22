@@ -20,3 +20,8 @@ runs = 512
 [invariant]
 runs = 64
 depth = 64
+
+[rpc_endpoints]
+local = "http://127.0.0.1:8545"
+fluent_testnet = "https://rpc.testnet.fluent.xyz"
+fluent = "https://rpc.fluent.xyz"

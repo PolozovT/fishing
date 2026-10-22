@@ -6,6 +6,8 @@
   "scripts": {
     "sync": "node scripts/sync-abi.mjs",
     "dev": "node scripts/sync-abi.mjs && vite --port 5173 --strictPort",
+    "dev:fluent": "node scripts/sync-abi.mjs && vite --port 5173 --strictPort --mode fluent-testnet",
+    "build:fluent": "node scripts/sync-abi.mjs && tsc --noEmit && vite build --mode fluent-testnet",
     "build": "node scripts/sync-abi.mjs && tsc --noEmit && vite build",
     "preview": "vite preview --port 4173",
     "typecheck": "tsc --noEmit"

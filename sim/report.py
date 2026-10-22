@@ -202,7 +202,7 @@ tr:last-child td {{ border-bottom:0 }}
 <p><b>v2 + боты и фермы</b></p>{table(head, arch_rows("v2_hostile"))}
 <p><b>v2 + боты и фермы + лимит эмиссии</b></p>{table(head, arch_rows("v2_hostile_cap"))}
 <p style="color:var(--ink2);font-size:13px">«Газа на 1 PEARL» показывает, сколько газа тратится на добычу одной монеты. Боту выгодно фармить, если цена PEARL выше
-«газ на PEARL × цена газа». Например, на L2 при 0.01 gwei 38 500 газа на PEARL ≈ 3.9·10⁻⁷ ETH, то есть меньше $0.001.</p>
+«газ на PEARL × цена газа». Например, на Fluent при 0.001 gwei 38 500 газа на PEARL ≈ 4·10⁻⁸ ETH.</p>
 </main>
 <script>
 document.querySelectorAll('.chart').forEach(fig => {{

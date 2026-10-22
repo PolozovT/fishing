@@ -48,26 +48,43 @@ cd contracts && forge test
 python3 sim/sim.py && python3 sim/report.py
 ```
 
-## Деплой в тестнет (например, Base Sepolia)
+## Деплой в Fluent Testnet
 
-В эту ночь в тестнет ничего не деплоилось: для этого нужен ваш ключ и тестовый ETH из крана.
+| | |
+|---|---|
+| Сеть | Fluent Testnet |
+| chainId | 20994 |
+| RPC | https://rpc.testnet.fluent.xyz |
+| Обозреватель | https://testnet.fluentscan.xyz |
+| Faucet | https://portal.fluent.xyz/builder/faucet |
 
-1. Получите тестовый ETH на Base Sepolia через любой faucet.
-2. Импортируйте ключ в зашифрованное хранилище Foundry (ключ не попадёт в историю шелла):
+Блок выходит примерно раз в секунду, газ ~0.001 gwei. Весь деплой (39 транзакций, ~16.7M газа) стоит около 0.00002 ETH. Одна попытка (cast + reel) — около 3·10⁻⁷ ETH.
+
+1. В `contracts/.env` уже лежит отдельный ключ деплоера **только для testnet** (файл не попадает в git). Пополните его адрес через faucet:
 
 ```bash
-cast wallet import fishing-deployer --interactive
+grep DEPLOYER_ADDRESS contracts/.env
 ```
 
-3. Задеплойте:
+2. Задеплойте и верифицируйте исходники на fluentscan:
 
 ```bash
-cd contracts && forge script script/Deploy.s.sol --rpc-url https://sepolia.base.org --broadcast --account fishing-deployer
+contracts/deploy-fluent.sh
 ```
 
-4. Адреса запишутся в `deployments/84532.json`. После этого выполните `pnpm sync` в `web/`.
+Чтобы деплоить со своего кошелька (ключ в хранилище Foundry), запустите так:
 
-> ⚠️ Рандом основан на `blockhash`. На L2 его контролирует секвенсор, поэтому для чего-то с реальной ценностью замените его на VRF (см. REPORT.md). Код не проходил аудит.
+```bash
+contracts/deploy-fluent.sh --account <имя-ключа>
+```
+
+3. Клиент для Fluent (подключение через MetaMask; сеть добавится автоматически):
+
+```bash
+cd web && pnpm dev:fluent
+```
+
+> ⚠️ Рандом основан на `blockhash`. На Fluent он работает (проверено на testnet: значение совпадает с реальным хэшем блока), но блоки производит секвенсор, и теоретически он может влиять на исход. Для чего-то с реальной ценностью нужен VRF (см. REPORT.md). Код не проходил аудит.
 
 ## Как устроен игровой цикл
 

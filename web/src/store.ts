@@ -6,6 +6,15 @@ import { requireDeployment } from './config';
 const dep = requireDeployment();
 export const ADDR = dep;
 const START = BigInt(dep.startBlock);
+/** Public RPCs cap eth_getLogs ranges (Fluent: 100k blocks), so every scan walks the chain in chunks. */
+const LOG_CHUNK = 50_000n;
+
+async function forRanges(from: bigint, to: bigint, fn: (from: bigint, to: bigint) => Promise<void>): Promise<void> {
+  for (let a = from; a <= to; a += LOG_CHUNK) {
+    const b = a + LOG_CHUNK - 1n < to ? a + LOG_CHUNK - 1n : to;
+    await fn(a, b);
+  }
+}
 
 // ------------------------------------------------------------------ types
 
@@ -334,7 +343,10 @@ async function scanOwned(owner: Address, to: bigint): Promise<void> {
     scan.rod.clear();
   }
   if (to <= scan.scanned) return;
-  const from = scan.scanned + 1n;
+  await forRanges(scan.scanned + 1n, to, (from, upTo) => scanOwnedRange(owner, from, upTo));
+}
+
+async function scanOwnedRange(owner: Address, from: bigint, to: bigint): Promise<void> {
   const [f, r] = await Promise.all([
     publicClient.getContractEvents({
       address: dep.fish,
@@ -497,43 +509,55 @@ const marketScan = { scanned: START - 1n, keys: new Map<string, { collection: Ad
 const catches: CatchRecord[] = [];
 let catchesScanned = START - 1n;
 
+async function scanMarketRange(from: bigint, to: bigint): Promise<void> {
+  const listed = await publicClient.getContractEvents({
+    address: dep.market,
+    abi: marketplaceAbi,
+    eventName: 'Listed',
+    fromBlock: from,
+    toBlock: to,
+  });
+  // Cancelled/Sold only remove entries; the `listings` view below is the source of truth anyway.
+  for (const l of listed) {
+    const { collection, tokenId } = l.args;
+    if (!collection || tokenId === undefined) continue;
+    marketScan.keys.set(`${collection.toLowerCase()}:${tokenId}`, { collection, tokenId });
+  }
+  const gone = await publicClient.getLogs({
+    address: dep.market,
+    events: marketplaceAbi.filter(
+      (i): i is Extract<(typeof marketplaceAbi)[number], { type: 'event'; name: 'Cancelled' | 'Sold' }> =>
+        i.type === 'event' && (i.name === 'Cancelled' || i.name === 'Sold'),
+    ),
+    fromBlock: from,
+    toBlock: to,
+  });
+  // An entry whose last event is Cancelled/Sold is dropped; a later Listed re-adds it.
+  const lastListed = new Map<string, bigint>();
+  listed.forEach((l) => lastListed.set(`${l.args.collection?.toLowerCase()}:${l.args.tokenId}`, idx(l)));
+  for (const l of gone) {
+    const args = l.args as { collection?: Address; tokenId?: bigint };
+    const k = `${args.collection?.toLowerCase()}:${args.tokenId}`;
+    if ((lastListed.get(k) ?? -1n) < idx(l)) marketScan.keys.delete(k);
+  }
+  marketScan.scanned = to;
+}
+
+function scanCaught(from: bigint, to: bigint) {
+  return publicClient.getContractEvents({
+    address: dep.game,
+    abi: fishingGameAbi,
+    eventName: 'Caught',
+    fromBlock: from,
+    toBlock: to,
+  });
+}
+
 export async function loadWorld(): Promise<void> {
   const head = await publicClient.getBlockNumber({ cacheTime: 0 });
   const g = { address: dep.game, abi: fishingGameAbi } as const;
 
-  if (head > marketScan.scanned) {
-    const listed = await publicClient.getContractEvents({
-      address: dep.market,
-      abi: marketplaceAbi,
-      eventName: 'Listed',
-      fromBlock: marketScan.scanned + 1n,
-      toBlock: head,
-    });
-    // Cancelled/Sold only remove entries; the `listings` view below is the source of truth anyway.
-    for (const l of listed) {
-      const { collection, tokenId } = l.args;
-      if (!collection || tokenId === undefined) continue;
-      marketScan.keys.set(`${collection.toLowerCase()}:${tokenId}`, { collection, tokenId });
-    }
-    const gone = await publicClient.getLogs({
-      address: dep.market,
-      events: marketplaceAbi.filter(
-        (i): i is Extract<(typeof marketplaceAbi)[number], { type: 'event'; name: 'Cancelled' | 'Sold' }> =>
-          i.type === 'event' && (i.name === 'Cancelled' || i.name === 'Sold'),
-      ),
-      fromBlock: marketScan.scanned + 1n,
-      toBlock: head,
-    });
-    // An entry whose last event is Cancelled/Sold is dropped; a later Listed re-adds it.
-    const lastListed = new Map<string, bigint>();
-    listed.forEach((l) => lastListed.set(`${l.args.collection?.toLowerCase()}:${l.args.tokenId}`, idx(l)));
-    for (const l of gone) {
-      const args = l.args as { collection?: Address; tokenId?: bigint };
-      const k = `${args.collection?.toLowerCase()}:${args.tokenId}`;
-      if ((lastListed.get(k) ?? -1n) < idx(l)) marketScan.keys.delete(k);
-    }
-    marketScan.scanned = head;
-  }
+  if (head > marketScan.scanned) await forRanges(marketScan.scanned + 1n, head, scanMarketRange);
 
   const entries = [...marketScan.keys.values()];
   const raw = await Promise.all(
@@ -572,11 +596,9 @@ export async function loadWorld(): Promise<void> {
   state.listings = listings.sort((a, b) => (a.price < b.price ? -1 : a.price > b.price ? 1 : 0));
 
   if (head > catchesScanned) {
-    const logs = await publicClient.getContractEvents({
-      ...g,
-      eventName: 'Caught',
-      fromBlock: catchesScanned + 1n,
-      toBlock: head,
+    const logs: Awaited<ReturnType<typeof scanCaught>> = [];
+    await forRanges(catchesScanned + 1n, head, async (from, to) => {
+      logs.push(...(await scanCaught(from, to)));
     });
     for (const l of logs) {
       const a = l.args;

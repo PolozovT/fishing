@@ -3,6 +3,16 @@
 Браузерный фронтенд для контрактов из `../contracts` (FishingGame, FishNFT, RodNFT, PearlToken, Marketplace).
 Стек: Vite + TypeScript + viem, без UI-фреймворка (чистый DOM + canvas).
 
+## Fluent Testnet
+
+После деплоя (`contracts/deploy-fluent.sh`, см. корневой README) запустите клиент так:
+
+```bash
+pnpm dev:fluent
+```
+
+Клиент возьмёт адреса из `deployments/20994.json`, а сеть Fluent Testnet (chainId 20994) сам добавит в MetaMask. Burner-кошелька в этом режиме нет: используйте MetaMask с тестовым ETH из https://portal.fluent.xyz/builder/faucet.
+
 ## Быстрый старт (локально, anvil)
 
 1. Запустите anvil с блоками раз в секунду и задеплойте контракты:
