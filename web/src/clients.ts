@@ -97,32 +97,66 @@ export function resetBurner(): void {
   storageSet(BURNER_KEY, null);
 }
 
+type RpcError = { code?: number; message?: string; data?: { originalError?: { code?: number } } };
+
+const errCode = (e: unknown): number | undefined => {
+  const r = e as RpcError | null;
+  return r?.data?.originalError?.code ?? r?.code; // MetaMask mobile wraps 4902 inside -32603
+};
+
+/** Runs one wallet request and turns a failure into a message that says which step failed. */
+async function step<T>(what: string, fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (e) {
+    const code = errCode(e);
+    if (code === 4001) throw new Error(`Кошелёк отклонил запрос: ${what}`);
+    if (code === -32002) throw new Error(`Запрос «${what}» уже ждёт в кошельке — откройте расширение`);
+    const msg = (e as RpcError | null)?.message ?? String(e);
+    throw new Error(`${what}: ${msg}`);
+  }
+}
+
 export async function connectInjected(): Promise<Wallet> {
   const eth = window.ethereum;
   if (!eth) throw new Error('Кошелёк в браузере не найден (window.ethereum)');
-  const accounts = (await eth.request({ method: 'eth_requestAccounts' })) as Address[];
+  const accounts = (await step('доступ к аккаунту', () =>
+    eth.request({ method: 'eth_requestAccounts' }),
+  )) as Address[];
   if (!accounts?.length) throw new Error('Кошелёк не вернул адрес');
   const current = Number(await eth.request({ method: 'eth_chainId' }));
   if (current !== CHAIN_ID) {
+    const hexId = numberToHex(CHAIN_ID);
     try {
-      await eth.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: numberToHex(CHAIN_ID) }] });
+      await eth.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hexId }] });
     } catch (e) {
-      if ((e as { code?: number }).code !== 4902) throw e;
-      await eth.request({
-        method: 'wallet_addEthereumChain',
-        params: [
-          {
-            chainId: numberToHex(CHAIN_ID),
-            chainName: chain.name,
-            nativeCurrency: chain.nativeCurrency,
-            rpcUrls: [RPC_URL],
-          },
-        ],
-      });
+      if (errCode(e) === 4001) throw new Error(`Кошелёк отклонил переключение на сеть ${chain.name} (chainId ${CHAIN_ID})`);
+      // 4902 = unknown chain; some wallets report other codes for the same thing, so try adding it either way
+      await step(`добавление сети ${chain.name} (chainId ${CHAIN_ID}, RPC ${RPC_URL})`, () =>
+        eth.request({
+          method: 'wallet_addEthereumChain',
+          params: [
+            {
+              chainId: hexId,
+              chainName: chain.name,
+              nativeCurrency: chain.nativeCurrency,
+              rpcUrls: [RPC_URL],
+            },
+          ],
+        }),
+      );
+      const now = Number(await eth.request({ method: 'eth_chainId' }));
+      if (now !== CHAIN_ID) {
+        await step(`переключение на сеть ${chain.name}`, () =>
+          eth.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hexId }] }),
+        );
+      }
     }
   }
-  storageSet(MODE_KEY, 'injected');
   const address = accounts[0];
+  // On anvil the wallet's account starts with 0 ETH — top it up so it can pay gas.
+  if (IS_LOCAL) await fundBurner(address);
+  storageSet(MODE_KEY, 'injected');
   const client = createWalletClient({ account: address, chain, transport: custom(eth) });
   return { mode: 'injected', address, account: address, client };
 }
