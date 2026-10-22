@@ -1,92 +1,92 @@
-# Ончейн Рыбалка — веб-клиент
+# Onchain Fishing — web client
 
-Браузерный фронтенд для контрактов из `../contracts` (FishingGame, FishNFT, RodNFT, PearlToken, Marketplace).
-Стек: Vite + TypeScript + viem, без UI-фреймворка (чистый DOM + canvas).
+Browser frontend for the contracts in `../contracts` (FishingGame, FishNFT, RodNFT, PearlToken, Marketplace).
+Stack: Vite + TypeScript + viem, no UI framework (plain DOM + canvas).
 
 ## Fluent Testnet
 
-После деплоя (`contracts/deploy-fluent.sh`, см. корневой README) запустите клиент так:
+After deploying (`contracts/deploy-fluent.sh`, see the root README), start the client like this:
 
 ```bash
 pnpm dev:fluent
 ```
 
-Клиент возьмёт адреса из `deployments/20994.json`, а сеть Fluent Testnet (chainId 20994) сам добавит в MetaMask. Burner-кошелька в этом режиме нет: используйте MetaMask с тестовым ETH из https://portal.fluent.xyz/builder/faucet.
+The client reads addresses from `deployments/20994.json` and adds the Fluent Testnet network (chainId 20994) to MetaMask on its own. There is no burner wallet in this mode: use MetaMask with test ETH from https://portal.fluent.xyz/builder/faucet.
 
-## Быстрый старт (локально, anvil)
+## Quick start (local, anvil)
 
-1. Запустите anvil с блоками раз в секунду и задеплойте контракты:
+1. Start anvil with one-second blocks and deploy the contracts:
 
    ```sh
    anvil --block-time 1
    cd ../contracts
-   forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --broadcast --private-key <ключ-anvil>
+   forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --broadcast --private-key <anvil-key>
    ```
 
-   Скрипт деплоя пишет адреса в `../deployments/31337.json`.
+   The deploy script writes the addresses to `../deployments/31337.json`.
 
-2. Установите зависимости и запустите фронтенд:
+2. Install dependencies and start the frontend:
 
    ```sh
    cd web
    pnpm install
-   pnpm dev          # http://localhost:5173 (перед стартом выполняет pnpm sync)
+   pnpm dev          # http://localhost:5173 (runs pnpm sync before starting)
    ```
 
-3. Откройте http://localhost:5173 и нажмите **«Локальный burner (anvil)»**.
+3. Open http://localhost:5173 and click **"Local burner (anvil)"**.
 
-## Кошельки
+## Wallets
 
-- **Браузерный кошелёк** (`window.ethereum`, например MetaMask) — кнопка «Подключить кошелёк». Клиент попросит
-  переключиться на нужную сеть (или добавить её).
-- **Локальный burner** — только для chainId 31337 (anvil). Случайный приватный ключ создаётся и хранится в
-  `localStorage` этого браузера, на баланс зачисляется 10 ETH через `anvil_setBalance`. **Не используйте этот режим
-  с реальными средствами.** Чтобы начать заново с новым адресом, удалите ключ `onchain-fishing:burner-key` из localStorage.
+- **Browser wallet** (`window.ethereum`, e.g. MetaMask) — the "Connect wallet" button. The client will ask you to
+  switch to the right network (or add it).
+- **Local burner** — chainId 31337 (anvil) only. A random private key is generated and stored in this browser's
+  `localStorage`, and 10 ETH is credited via `anvil_setBalance`. **Do not use this mode
+  with real funds.** To start over with a new address, delete the `onchain-fishing:burner-key` key from localStorage.
 
-## Скрипты
+## Scripts
 
-| Команда          | Что делает                                                                                   |
+| Command          | What it does                                                                                 |
 | ---------------- | -------------------------------------------------------------------------------------------- |
-| `pnpm sync`      | Копирует ABI из `../contracts/out/<Name>.sol/<Name>.json` и адреса из `../deployments/*.json` в `src/generated/` |
-| `pnpm dev`       | `sync` + dev-сервер Vite на порту 5173                                                        |
-| `pnpm build`     | `sync` + проверка типов (`tsc`) + production-сборка в `dist/`                                 |
-| `pnpm typecheck` | только проверка типов                                                                         |
+| `pnpm sync`      | Copies ABIs from `../contracts/out/<Name>.sol/<Name>.json` and addresses from `../deployments/*.json` into `src/generated/` |
+| `pnpm dev`       | `sync` + Vite dev server on port 5173                                                         |
+| `pnpm build`     | `sync` + type check (`tsc`) + production build into `dist/`                                   |
+| `pnpm typecheck` | type check only                                                                               |
 
-После изменения контрактов: `forge build` (и передеплой при необходимости), затем `pnpm sync`.
-Если `contracts/out` отсутствует, `sync` оставит уже сгенерированные файлы.
+After changing the contracts: `forge build` (and redeploy if needed), then `pnpm sync`.
+If `contracts/out` is missing, `sync` keeps the already generated files.
 
-## Настройки (переменные окружения Vite)
+## Settings (Vite environment variables)
 
-- `VITE_RPC_URL` — RPC узла (по умолчанию `http://127.0.0.1:8545`).
-- `VITE_CHAIN_ID` — chainId (по умолчанию `31337`); адреса берутся из `deployments/<chainId>.json`.
+- `VITE_RPC_URL` — node RPC (default `http://127.0.0.1:8545`).
+- `VITE_CHAIN_ID` — chainId (default `31337`); addresses are taken from `deployments/<chainId>.json`.
 
-## Что есть в интерфейсе
+## What's in the UI
 
-- **Шапка**: адрес, ETH, PEARL, энергия с таймером восстановления, опыт, число уловов.
-- **Водоём** (canvas): заброс, поплавок покачивается, пока ждём блоки (`блок N/M`), поклёвка, авто-подсечка
-  (переключатель) или кнопка «Подсечь!», всплеск и карточка улова с SVG рыбы из `tokenURI`, «Сорвалась!» при промахе.
-- **Выбор места** (закрытые места серые, с требуемым уровнем удочки), **удочки** (уровень/прочность), **наживки** (остатки).
-- **Садок**: рыбы с картинками, весом и ценой продажи (`quoteSell`), мультивыбор и продажа (`sellFish`).
-- **Магазин**: наживка, восстановление энергии (`refillPrice`), новая удочка, улучшение/ремонт выбранной удочки
-  (`upgradeCost` / `repairCost`, ремонт недоступен ниже `minRepairLevel`). Все цены читаются из контракта.
-- **Рынок**: выставить рыбу/удочку (с `setApprovalForAll`), снять свой лот, купить чужой (с `approve` PEARL).
-  Индекс лотов строится по событиям `Listed`/`Cancelled`/`Sold` начиная с `startBlock` и сверяется с `listings()`.
-- **Рекорды**: рекорд недели (`weeklyBest(currentWeek())`) и топ-10 самых тяжёлых рыб по событиям `Caught`.
-- Ошибки контрактов (custom errors) декодируются по ABI всех контрактов и показываются по-русски.
+- **Header**: address, ETH, PEARL, energy with a regen timer, XP, number of catches.
+- **Water** (canvas): cast, the float bobs while we wait for blocks (`block N/M`), bite, auto reel
+  (toggle) or the "Reel in!" button, a splash and a catch card with the fish SVG from `tokenURI`, "It got away!" on a miss.
+- **Spot picker** (locked spots are greyed out and show the required rod level), **rods** (level/durability), **bait** (remaining stock).
+- **Keepnet**: fish with images, weight and sell price (`quoteSell`), multi-select and selling (`sellFish`).
+- **Shop**: bait, energy refill (`refillPrice`), new rod, upgrade/repair of the selected rod
+  (`upgradeCost` / `repairCost`, repair unavailable below `minRepairLevel`). All prices are read from the contract.
+- **Market**: list a fish/rod (with `setApprovalForAll`), cancel your own listing, buy someone else's (with PEARL `approve`).
+  The listing index is built from `Listed`/`Cancelled`/`Sold` events starting at `startBlock` and checked against `listings()`.
+- **Records**: weekly record (`weeklyBest(currentWeek())`) and the top 10 heaviest fish from `Caught` events.
+- Contract errors (custom errors) are decoded using the ABIs of all contracts and shown as readable messages.
 
-## Структура
+## Structure
 
 ```
-scripts/sync-abi.mjs   генерация src/generated/* из ../contracts/out и ../deployments
-src/generated/         ABI (as const) и адреса — генерируются, руками не править
-src/abi/index.ts       реэкспорт ABI
-src/config.ts          сеть, RPC, адреса
-src/clients.ts         publicClient, burner и injected кошельки
-src/store.ts           состояние и загрузка данных из сети (логи, view-функции)
-src/actions.ts         транзакции игры и рынка
-src/tx.ts              simulate → send → receipt, тосты
-src/errors.ts          декодирование custom errors
-src/i18n.ts            русские названия рыб/мест/наживок и тексты ошибок
-src/scene.ts           анимация водоёма на canvas
-src/ui/*.ts            панели интерфейса
+scripts/sync-abi.mjs   generates src/generated/* from ../contracts/out and ../deployments
+src/generated/         ABIs (as const) and addresses — generated, do not edit by hand
+src/abi/index.ts       ABI re-exports
+src/config.ts          network, RPC, addresses
+src/clients.ts         publicClient, burner and injected wallets
+src/store.ts           state and loading data from the chain (logs, view functions)
+src/actions.ts         game and market transactions
+src/tx.ts              simulate → send → receipt, toasts
+src/errors.ts          custom error decoding
+src/i18n.ts            rarity labels and contract error messages
+src/scene.ts           canvas water animation
+src/ui/*.ts            UI panels
 ```

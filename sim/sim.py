@@ -341,21 +341,21 @@ class Engine:
 # ---------------------------------------------------------------- scenarios
 
 SCENARIOS = [
-    Scenario("v1", "Черновик v1, только люди", "Первые параметры: рефилл 12 PEARL без роста, апгрейды 60/220/700/2000.",
+    Scenario("v1", "Draft v1, people only", "First parameters: 12 PEARL refill with no growth, upgrades 60/220/700/2000.",
              days=90, catalog="v1"),
-    Scenario("v1_hostile", "Черновик v1 + боты и фермы",
-             "То же + 15 ботов (до 48 рефиллов в день) и 10 ферм по 50 адресов.", days=90, catalog="v1",
+    Scenario("v1_hostile", "Draft v1 + bots and farms",
+             "Same + 15 bots (up to 48 refills a day) and 10 farms of 50 addresses each.", days=90, catalog="v1",
              mix=HOSTILE_MIX),
-    Scenario("v2", "v2, только люди",
-             "Текущие параметры: рефилл 20 PEARL ×2 за каждый следующий за день, апгрейды 80/450/1500/5000, "
-             "цены рыб выровнены (≈×1.6 дохода за уровень).", days=90),
-    Scenario("v2_hostile", "v2 + боты и фермы", "Текущие параметры, враждебная популяция, без лимита эмиссии.",
+    Scenario("v2", "v2, people only",
+             "Current parameters: 20 PEARL refill, ×2 for each further one that day, upgrades 80/450/1500/5000, "
+             "fish prices rebalanced (≈×1.6 income per level).", days=90),
+    Scenario("v2_hostile", "v2 + bots and farms", "Current parameters, hostile population, no emission cap.",
              days=90, mix=HOSTILE_MIX),
-    Scenario("v2_hostile_cap", "v2 + боты и фермы + лимит эмиссии",
-             "То же + emissionSoftCap = 25 000 PEARL/день (≈ дневная эмиссия 195 живых игроков).", days=90,
+    Scenario("v2_hostile_cap", "v2 + bots and farms + emission cap",
+             "Same + emissionSoftCap = 25,000 PEARL/day (≈ daily emission of 195 real players).", days=90,
              mix=HOSTILE_MIX, config={"emissionSoftCap": 25_000 * E}),
-    Scenario("v2_cap", "v2 + лимит эмиссии, только люди",
-             "Проверка, что лимит не душит живых игроков, когда ботов нет.", days=90,
+    Scenario("v2_cap", "v2 + emission cap, people only",
+             "Checks that the cap does not choke real players when there are no bots.", days=90,
              config={"emissionSoftCap": 25_000 * E}),
 ]
 

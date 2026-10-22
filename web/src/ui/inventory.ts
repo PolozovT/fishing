@@ -1,5 +1,5 @@
 import { sellFish } from '../actions';
-import { RARITY_CLASS, RARITY_RU, SPECIES_RU, SPOTS_RU, ru } from '../i18n';
+import { RARITY_CLASS, RARITY_NAMES } from '../i18n';
 import { cachedImage, state } from '../store';
 import { fmtToken, fmtWeight, h, img, mount, sigOf } from './dom';
 
@@ -16,7 +16,7 @@ export function initInventory(host: HTMLElement): () => void {
 }
 
 function render(rerender: () => void): HTMLElement[] {
-  if (!state.wallet) return [h('p', { class: 'muted', text: 'Подключите кошелёк, чтобы увидеть садок.' })];
+  if (!state.wallet) return [h('p', { class: 'muted', text: 'Connect a wallet to see your keepnet.' })];
   // drop selections for fish that are gone
   for (const id of [...selected]) if (!state.fish.some((f) => f.id.toString() === id)) selected.delete(id);
   const total = state.fish.filter((f) => selected.has(f.id.toString())).reduce((a, f) => a + f.value, 0n);
@@ -25,12 +25,12 @@ function render(rerender: () => void): HTMLElement[] {
   const toolbar = h(
     'div',
     { class: 'toolbar' },
-    h('span', { class: 'muted', text: `Рыб: ${state.fish.length} · всего ≈ ${fmtToken(allValue)} PEARL` }),
+    h('span', { class: 'muted', text: `Fish: ${state.fish.length} · total ≈ ${fmtToken(allValue)} PEARL` }),
     h('div', { class: 'spacer' }),
     h('button', {
       class: 'btn btn-ghost btn-sm',
       disabled: state.fish.length === 0,
-      text: selected.size === state.fish.length && state.fish.length > 0 ? 'Снять выбор' : 'Выбрать все',
+      text: selected.size === state.fish.length && state.fish.length > 0 ? 'Deselect all' : 'Select all',
       onclick: () => {
         if (selected.size === state.fish.length) selected.clear();
         else state.fish.forEach((f) => selected.add(f.id.toString()));
@@ -40,7 +40,7 @@ function render(rerender: () => void): HTMLElement[] {
     h('button', {
       class: 'btn btn-primary btn-sm',
       disabled: selected.size === 0 || selling,
-      text: selling ? 'Продаём…' : `Продать (${selected.size}) · ${fmtToken(total)} PEARL`,
+      text: selling ? 'Selling…' : `Sell (${selected.size}) · ${fmtToken(total)} PEARL`,
       onclick: async () => {
         const ids = state.fish.filter((f) => selected.has(f.id.toString())).map((f) => f.id);
         selling = true;
@@ -57,7 +57,7 @@ function render(rerender: () => void): HTMLElement[] {
       },
     }),
   );
-  if (state.fish.length === 0) return [toolbar, h('p', { class: 'empty', text: 'Садок пуст. Забросьте удочку!' })];
+  if (state.fish.length === 0) return [toolbar, h('p', { class: 'empty', text: 'Your keepnet is empty. Go cast a line!' })];
 
   const grid = h(
     'div',
@@ -65,12 +65,12 @@ function render(rerender: () => void): HTMLElement[] {
     state.fish.map((f) => {
       const sp = state.species[f.speciesId];
       const key = f.id.toString();
-      const name = ru(SPECIES_RU, sp?.name ?? `#${f.speciesId}`);
+      const name = sp?.name ?? `#${f.speciesId}`;
       return h(
         'button',
         {
           class: `item ${selected.has(key) ? 'sel' : ''} ${RARITY_CLASS[sp?.rarity ?? 0]}`,
-          title: `Поймана: ${ru(SPOTS_RU, state.spots[f.spotId]?.name ?? '')}, ${new Date(f.caughtAt * 1000).toLocaleString('ru-RU')}`,
+          title: `Caught at: ${state.spots[f.spotId]?.name ?? ''}, ${new Date(f.caughtAt * 1000).toLocaleString('en-US')}`,
           onclick: () => {
             if (selected.has(key)) selected.delete(key);
             else selected.add(key);
@@ -79,7 +79,7 @@ function render(rerender: () => void): HTMLElement[] {
         },
         img(cachedImage('fish', f.id), name),
         h('span', { class: 'item-name', text: name }),
-        h('span', { class: `rarity ${RARITY_CLASS[sp?.rarity ?? 0]}`, text: RARITY_RU[sp?.rarity ?? 0] }),
+        h('span', { class: `rarity ${RARITY_CLASS[sp?.rarity ?? 0]}`, text: RARITY_NAMES[sp?.rarity ?? 0] }),
         h('span', { class: 'item-meta' }, h('span', { text: fmtWeight(f.weight) }), h('span', { class: 'pearl', text: `${fmtToken(f.value)} P` })),
         h('span', { class: 'check', text: selected.has(key) ? '✓' : '' }),
       );

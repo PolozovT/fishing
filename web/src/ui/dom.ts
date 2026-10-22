@@ -57,12 +57,12 @@ export const shortAddr = (a: Address | string): string => `${a.slice(0, 6)}…${
 export function fmtToken(v: bigint, digits = 2): string {
   const n = Number(formatEther(v));
   if (n !== 0 && Math.abs(n) < 0.01) return n.toPrecision(2);
-  return n.toLocaleString('ru-RU', { maximumFractionDigits: digits, minimumFractionDigits: 0 });
+  return n.toLocaleString('en-US', { maximumFractionDigits: digits, minimumFractionDigits: 0 });
 }
 
 export function fmtWeight(grams: number): string {
-  if (grams < 1000) return `${grams} г`;
-  return `${(grams / 1000).toLocaleString('ru-RU', { maximumFractionDigits: 2 })} кг`;
+  if (grams < 1000) return `${grams} g`;
+  return `${(grams / 1000).toLocaleString('en-US', { maximumFractionDigits: 2 })} kg`;
 }
 
 export function fmtCountdown(sec: number): string {

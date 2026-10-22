@@ -3,7 +3,7 @@ import { deployments, type Deployment } from './generated/deployments';
 
 /** Networks the client knows by name. Pick one with VITE_CHAIN_ID (see .env.fluent-testnet). */
 const KNOWN: Record<number, { name: string; rpc: string; explorer?: string }> = {
-  31337: { name: 'Anvil (локально)', rpc: 'http://127.0.0.1:8545' },
+  31337: { name: 'Anvil (local)', rpc: 'http://127.0.0.1:8545' },
   20994: { name: 'Fluent Testnet', rpc: 'https://rpc.testnet.fluent.xyz', explorer: 'https://testnet.fluentscan.xyz' },
   25363: { name: 'Fluent', rpc: 'https://rpc.fluent.xyz', explorer: 'https://fluentscan.xyz' },
 };
@@ -26,6 +26,6 @@ const d = deployments[String(CHAIN_ID)] as Deployment | undefined;
 export const deployment: Deployment | undefined = d;
 
 export function requireDeployment(): Deployment {
-  if (!d) throw new Error(`Нет адресов контрактов для chainId ${CHAIN_ID} (deployments/${CHAIN_ID}.json)`);
+  if (!d) throw new Error(`No contract addresses for chainId ${CHAIN_ID} (deployments/${CHAIN_ID}.json)`);
   return d;
 }

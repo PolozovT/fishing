@@ -1,130 +1,130 @@
-# Ончейн-рыбалка: отчёт по гипотезе
+# Onchain Fishing: hypothesis report
 
-**Гипотеза.** Рыбалку можно сделать полностью ончейн: логика, рандом, предметы и экономика живут в контрактах, а не на сервере. При этом рандом честный, а экономика не разваливается.
+**Hypothesis.** A fishing game can run fully onchain: logic, randomness, items and the economy live in contracts, not on a server. Randomness stays fair and the economy doesn't fall apart.
 
-**Короткий ответ.**
-- **Техническая часть подтвердилась.** Игровой цикл целиком в контрактах. Рандом нельзя перебросить, вся метадата (SVG) хранится ончейн. Одна попытка стоит около 320k газа, на Fluent (~0.001 gwei) это около 3·10⁻⁷ ETH.
-- **Экономика держится не сама по себе, а за счёт настройки.** Против живых игроков и ботов-рефиллеров настройка работает. Против сибилл-ферм ончейн-средствами её не удержать. Это не баг реализации, а свойство любой P2E-модели, в которой награда переводима, а лимиты считаются на адрес.
+**Short answer.**
+- **The technical part holds.** The whole game loop is in contracts. Outcomes can't be re-rolled, and all metadata (SVG) is stored onchain. One attempt costs about 320k gas, which on Fluent (~0.001 gwei) is about 3·10⁻⁷ ETH.
+- **The economy holds only because it is tuned, not by itself.** Tuning works against real players and refill bots. It cannot hold against sybil farms by onchain means alone. That is not an implementation bug but a property of any P2E model whose rewards are transferable while limits are per address.
 
-Графики и таблицы: [`sim/out/report.html`](sim/out/report.html). Пересобрать его можно командой `python3 sim/sim.py && python3 sim/report.py`.
+Charts and tables: [`sim/out/report.html`](sim/out/report.html). Rebuild it with `python3 sim/sim.py && python3 sim/report.py`.
 
 ---
 
-## 1. Аналоги
+## 1. Comparable projects
 
-| Проект | Сеть | Что ончейн |
+| Project | Chain | What is onchain |
 |---|---|---|
-| Fishing Frenzy (Uncharted) | Ronin | удочки, рыба и сундуки — NFT; игровой цикл и очки офчейн |
-| MetaFish | BSC | NFT и маркетплейс, P2E-токен |
-| AceFishing (Com2uS) | — | NFT рыбы и снаряжения, награды через контракты |
-| FishVerse | мобильная | NFT рыбы, разведение и торговля |
+| Fishing Frenzy (Uncharted) | Ronin | rods, fish and chests are NFTs; game loop and points are offchain |
+| MetaFish | BSC | NFTs and marketplace, P2E token |
+| AceFishing (Com2uS) | — | fish and gear NFTs, rewards through contracts |
+| FishVerse | mobile | fish NFTs, breeding and trading |
 
-Ни один из найденных проектов не держит сам **процесс ловли** ончейн. Обычно сервер решает, что поймано, а цепочка только фиксирует владение. В этом проекте ончейн всё.
+None of the projects found keeps the **fishing itself** onchain. Usually a server decides what was caught and the chain only records ownership. In this project everything is onchain.
 
-## 2. Что построено
+## 2. What was built
 
 ```
 contracts/   Foundry, Solidity 0.8.28, OpenZeppelin 5.4
-  FishingGame.sol  — цикл cast → reel, энергия, наживка, апгрейды/ремонт, продажа, недельный рекорд
-  FishNFT.sol      — рыба: вид, точный вес, место, время, поймавший; SVG-картинка ончейн
-  RodNFT.sol       — удочки: уровень, прочность; блокируются, пока в воде
-  PearlToken.sol   — PEARL, мягкая валюта (выпуск — продажа рыбы, сжигание — всё остальное)
-  Marketplace.sol  — P2P-торговля рыбой и удочками за PEARL, 5% комиссии сжигается
-sim/         точная модель формул контракта и агентная симуляция экономики
-web/         браузерный клиент (Vite + viem)
+  FishingGame.sol  — cast → reel loop, energy, bait, upgrades/repairs, selling, weekly record
+  FishNFT.sol      — fish: species, exact weight, spot, time, catcher; onchain SVG image
+  RodNFT.sol       — rods: level, durability; locked while in the water
+  PearlToken.sol   — PEARL, the soft currency (minted by selling fish, burned by everything else)
+  Marketplace.sol  — P2P trading of fish and rods for PEARL, 5% fee is burned
+sim/         exact model of the contract formulas and an agent-based economy simulation
+web/         browser client (Vite + viem)
 ```
 
-**Каталог:** 20 видов рыб (от плотвы до синего тунца), 5 мест ловли, привязанных к уровню удочки, 3 вида наживки, 5 уровней удочки.
+**Catalog:** 20 fish species (from roach to bluefin tuna), 5 fishing spots gated by rod level, 3 bait types, 5 rod levels.
 
-**Тесты:** 51 тест — юнит, фаззинг на 512 прогонов, статистический тест шанса поимки на 1000 забросов, 4 инварианта на 4096 случайных действий каждый. Все проходят (`forge test`).
+**Tests:** 51 tests — unit tests, fuzzing with 512 runs, a statistical catch-rate test over 1000 casts, and 4 invariants over 4096 random actions each. All pass (`forge test`).
 
-### Честный рандом
+### Fair randomness
 
-`cast()` фиксирует блок `N + 2`, а `reel()` берёт `blockhash` этого блока. На момент заброса блока ещё нет. Когда он появился, исход уже определён, и переиграть его через revert нельзя (это проверяет `test_outcomeIsFixedOnceTargetBlockExists`). Если не вытащить вовремя, потеряешь только сам улов: энергия и наживка уже потрачены. Через 256 блоков хэш становится недоступен, и рыба уходит. Вытащить может кто угодно (`reelFor`), но улов всегда достаётся игроку. Это позволяет подключить кипера.
+`cast()` commits to block `N + 2`, and `reel()` uses that block's `blockhash`. At cast time the block doesn't exist yet. Once it exists the outcome is fixed and can't be replayed through a revert (checked by `test_outcomeIsFixedOnceTargetBlockExists`). Failing to reel in time only loses the catch: energy and bait are already spent. After 256 blocks the hash is no longer available and the fish gets away. Anyone can reel (`reelFor`), but the catch always goes to the player, which makes a keeper possible.
 
-**Проверено на Fluent Testnet** (chainId 20994): `blockhash(n-1)` из контракта совпадает с реальным хэшем блока, для блоков старше 256 возвращается 0, `prevrandao` ненулевой. Значит, механика cast → reel на Fluent работает как задумано. Весь деплой, выдача удочки, заброс и `tokenURI` прогнаны через `eth_call` на исполнителе Fluent, газ совпал с anvil (9.52M против 9.45M).
+**Verified on Fluent Testnet** (chainId 20994): `blockhash(n-1)` read from a contract matches the real block hash, blocks older than 256 return 0, and `prevrandao` is non-zero. So the cast → reel mechanic works on Fluent as designed. The full deployment, rod claim, cast and `tokenURI` were run through `eth_call` on the Fluent executor, and gas matched anvil (9.52M vs 9.45M).
 
-**Ограничение.** На Fluent, как и на любом L2, блоки производит секвенсор, и он теоретически может влиять на `blockhash`. Для игры с реальной ценностью нужен VRF (Chainlink, Gelato, Pyth Entropy). В контракте рандом изолирован в `_reel`, так что замена локальная.
+**Limitation.** On Fluent, as on any L2, blocks are produced by a sequencer, which could in theory influence `blockhash`. A game with real value needs VRF (Chainlink, Gelato, Pyth Entropy). Randomness is isolated in `_reel`, so swapping it is a local change.
 
-### Газ (замер `forge test --gas-report`)
+### Gas (measured with `forge test --gas-report`)
 
-| Действие | Газ (медиана) |
+| Action | Gas (median) |
 |---|---|
 | `claimStarterRod` | 130k |
 | `cast` | 130k |
-| `reel` с поимкой (минт NFT) | 190k |
-| `reel` с промахом | ~52k |
+| `reel` with a catch (NFT mint) | 190k |
+| `reel` with a miss | ~52k |
 | `buyBait` | 68k |
 
-Одна попытка обходится примерно в 320k газа. На Fluent Testnet газ ~0.001 gwei, блок ~1 с: попытка стоит ~3·10⁻⁷ ETH, а между `cast` и `reel` проходит ~3 секунды.
+One attempt costs about 320k gas. On Fluent Testnet gas is ~0.001 gwei and blocks are ~1 s, so an attempt costs ~3·10⁻⁷ ETH and `cast` to `reel` takes ~3 seconds.
 
-## 3. Экономика: что показала симуляция
+## 3. Economy: what the simulation showed
 
-Модель (`sim/model.py`) читает каталог прямо из `GameSetup.sol` и повторяет формулы контракта. Агенты (`sim/sim.py`) ведут каждую удочку отдельно, с прочностью, ремонтом, наживкой, рефиллами и апгрейдами. Каждый заброс разыгрывается случайно.
+The model (`sim/model.py`) reads the catalog straight from `GameSetup.sol` and mirrors the contract formulas. Agents (`sim/sim.py`) track every rod separately, with durability, repairs, bait, refills and upgrades. Every cast is rolled randomly.
 
-**Архетипы:**
-- казуал: тратит 35% энергии;
-- регуляр: 70% энергии и 1 рефилл в день;
-- грайндер: 100% энергии и до 4 рефиллов;
-- бот: до 48 рефиллов, покупает только то, что окупается;
-- ферма: 50 адресов с общим кошельком.
+**Archetypes:**
+- casual: uses 35% of energy;
+- regular: 70% of energy and 1 refill a day;
+- grinder: 100% of energy and up to 4 refills;
+- bot: up to 48 refills, buys only what pays back;
+- farm: 50 addresses sharing one wallet.
 
-### Черновик v1 сломан
+### Draft v1 was broken
 
-1. **Принтер PEARL.** Рефилл энергии стоил 12 PEARL, а 20 энергии на удочке 5-го уровня приносят около 112 PEARL. Бот, который рефиллит без остановки, зарабатывал в 6 раз больше грайндера и в 120 раз больше казуала. Ограничение у него только одно — газ.
-2. **Прогресс заканчивается, а эмиссия нет.** Грайндер выходил на 5-й уровень к 22-му дню, а к 90-му дню на нём были все 195 игроков. Апгрейды были единственным заметным стоком, и после этого сжигание падало до 12% выпуска. Первый апгрейд давал доход ×5, дальше рост почти не ощущался.
+1. **A PEARL printer.** An energy refill cost 12 PEARL, while 20 energy on a level-5 rod earns about 112 PEARL. A bot refilling nonstop earned 6× a grinder and 120× a casual player. Its only limit was gas.
+2. **Progression ends, emission doesn't.** A grinder reached level 5 by day 22, and by day 90 all 195 players were there. Upgrades were the only significant sink, so afterwards burning fell to 12% of minting. The first upgrade multiplied income ×5, and later growth was barely noticeable.
 
-### v2: что изменено и какой результат
+### v2: what changed and the result
 
-**Изменения в контракте:**
-- рефилл энергии дорожает ×2 за каждую следующую покупку в течение суток (`refillPriceGrowthBps`);
-- плата за стартовую удочку в ETH (`starterRodFee`, по умолчанию 0);
-- опциональный запрет ремонта для удочек низких уровней (`minRepairLevel`, по умолчанию выключен — см. ниже).
+**Contract changes:**
+- energy refills cost ×2 for each further purchase within a day (`refillPriceGrowthBps`);
+- an ETH fee for the starter rod (`starterRodFee`, 0 by default);
+- an optional repair ban for low-level rods (`minRepairLevel`, off by default — see below).
 
-**Изменения в параметрах:**
-- рефилл 20 PEARL;
-- апгрейды 80 / 450 / 1500 / 5000 PEARL;
-- цены рыб пересчитаны так, чтобы доход рос примерно в 1.6 раза за уровень: 0.47 → 0.85 → 1.49 → 2.66 → 3.59 PEARL за энергию. В v1 было 0.26 → 1.31 (×5 за первый же апгрейд).
+**Parameter changes:**
+- refill 20 PEARL;
+- upgrades 80 / 450 / 1500 / 5000 PEARL;
+- fish prices rescaled so income grows about 1.6× per level: 0.47 → 0.85 → 1.49 → 2.66 → 3.59 PEARL per energy. In v1 it was 0.26 → 1.31 (×5 on the very first upgrade).
 
-| Метрика (90 дней, 195 живых игроков) | v1 | v2 |
+| Metric (90 days, 195 real players) | v1 | v2 |
 |---|---|---|
-| PEARL в обороте | 2.5M | 0.54M |
-| Сжигание / выпуск за последнюю неделю | 0.12 | 0.77 |
-| Доход бота / доход грайндера | 6.1× | 1.0× |
-| Казуал: 2-й / 3-й уровень | день 14 / 25 | день 10 / 30 |
-| Регуляр: 5-й уровень | день 28 | день 81 |
-| Грайндер: 5-й уровень | день 22 | день 43 |
-| Уровень всех игроков на 90-й день | все на 5-м | казуалы 3, регуляры ~5 |
+| PEARL in circulation | 2.5M | 0.54M |
+| Burn / mint, last week | 0.12 | 0.77 |
+| Bot income / grinder income | 6.1× | 1.0× |
+| Casual: level 2 / 3 | day 14 / 25 | day 10 / 30 |
+| Regular: level 5 | day 28 | day 81 |
+| Grinder: level 5 | day 22 | day 43 |
+| Everyone's level on day 90 | all at 5 | casuals 3, regulars ~5 |
 
-### Чего настройкой не исправить: фермы
+### What tuning can't fix: farms
 
-Каждый адрес фермы в v2 зарабатывает ровно как бот-грайндер, поэтому ферма из 50 адресов получает в 48 раз больше одного грайндера. Ончейн их не отличить. Что пробовали:
+In v2 each farm address earns exactly like a bot grinder, so a 50-address farm earns 48× a single grinder. Onchain they are indistinguishable. What we tried:
 
-- **Запрет ремонта стартовых удочек** (`minRepairLevel = 2`) ударил по людям, а не по фермам. Новичок за 60 забросов набирает ~20 PEARL, а на новую удочку или апгрейд этого не хватает, и он застревает. Ферма складывает PEARL с 50 адресов в один кошелёк и растёт дальше. **Вывод: любой лимит на адрес выгоден мультиаккаунтам.** Поэтому по умолчанию он выключен.
-- **Мягкий лимит эмиссии** (`emissionSoftCap`, 25k PEARL в день) удерживает предложение: 1.4M вместо 10.8M. Но пирог фиксирован, и фермы его делят вместе с людьми, так что доход казуала падает вдвое. Без ботов этот лимит не срабатывает: сценарий `v2_cap` совпадает с `v2`.
-- **Плата за вход в ETH** (`starterRodFee`) — единственный рычаг, который делает каждый лишний адрес дорогим. Ферме выгодно заводить адрес, пока ожидаемый доход адреса × цена PEARL больше, чем плата + газ. Боту фармить выгодно уже при цене PEARL выше «газ на PEARL × цена газа». Для фермы это ~38 500 газа на PEARL. На Fluent при 0.001 gwei это ~4·10⁻⁸ ETH за PEARL: фармить выгодно почти при любой ненулевой цене PEARL.
+- **Banning repairs on starter rods** (`minRepairLevel = 2`) hurt people, not farms. In 60 casts a newcomer collects ~20 PEARL, which is not enough for a new rod or an upgrade, so they get stuck. A farm pools PEARL from 50 addresses into one wallet and keeps growing. **Conclusion: any per-address limit favors multi-accounting.** That's why it is off by default.
+- **A soft emission cap** (`emissionSoftCap`, 25k PEARL a day) holds supply down: 1.4M instead of 10.8M. But the pie is fixed and farms share it with people, so casual income halves. Without bots the cap never triggers: the `v2_cap` scenario matches `v2`.
+- **An entry fee in ETH** (`starterRodFee`) is the only lever that makes every extra address expensive. A farm adds an address as long as expected per-address income × PEARL price exceeds fee + gas. A bot profits once the PEARL price exceeds "gas per PEARL × gas price". For a farm that is ~38,500 gas per PEARL. On Fluent at 0.001 gwei that's ~4·10⁻⁸ ETH per PEARL: farming pays at almost any non-zero PEARL price.
 
-### Итог по гипотезе
+### Verdict
 
-| Часть | Вердикт |
+| Part | Verdict |
 |---|---|
-| Полностью ончейн-цикл, NFT, метадата | ✅ работает, проверено на исполнителе Fluent Testnet |
-| Честный рандом без сервера | ✅ `blockhash` на Fluent корректен; ⚠️ для реальной ценности нужен VRF (секвенсор) |
-| Экономика против обычных игроков и ботов | ✅ после перебалансировки v2 |
-| Экономика против сибилл-ферм | ❌ ончейн-средствами не решается |
+| Fully onchain loop, NFTs, metadata | ✅ works, verified on the Fluent Testnet executor |
+| Fair randomness without a server | ✅ `blockhash` is correct on Fluent; ⚠️ real value needs VRF (sequencer) |
+| Economy vs regular players and bots | ✅ after the v2 rebalance |
+| Economy vs sybil farms | ❌ not solvable by onchain means |
 
-**Если двигаться дальше, вот что стоит сделать:**
-1. **Сделать PEARL непереводимой** (soulbound), а торговлю за реальную ценность оставить только для NFT. Тогда ферма зарабатывает «очки», которые нельзя вывести, и фармить становится бессмысленно. В `PearlToken._update` это небольшое изменение, но маркетплейс тогда придётся перевести на ETH.
-2. **Продавать стартовую удочку за ETH** и держать `emissionSoftCap` на уровне, рассчитанном по реальной активности. Это и модель монетизации, и порог для сибилл.
-3. **Добавить навык.** Сейчас исход — чистый рандом, поэтому бот играет так же хорошо, как человек. Ончейн-проверку навыка не сделать без доверенной стороны. Вариант: соревновательные турниры (недельный рекорд уже есть), где приз выдаётся из пула, а не из эмиссии.
-4. **Заменить `blockhash` на VRF** перед мейннетом.
-5. **Провести аудит.** Это прототип за одну ночь.
+**Next steps if this continues:**
+1. **Make PEARL non-transferable** (soulbound) and keep real-value trading to NFTs only. Farms would then earn "points" they can't cash out, and farming becomes pointless. It's a small change in `PearlToken._update`, but the marketplace would then have to move to ETH.
+2. **Sell the starter rod for ETH** and keep `emissionSoftCap` at a level derived from real activity. This is both a monetization model and a sybil barrier.
+3. **Add skill.** Outcomes are pure randomness now, so a bot plays as well as a human. Onchain skill checks aren't possible without a trusted party. One option: competitive tournaments (the weekly record already exists) with prizes paid from a pool rather than from emission.
+4. **Replace `blockhash` with VRF** before mainnet.
+5. **Get an audit.** This is a one-night prototype.
 
-## Известные ограничения прототипа
+## Known prototype limitations
 
-- **Просроченный заброс.** Когда игрок видит плохой исход, он может дать забросу истечь (256 блоков). Это никогда не выгоднее, чем вытащить: энергия, наживка и прочность всё равно списываются. Последнее исправлено этой ночью по итогам проверки фронтенда.
-- **Рекорд недели сравнивает сырой вес между видами.** Тунец и сом всегда победят. Лучше считать «трофейность»: вес относительно максимума вида.
-- **Новичок стартует без PEARL**, поэтому первые забросы делаются без наживки. Можно выдавать стартовый пакет червей.
-- **Метадата проданной рыбы сжигается вместе с NFT**, и в топе не видно картинок проданных рыб.
-- **Клиент собирает лоты маркета и топ из логов**, начиная с блока деплоя. Локально это работает, но для долгоживущей сети нужен индексатор (The Graph, Ponder).
-- **`Marketplace.list`** при попытке выставить чужой NFT возвращает ошибку ERC721, а не понятное «не владелец».
+- **Expired casts.** A player who sees a bad outcome can let the cast expire (256 blocks). This is never better than reeling: energy, bait and durability are charged regardless. The durability part was fixed overnight after the frontend review.
+- **The weekly record compares raw weight across species.** Tuna and catfish will always win. A "trophy score" — weight relative to the species maximum — would be fairer.
+- **Newcomers start with no PEARL**, so their first casts are without bait. A starter pack of worms would help.
+- **A sold fish's metadata is burned with the NFT**, so the top list can't show images of sold fish.
+- **The client builds market listings and the top list from logs** starting at the deploy block. That works locally, but a long-lived network needs an indexer (The Graph, Ponder).
+- **`Marketplace.list`** returns an ERC721 error when listing someone else's NFT instead of a clear "not the owner".

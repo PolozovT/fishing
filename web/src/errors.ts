@@ -8,7 +8,7 @@ import {
   type Hex,
 } from 'viem';
 import { fishingGameAbi, fishNftAbi, marketplaceAbi, pearlTokenAbi, rodNftAbi } from './abi';
-import { ERRORS_RU } from './i18n';
+import { ERRORS } from './i18n';
 
 // Union of every custom error across the game contracts: a revert bubbling up from a nested call
 // (e.g. PEARL burn inside FishingGame) is not in the called contract's ABI, so decode against all of them.
@@ -59,20 +59,20 @@ export function revertName(err: unknown): string | undefined {
   return undefined;
 }
 
-/** Human-readable Russian message for any error thrown by viem / the wallet. */
+/** Human-readable message for any error thrown by viem / the wallet. */
 export function friendlyError(err: unknown): string {
   const name = revertName(err);
-  if (name) return ERRORS_RU[name] ?? `Ошибка контракта: ${name}`;
+  if (name) return ERRORS[name] ?? `Contract error: ${name}`;
   if (err instanceof BaseError) {
-    if (err.walk((e) => e instanceof UserRejectedRequestError)) return 'Отклонено в кошельке';
-    if (err.walk((e) => e instanceof InsufficientFundsError)) return 'Недостаточно ETH для оплаты газа';
+    if (err.walk((e) => e instanceof UserRejectedRequestError)) return 'Rejected in wallet';
+    if (err.walk((e) => e instanceof InsufficientFundsError)) return 'Not enough ETH to pay for gas';
     const rev = err.walk((e) => e instanceof ContractFunctionRevertedError);
-    if (rev instanceof ContractFunctionRevertedError && rev.reason) return `Отказ контракта: ${rev.reason}`;
-    if (/fetch|network|ECONNREFUSED|Failed to fetch/i.test(err.message)) return 'Нет связи с узлом сети (RPC)';
+    if (rev instanceof ContractFunctionRevertedError && rev.reason) return `Contract reverted: ${rev.reason}`;
+    if (/fetch|network|ECONNREFUSED|Failed to fetch/i.test(err.message)) return 'Cannot reach the network node (RPC)';
     return err.shortMessage || err.message;
   }
   const code = (err as { code?: number } | null)?.code;
-  if (code === 4001) return 'Отклонено в кошельке';
+  if (code === 4001) return 'Rejected in wallet';
   if (err instanceof Error) return err.message;
   return String(err);
 }

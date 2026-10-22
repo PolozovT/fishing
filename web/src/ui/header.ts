@@ -32,7 +32,7 @@ export function initHeader(host: HTMLElement, on: HeaderHandlers): () => void {
 }
 
 function render(on: HeaderHandlers): HTMLElement[] {
-  const brand = h('div', { class: 'brand' }, h('span', { class: 'logo', text: '〰' }), h('span', { text: 'Ончейн Рыбалка' }));
+  const brand = h('div', { class: 'brand' }, h('span', { class: 'logo', text: '〰' }), h('span', { text: 'Onchain Fishing' }));
   const w = state.wallet;
   if (!w) {
     regenEl = null;
@@ -42,18 +42,18 @@ function render(on: HeaderHandlers): HTMLElement[] {
         'div',
         { class: 'connect' },
         hasInjected()
-          ? h('button', { class: 'btn btn-primary', disabled: state.connecting, text: 'Подключить кошелёк', onclick: on.connectInjected })
+          ? h('button', { class: 'btn btn-primary', disabled: state.connecting, text: 'Connect wallet', onclick: on.connectInjected })
           : null,
         IS_LOCAL
           ? h('button', {
               class: 'btn btn-burner',
               disabled: state.connecting,
-              text: 'Локальный burner (anvil)',
-              title: 'Случайный ключ в localStorage, ETH выдаётся через anvil_setBalance. Только для локальной разработки!',
+              text: 'Local burner (anvil)',
+              title: 'Random key stored in localStorage, ETH funded via anvil_setBalance. Local development only!',
               onclick: on.connectBurner,
             })
           : null,
-        !hasInjected() && !IS_LOCAL ? h('span', { class: 'warn', text: 'Установите браузерный кошелёк' }) : null,
+        !hasInjected() && !IS_LOCAL ? h('span', { class: 'warn', text: 'Install a browser wallet' }) : null,
       ),
     ];
   }
@@ -69,12 +69,12 @@ function render(on: HeaderHandlers): HTMLElement[] {
         'div',
         { class: 'stat who' },
         w.mode === 'burner'
-          ? h('span', { class: 'badge badge-burner', text: 'burner · только локально', title: 'Ключ хранится в localStorage этого браузера. Не используйте для реальных средств.' })
-          : h('span', { class: 'badge', text: 'кошелёк' }),
+          ? h('span', { class: 'badge badge-burner', text: 'burner · local only', title: 'The key is stored in this browser\'s localStorage. Do not use it for real funds.' })
+          : h('span', { class: 'badge', text: 'wallet' }),
         h('span', {
           class: 'addr',
           text: shortAddr(w.address),
-          title: `${w.address} — нажмите, чтобы скопировать`,
+          title: `${w.address} — click to copy`,
           onclick: () => void navigator.clipboard?.writeText(w.address),
         }),
       ),
@@ -83,13 +83,13 @@ function render(on: HeaderHandlers): HTMLElement[] {
       h(
         'div',
         { class: 'stat energy' },
-        h('span', { class: 'k', text: `Энергия ${state.energy}/${max}` }),
+        h('span', { class: 'k', text: `Energy ${state.energy}/${max}` }),
         h('span', { class: 'bar' }, h('span', { class: 'bar-fill en', style: `width:${(100 * state.energy) / max}%` })),
         regenEl,
       ),
-      h('div', { class: 'stat' }, h('span', { class: 'k', text: 'Опыт' }), h('span', { class: 'v', text: String(state.xp) })),
-      h('div', { class: 'stat hide-sm' }, h('span', { class: 'k', text: 'Улов' }), h('span', { class: 'v', text: String(state.catches) })),
-      h('button', { class: 'btn btn-ghost btn-sm', text: 'Выйти', onclick: on.disconnect }),
+      h('div', { class: 'stat' }, h('span', { class: 'k', text: 'XP' }), h('span', { class: 'v', text: String(state.xp) })),
+      h('div', { class: 'stat hide-sm' }, h('span', { class: 'k', text: 'Catches' }), h('span', { class: 'v', text: String(state.catches) })),
+      h('button', { class: 'btn btn-ghost btn-sm', text: 'Log out', onclick: on.disconnect }),
     ),
   ];
 }
@@ -100,10 +100,10 @@ export function tickHeader(): void {
   const max = cfg('maxEnergy');
   const regen = cfg('energyRegenSeconds');
   if (state.energy >= max || state.energyUpdatedAt === 0 || regen === 0) {
-    regenEl.textContent = 'полная';
+    regenEl.textContent = 'full';
     return;
   }
   const elapsed = Math.max(0, chainNow() - state.energyUpdatedAt);
   const left = regen - (elapsed % regen);
-  regenEl.textContent = `+1 через ${fmtCountdown(left)}`;
+  regenEl.textContent = `+1 in ${fmtCountdown(left)}`;
 }

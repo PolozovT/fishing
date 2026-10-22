@@ -50,7 +50,7 @@ export class WaterScene {
 
   constructor(private canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Canvas 2D недоступен');
+    if (!ctx) throw new Error('Canvas 2D is not available');
     this.ctx = ctx;
     for (let i = 0; i < 60; i++) this.stars.push({ x: Math.random(), y: Math.random(), r: Math.random() * 1.3 + 0.2, tw: Math.random() * 6 });
     for (let i = 0; i < 6; i++)

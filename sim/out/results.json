@@ -319,8 +319,8 @@
  "scenarios": [
   {
    "key": "v1",
-   "title": "Черновик v1, только люди",
-   "description": "Первые параметры: рефилл 12 PEARL без роста, апгрейды 60/220/700/2000.",
+   "title": "Draft v1, people only",
+   "description": "First parameters: 12 PEARL refill with no growth, upgrades 60/220/700/2000.",
    "config": {
     "refillPriceGrowthBps": 10000,
     "minRepairLevel": 1,
@@ -3550,8 +3550,8 @@
   },
   {
    "key": "v1_hostile",
-   "title": "Черновик v1 + боты и фермы",
-   "description": "То же + 15 ботов (до 48 рефиллов в день) и 10 ферм по 50 адресов.",
+   "title": "Draft v1 + bots and farms",
+   "description": "Same + 15 bots (up to 48 refills a day) and 10 farms of 50 addresses each.",
    "config": {
     "refillPriceGrowthBps": 10000,
     "minRepairLevel": 1,
@@ -6901,8 +6901,8 @@
   },
   {
    "key": "v2",
-   "title": "v2, только люди",
-   "description": "Текущие параметры: рефилл 20 PEARL ×2 за каждый следующий за день, апгрейды 80/450/1500/5000, цены рыб выровнены (≈×1.6 дохода за уровень).",
+   "title": "v2, people only",
+   "description": "Current parameters: 20 PEARL refill, ×2 for each further one that day, upgrades 80/450/1500/5000, fish prices rebalanced (≈×1.6 income per level).",
    "config": {
     "refillPriceGrowthBps": 20000,
     "minRepairLevel": 1,
@@ -10132,8 +10132,8 @@
   },
   {
    "key": "v2_hostile",
-   "title": "v2 + боты и фермы",
-   "description": "Текущие параметры, враждебная популяция, без лимита эмиссии.",
+   "title": "v2 + bots and farms",
+   "description": "Current parameters, hostile population, no emission cap.",
    "config": {
     "refillPriceGrowthBps": 20000,
     "minRepairLevel": 1,
@@ -13483,8 +13483,8 @@
   },
   {
    "key": "v2_hostile_cap",
-   "title": "v2 + боты и фермы + лимит эмиссии",
-   "description": "То же + emissionSoftCap = 25 000 PEARL/день (≈ дневная эмиссия 195 живых игроков).",
+   "title": "v2 + bots and farms + emission cap",
+   "description": "Same + emissionSoftCap = 25,000 PEARL/day (≈ daily emission of 195 real players).",
    "config": {
     "refillPriceGrowthBps": 20000,
     "minRepairLevel": 1,
@@ -16834,8 +16834,8 @@
   },
   {
    "key": "v2_cap",
-   "title": "v2 + лимит эмиссии, только люди",
-   "description": "Проверка, что лимит не душит живых игроков, когда ботов нет.",
+   "title": "v2 + emission cap, people only",
+   "description": "Checks that the cap does not choke real players when there are no bots.",
    "config": {
     "refillPriceGrowthBps": 20000,
     "minRepairLevel": 1,

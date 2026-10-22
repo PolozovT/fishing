@@ -33,7 +33,7 @@ export class TxError extends Error {
 
 /**
  * Simulate (to get a decoded custom error before the wallet pops up), send, wait for the receipt.
- * Throws TxError with a Russian message; toasts are shown unless `quiet`.
+ * Throws TxError with a human-readable message; toasts are shown unless `quiet`.
  */
 export async function sendTx<const abi extends Abi, fn extends WriteFn<abi>>(
   wallet: Wallet,
@@ -54,8 +54,8 @@ export async function sendTx<const abi extends Abi, fn extends WriteFn<abi>>(
       chain: wallet.client.chain,
     });
     const receipt = await publicClient.waitForTransactionReceipt({ hash, pollingInterval: 300 });
-    if (receipt.status !== 'success') throw new Error('Транзакция откатилась (revert)');
-    if (!opts.quiet) toast(`${label}: готово`, 'ok');
+    if (receipt.status !== 'success') throw new Error('Transaction reverted');
+    if (!opts.quiet) toast(`${label}: done`, 'ok');
     return receipt;
   } catch (e) {
     console.warn(`[tx] ${label} failed`, e);

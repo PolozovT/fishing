@@ -1,5 +1,4 @@
 import { buyBait, buyRod, refillEnergy, repairRod, upgradeRod } from '../actions';
-import { BAITS_RU, ru } from '../i18n';
 import { cfg, cfgBig, emit, selectedRod, state } from '../store';
 import { fmtToken, h, mount, sigOf } from './dom';
 
@@ -25,7 +24,7 @@ export function initShop(host: HTMLElement): () => void {
 }
 
 function render(): HTMLElement[] {
-  if (!state.wallet) return [h('p', { class: 'muted', text: 'Подключите кошелёк, чтобы делать покупки.' })];
+  if (!state.wallet) return [h('p', { class: 'muted', text: 'Connect a wallet to shop.' })];
   const pearl = state.pearl;
   const out: HTMLElement[] = [];
 
@@ -34,7 +33,7 @@ function render(): HTMLElement[] {
     h(
       'section',
       { class: 'shop-sec' },
-      h('h3', { text: 'Наживка' }),
+      h('h3', { text: 'Bait' }),
       state.baits
         .filter((b) => b.id !== 0)
         .map((b) => {
@@ -42,13 +41,13 @@ function render(): HTMLElement[] {
           const costEl = h('span', { class: 'pearl', text: `${fmtToken(b.price * BigInt(amount))} PEARL` });
           const buyBtn = h('button', {
             class: 'btn btn-sm',
-            text: 'Купить',
+            text: 'Buy',
             disabled: b.price * BigInt(amount) > pearl,
             onclick: run(() => buyBait(b.id, BigInt(amounts.get(b.id) ?? 10))),
           });
           const input = h('input', {
             class: 'num',
-            attrs: { type: 'number', min: '1', max: '1000', step: '1', value: String(amount), 'aria-label': 'Количество' },
+            attrs: { type: 'number', min: '1', max: '1000', step: '1', value: String(amount), 'aria-label': 'Quantity' },
             oninput: (e) => {
               const v = Math.max(1, Math.min(1000, Math.floor(Number((e.target as HTMLInputElement).value) || 1)));
               amounts.set(b.id, v);
@@ -62,8 +61,8 @@ function render(): HTMLElement[] {
             h(
               'div',
               { class: 'shop-desc' },
-              h('b', { text: ru(BAITS_RU, b.name) }),
-              h('span', { class: 'muted small', text: `+${b.catchBonusBps / 100}% к поклёвке · +${b.rarityBonus}% к редкости · ${fmtToken(b.price)} за шт. · у вас ×${state.baitBalance[b.id] ?? 0n}` }),
+              h('b', { text: b.name }),
+              h('span', { class: 'muted small', text: `+${b.catchBonusBps / 100}% bite · +${b.rarityBonus}% rarity · ${fmtToken(b.price)} each · you have ×${state.baitBalance[b.id] ?? 0n}` }),
             ),
             h('div', { class: 'shop-act' }, input, costEl, buyBtn),
           );
@@ -77,15 +76,15 @@ function render(): HTMLElement[] {
     h(
       'section',
       { class: 'shop-sec' },
-      h('h3', { text: 'Снаряжение' }),
+      h('h3', { text: 'Gear' }),
       h(
         'div',
         { class: 'shop-row' },
         h(
           'div',
           { class: 'shop-desc' },
-          h('b', { text: 'Восстановить энергию' }),
-          h('span', { class: 'muted small', text: `До ${max}. Сейчас ${state.energy}/${max}. Каждое следующее восстановление за сутки может стоить дороже.` }),
+          h('b', { text: 'Refill energy' }),
+          h('span', { class: 'muted small', text: `Up to ${max}. Now ${state.energy}/${max}. Each further refill within a day may cost more.` }),
         ),
         h(
           'div',
@@ -93,7 +92,7 @@ function render(): HTMLElement[] {
           h('span', { class: 'pearl', text: `${fmtToken(state.refillPrice)} PEARL` }),
           h('button', {
             class: 'btn btn-sm',
-            text: 'Восстановить',
+            text: 'Refill',
             disabled: state.refillPrice > pearl || state.energy >= max,
             onclick: run(refillEnergy),
           }),
@@ -102,12 +101,12 @@ function render(): HTMLElement[] {
       h(
         'div',
         { class: 'shop-row' },
-        h('div', { class: 'shop-desc' }, h('b', { text: 'Новая удочка' }), h('span', { class: 'muted small', text: `Уровень 1, прочность ${cfg('starterDurability')}` })),
+        h('div', { class: 'shop-desc' }, h('b', { text: 'New rod' }), h('span', { class: 'muted small', text: `Level 1, durability ${cfg('starterDurability')}` })),
         h(
           'div',
           { class: 'shop-act' },
           h('span', { class: 'pearl', text: `${fmtToken(cfgBig('rodPrice'))} PEARL` }),
-          h('button', { class: 'btn btn-sm', text: 'Купить', disabled: cfgBig('rodPrice') > pearl, onclick: run(buyRod) }),
+          h('button', { class: 'btn btn-sm', text: 'Buy', disabled: cfgBig('rodPrice') > pearl, onclick: run(buyRod) }),
         ),
       ),
     ),
@@ -115,25 +114,25 @@ function render(): HTMLElement[] {
 
   // selected rod: upgrade / repair
   const rod = selectedRod();
-  const rodSec = h('section', { class: 'shop-sec' }, h('h3', { text: 'Мастерская' }));
+  const rodSec = h('section', { class: 'shop-sec' }, h('h3', { text: 'Workshop' }));
   if (state.rods.length > 1) {
     const sel = h('select', {
       class: 'select',
-      attrs: { 'aria-label': 'Удочка' },
+      attrs: { 'aria-label': 'Rod' },
       onchange: (e) => {
         state.sel.rod = BigInt((e.target as HTMLSelectElement).value);
         emit();
       },
     });
     for (const r of state.rods) {
-      const o = h('option', { text: `Удочка #${r.id} · ур. ${r.level} · ${r.durability}/${r.maxDurability}`, attrs: { value: r.id.toString() } });
+      const o = h('option', { text: `Rod #${r.id} · lvl ${r.level} · ${r.durability}/${r.maxDurability}`, attrs: { value: r.id.toString() } });
       if (r.id === state.sel.rod) o.selected = true;
       sel.append(o);
     }
     rodSec.append(sel);
   }
   if (!rod) {
-    rodSec.append(h('p', { class: 'muted', text: 'Нет удочки.' }));
+    rodSec.append(h('p', { class: 'muted', text: 'No rod.' }));
   } else {
     const maxLevel = cfg('maxRodLevel');
     const minRepair = cfg('minRepairLevel');
@@ -147,10 +146,10 @@ function render(): HTMLElement[] {
         h(
           'div',
           { class: 'shop-desc' },
-          h('b', { text: `Улучшить #${rod.id}: ур. ${rod.level} → ${atMax ? rod.level : rod.level + 1}` }),
+          h('b', { text: `Upgrade #${rod.id}: lvl ${rod.level} → ${atMax ? rod.level : rod.level + 1}` }),
           h('span', {
             class: 'muted small',
-            text: atMax ? `Максимальный уровень (${maxLevel})` : `+${cfg('durabilityPerLevel')} к прочности, полный ремонт, новые места`,
+            text: atMax ? `Max level (${maxLevel})` : `+${cfg('durabilityPerLevel')} durability, full repair, new spots`,
           }),
         ),
         h(
@@ -159,7 +158,7 @@ function render(): HTMLElement[] {
           h('span', { class: 'pearl', text: atMax ? '—' : `${fmtToken(rod.upgradeCost)} PEARL` }),
           h('button', {
             class: 'btn btn-sm',
-            text: 'Улучшить',
+            text: 'Upgrade',
             disabled: atMax || rod.locked || rod.upgradeCost > pearl,
             onclick: run(() => upgradeRod(rod.id)),
           }),
@@ -171,14 +170,14 @@ function render(): HTMLElement[] {
         h(
           'div',
           { class: 'shop-desc' },
-          h('b', { text: `Починить #${rod.id}: ${rod.durability}/${rod.maxDurability}` }),
+          h('b', { text: `Repair #${rod.id}: ${rod.durability}/${rod.maxDurability}` }),
           h('span', {
             class: canRepairLevel ? 'muted small' : 'warn small',
             text: canRepairLevel
               ? full
-                ? 'Удочка цела'
-                : 'Восстанавливает прочность полностью'
-              : `Эту удочку нельзя починить — улучшите её (ремонт с ур. ${minRepair})`,
+                ? 'Rod is in full condition'
+                : 'Fully restores durability'
+              : `This rod cannot be repaired — upgrade it (repair from lvl ${minRepair})`,
           }),
         ),
         h(
@@ -187,14 +186,14 @@ function render(): HTMLElement[] {
           h('span', { class: 'pearl', text: full || !canRepairLevel ? '—' : `${fmtToken(rod.repairCost)} PEARL` }),
           h('button', {
             class: 'btn btn-sm',
-            text: 'Починить',
+            text: 'Repair',
             disabled: !canRepairLevel || full || rod.locked || rod.repairCost > pearl,
             onclick: run(() => repairRod(rod.id)),
           }),
         ),
       ),
     );
-    if (rod.locked) rodSec.append(h('p', { class: 'muted small', text: 'Удочка в воде — дождитесь конца заброса.' }));
+    if (rod.locked) rodSec.append(h('p', { class: 'muted small', text: 'Rod is in the water — wait for the cast to finish.' }));
   }
   out.push(rodSec);
   return out;

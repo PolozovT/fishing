@@ -1,44 +1,44 @@
 # Onchain Fishing 🎣
 
-Рыбалка, которая целиком работает в смарт-контрактах: заброс, честный рандом, улов в виде NFT с ончейн-картинкой, валюта PEARL, удочки с уровнями, маркетплейс и недельный рекорд.
+A fishing game that runs entirely in smart contracts: casting, fair randomness, catches as NFTs with onchain art, the PEARL currency, upgradable rods, a marketplace and a weekly record.
 
-Результаты проверки гипотезы — в **[REPORT.md](REPORT.md)**, графики экономики — в [sim/out/report.html](sim/out/report.html).
+Hypothesis results are in **[REPORT.md](REPORT.md)**; economy charts are in [sim/out/report.html](sim/out/report.html).
 
-## Структура
+## Layout
 
-| Папка | Что там |
+| Folder | Contents |
 |---|---|
-| `contracts/` | Foundry-проект: `FishingGame`, `FishNFT`, `RodNFT`, `PearlToken`, `Marketplace` + 51 тест |
-| `contracts/script/GameSetup.sol` | каталог: виды рыб, места ловли, наживка, цены, конфиг |
-| `sim/` | точная модель формул контракта и агентная симуляция экономики (Python, без зависимостей) |
-| `web/` | браузерный клиент (Vite + TypeScript + viem), см. [web/README.md](web/README.md) |
-| `deployments/` | адреса контрактов по chainId (их пишет деплой-скрипт) |
+| `contracts/` | Foundry project: `FishingGame`, `FishNFT`, `RodNFT`, `PearlToken`, `Marketplace` + 51 tests |
+| `contracts/script/GameSetup.sol` | catalog: fish species, fishing spots, bait, prices, config |
+| `sim/` | exact model of the contract formulas and an agent-based economy simulation (Python, no dependencies) |
+| `web/` | browser client (Vite + TypeScript + viem), see [web/README.md](web/README.md) |
+| `deployments/` | contract addresses per chainId (written by the deploy script) |
 
-## Быстрый старт (локально)
+## Quick start (local)
 
-Понадобятся [Foundry](https://getfoundry.sh), Node 20+ и pnpm.
+You need [Foundry](https://getfoundry.sh), Node 20+ and pnpm.
 
-1. Локальная сеть с блоком раз в секунду (без этого `reel` будет ждать бесконечно):
+1. A local chain with one block per second (without it `reel` would wait forever):
 
 ```bash
 anvil --block-time 1
 ```
 
-2. Деплой в другом терминале. Ключ `0xf39F…` — публичный тестовый аккаунт anvil:
+2. Deploy from another terminal. `0xf39F…` is anvil's public test account:
 
 ```bash
 cd contracts && forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --broadcast --unlocked --sender 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
 ```
 
-3. Клиент:
+3. Client:
 
 ```bash
 cd web && pnpm install && pnpm sync && pnpm dev
 ```
 
-Откройте http://localhost:5173 и выберите режим «локальный кошелёк»: он создаёт одноразовый ключ и сам пополняет его в anvil.
+Open http://localhost:5173 and choose the local burner wallet: it creates a throwaway key and funds it on anvil.
 
-## Тесты и симуляция
+## Tests and simulation
 
 ```bash
 cd contracts && forge test
@@ -48,50 +48,50 @@ cd contracts && forge test
 python3 sim/sim.py && python3 sim/report.py
 ```
 
-## Деплой в Fluent Testnet
+## Deploying to Fluent Testnet
 
 | | |
 |---|---|
-| Сеть | Fluent Testnet |
+| Network | Fluent Testnet |
 | chainId | 20994 |
 | RPC | https://rpc.testnet.fluent.xyz |
-| Обозреватель | https://testnet.fluentscan.xyz |
+| Explorer | https://testnet.fluentscan.xyz |
 | Faucet | https://portal.fluent.xyz/builder/faucet |
 
-Блок выходит примерно раз в секунду, газ ~0.001 gwei. Весь деплой (39 транзакций, ~16.7M газа) стоит около 0.00002 ETH. Одна попытка (cast + reel) — около 3·10⁻⁷ ETH.
+Blocks come about once per second and gas is ~0.001 gwei. The full deployment (39 transactions, ~16.7M gas) costs about 0.00002 ETH. One attempt (cast + reel) costs about 3·10⁻⁷ ETH.
 
-1. В `contracts/.env` уже лежит отдельный ключ деплоера **только для testnet** (файл не попадает в git). Пополните его адрес через faucet:
+1. `contracts/.env` already holds a dedicated **testnet-only** deployer key (the file is git-ignored). Fund its address from the faucet:
 
 ```bash
 grep DEPLOYER_ADDRESS contracts/.env
 ```
 
-2. Задеплойте и верифицируйте исходники на fluentscan:
+2. Deploy and verify the sources on fluentscan:
 
 ```bash
 contracts/deploy-fluent.sh
 ```
 
-Чтобы деплоить со своего кошелька (ключ в хранилище Foundry), запустите так:
+To deploy from your own wallet (a key in the Foundry keystore) instead:
 
 ```bash
-contracts/deploy-fluent.sh --account <имя-ключа>
+contracts/deploy-fluent.sh --account <key-name>
 ```
 
-3. Клиент для Fluent (подключение через MetaMask; сеть добавится автоматически):
+3. Client for Fluent (connects through MetaMask; the network is added automatically):
 
 ```bash
 cd web && pnpm dev:fluent
 ```
 
-> ⚠️ Рандом основан на `blockhash`. На Fluent он работает (проверено на testnet: значение совпадает с реальным хэшем блока), но блоки производит секвенсор, и теоретически он может влиять на исход. Для чего-то с реальной ценностью нужен VRF (см. REPORT.md). Код не проходил аудит.
+> ⚠️ Randomness comes from `blockhash`. It works on Fluent (verified on testnet: the value matches the real block hash), but blocks are produced by a sequencer, which could in theory influence outcomes. Anything with real value needs VRF (see REPORT.md). The code is not audited.
 
-## Как устроен игровой цикл
+## Game loop
 
-1. `claimStarterRod()` — бесплатная (или за `starterRodFee` в ETH) удочка 1-го уровня.
-2. `cast(rodId, spotId, baitId)` — тратит энергию и наживку, блокирует удочку и фиксирует целевой блок `N+2`.
-3. `reel()` — после целевого блока исход считается из его `blockhash`: поймал или сорвалась, какой вид, какой вес. Улов минтится как NFT.
-4. `sellFish(ids)` — продать рыбу за PEARL. Также можно оставить её себе или выставить на маркетплейс.
-5. PEARL тратится на наживку, восстановление энергии (дорожает ×2 за каждое следующее за день), ремонт, новые удочки и апгрейды. Апгрейд открывает новые места ловли и повышает шанс на редкую рыбу.
+1. `claimStarterRod()` — a free level-1 rod (or one priced at `starterRodFee` in ETH).
+2. `cast(rodId, spotId, baitId)` — spends energy and bait, locks the rod and commits to target block `N+2`.
+3. `reel()` — after the target block, the outcome comes from its `blockhash`: catch or miss, which species, what weight. The catch is minted as an NFT.
+4. `sellFish(ids)` — sell fish for PEARL. You can also keep them or list them on the marketplace.
+5. PEARL is spent on bait, energy refills (each further refill on the same day costs ×2), repairs, new rods and upgrades. Upgrades unlock new spots and raise the odds of rare fish.
 
-Энергия: максимум 20, восстанавливается по 1 каждые 15 минут. Если не вытащить улов в течение 256 блоков, рыба уходит.
+Energy: max 20, regenerates 1 every 15 minutes. If a catch is not reeled in within 256 blocks, the fish gets away.

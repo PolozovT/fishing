@@ -15,14 +15,14 @@ else
   bal=$(cast balance "$DEPLOYER_ADDRESS" --rpc-url "$RPC")
   echo "deployer $DEPLOYER_ADDRESS balance: $(cast from-wei "$bal") ETH"
   if [[ "$bal" == "0" ]]; then
-    echo "Пополните адрес через https://portal.fluent.xyz/builder/faucet и запустите снова." >&2
+    echo "Fund the address at https://portal.fluent.xyz/builder/faucet and run again." >&2
     exit 1
   fi
   SIGNER=(--private-key "$DEPLOYER_KEY")
 fi
 
 forge script script/Deploy.s.sol --rpc-url "$RPC" --broadcast --slow "${SIGNER[@]}" "${VERIFY[@]}" || {
-  echo "Если упала только верификация — контракты уже задеплоены, адреса в ../deployments/20994.json" >&2
+  echo "If only verification failed, the contracts are already deployed; addresses are in ../deployments/20994.json" >&2
   exit 1
 }
-echo "Готово: ../deployments/20994.json. Дальше: cd ../web && pnpm dev:fluent"
+echo "Done: ../deployments/20994.json. Next: cd ../web && pnpm dev:fluent"

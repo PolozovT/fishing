@@ -16,7 +16,7 @@ const app = document.getElementById('app')!;
 
 if (!deployment) {
   app.append(
-    h('div', { class: 'fatal' }, h('h2', { text: 'Контракты не найдены' }), h('p', { text: `Нет deployments/${CHAIN_ID}.json. Задеплойте контракты и выполните pnpm sync.` })),
+    h('div', { class: 'fatal' }, h('h2', { text: 'Contracts not found' }), h('p', { text: `Missing deployments/${CHAIN_ID}.json. Deploy the contracts and run pnpm sync.` })),
   );
   throw new Error('no deployment');
 }
@@ -30,10 +30,10 @@ const controlsEl = h('div', { class: 'controls card' });
 
 type Tab = 'inv' | 'shop' | 'market' | 'records';
 const TABS: [Tab, string][] = [
-  ['inv', 'Садок'],
-  ['shop', 'Магазин'],
-  ['market', 'Рынок'],
-  ['records', 'Рекорды'],
+  ['inv', 'Keepnet'],
+  ['shop', 'Shop'],
+  ['market', 'Market'],
+  ['records', 'Records'],
 ];
 const panels: Record<Tab, HTMLElement> = {
   inv: h('div', { class: 'panel' }),
@@ -81,7 +81,7 @@ app.append(
   h(
     'footer',
     { class: 'footer' },
-    `Сеть ${CHAIN_ID}${IS_LOCAL ? ' (anvil, локально)' : ''} · RPC ${RPC_URL} · игра ${deployment.game}`,
+    `Network ${CHAIN_ID}${IS_LOCAL ? ' (anvil, local)' : ''} · RPC ${RPC_URL} · game ${deployment.game}`,
   ),
 );
 selectTab(tab);
@@ -95,10 +95,10 @@ async function connect(mode: 'burner' | 'injected'): Promise<void> {
     state.wallet = mode === 'burner' ? await connectBurner() : await connectInjected();
     state.sel.rod = null;
     await loadPlayer();
-    if (mode === 'burner') toast('Burner-кошелёк подключён (только для локального anvil)', 'info');
+    if (mode === 'burner') toast('Burner wallet connected (local anvil only)', 'info');
   } catch (e) {
     state.wallet = null;
-    toast(`Подключение: ${friendlyError(e)}`, 'err');
+    toast(`Connection: ${friendlyError(e)}`, 'err');
   } finally {
     state.connecting = false;
     emit();
@@ -159,12 +159,12 @@ async function onBlock(): Promise<void> {
 async function boot(): Promise<void> {
   try {
     const chainId = await publicClient.getChainId();
-    if (chainId !== CHAIN_ID) showBanner(`RPC отдаёт chainId ${chainId}, ожидается ${CHAIN_ID}`);
+    if (chainId !== CHAIN_ID) showBanner(`RPC returns chainId ${chainId}, expected ${CHAIN_ID}`);
     await loadCatalog();
     await loadHead();
     renders.forEach((r) => r());
   } catch (e) {
-    showBanner(`Нет связи с узлом ${RPC_URL}: ${friendlyError(e)}. Запущен ли anvil?`);
+    showBanner(`Cannot reach node ${RPC_URL}: ${friendlyError(e)}. Is anvil running?`);
     setTimeout(() => void boot(), 3000);
     return;
   }
@@ -186,10 +186,10 @@ async function boot(): Promise<void> {
       running = true;
       onBlock()
         .then(() => showBanner(null))
-        .catch((e) => showBanner(`Ошибка обновления: ${friendlyError(e)}`))
+        .catch((e) => showBanner(`Refresh failed: ${friendlyError(e)}`))
         .finally(() => (running = false));
     },
-    onError: (e) => showBanner(`Нет связи с узлом: ${friendlyError(e)}`),
+    onError: (e) => showBanner(`Cannot reach node: ${friendlyError(e)}`),
   });
 }
 

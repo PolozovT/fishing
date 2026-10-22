@@ -3,7 +3,7 @@ import { fishingGameAbi } from '../abi';
 import { castLine, claimStarter, reelIn } from '../actions';
 import { publicClient } from '../clients';
 import { revertName } from '../errors';
-import { BAITS_RU, RARITY_CLASS, RARITY_RU, SPECIES_RU, SPOTS_RU, ru } from '../i18n';
+import { RARITY_CLASS, RARITY_NAMES } from '../i18n';
 import { WaterScene } from '../scene';
 import {
   ADDR,
@@ -31,10 +31,10 @@ let reeling = false;
 let reelRetryBlock = 0n;
 
 export function initFishing(sceneHost: HTMLElement, controlsHost: HTMLElement): () => void {
-  const canvas = h('canvas', { class: 'water', attrs: { 'aria-label': 'Водоём' } });
+  const canvas = h('canvas', { class: 'water', attrs: { 'aria-label': 'Water' } });
   statusEl = h('div', { class: 'scene-status' });
   overlayEl = h('div', { class: 'scene-overlay hidden' });
-  reelBtn = h('button', { class: 'btn btn-reel hidden', text: 'Подсечь!', onclick: () => void doReel() });
+  reelBtn = h('button', { class: 'btn btn-reel hidden', text: 'Reel in!', onclick: () => void doReel() });
   sceneHost.append(canvas, statusEl, reelBtn, overlayEl);
   scene = new WaterScene(canvas);
 
@@ -78,18 +78,18 @@ function syncScene(): void {
 }
 
 function statusText(): string {
-  if (!state.wallet) return 'Подключите кошелёк, чтобы рыбачить';
+  if (!state.wallet) return 'Connect a wallet to fish';
   const p = scene.getPhase();
   const { n, m } = castProgress();
-  if (casting) return 'Забрасываем…';
-  if (reeling) return 'Вываживаем…';
+  if (casting) return 'Casting…';
+  if (reeling) return 'Reeling in…';
   if (state.cast) {
-    if (state.block > state.cast.targetBlock) return state.autoReel ? 'Клюёт! Подсекаем…' : 'Клюёт! Жми «Подсечь»';
-    return `Ждём поклёвку · блок ${n}/${m}`;
+    if (state.block > state.cast.targetBlock) return state.autoReel ? 'Bite! Reeling in…' : 'Bite! Hit "Reel in!"';
+    return `Waiting for a bite · block ${n}/${m}`;
   }
-  if (p === 'caught') return 'Есть улов!';
-  if (p === 'missed') return 'Сорвалась…';
-  return 'Готов к забросу';
+  if (p === 'caught') return 'Catch!';
+  if (p === 'missed') return 'It got away…';
+  return 'Ready to cast';
 }
 
 async function doCast(): Promise<void> {
@@ -108,7 +108,7 @@ async function doCast(): Promise<void> {
     scene.setPhase('waiting');
   } catch (e) {
     scene.setPhase('idle');
-    toast(`Заброс: ${e instanceof TxError ? e.message : String(e)}`, 'err');
+    toast(`Cast: ${e instanceof TxError ? e.message : String(e)}`, 'err');
   } finally {
     casting = false;
     emit();
@@ -134,7 +134,7 @@ async function doReel(): Promise<void> {
     } else {
       scene.setPhase('bite');
       reelRetryBlock = state.block + 3n; // avoid hammering on persistent errors
-      toast(`Подсечка: ${e instanceof TxError ? e.message : String(e)}`, 'err');
+      toast(`Reel in: ${e instanceof TxError ? e.message : String(e)}`, 'err');
     }
   } finally {
     reeling = false;
@@ -163,22 +163,22 @@ async function showResult(receipt: TransactionReceipt, fromCast: boolean): Promi
       .catch(() => 0n);
     showCatchCard({
       image,
-      name: ru(SPECIES_RU, sp?.name ?? `#${speciesId}`),
+      name: sp?.name ?? `#${speciesId}`,
       rarity: sp?.rarity ?? 0,
       weight,
       value,
       fishId,
-      note: fromCast ? 'Итог прошлого заброса' : undefined,
+      note: fromCast ? 'Result of your last cast' : undefined,
     });
     return true;
   }
   if (ev.eventName === 'Missed') {
     if (!fromCast) scene.setPhase('missed');
-    showMessage('Сорвалась!', fromCast ? 'Прошлый заброс — без улова.' : 'Рыба ушла. Попробуйте ещё раз.');
+    showMessage('It got away!', fromCast ? 'Your last cast came up empty.' : 'The fish escaped. Try again.');
     return true;
   }
   if (!fromCast) scene.setPhase('missed');
-  showMessage('Заброс истёк', 'Прошло больше 256 блоков — случайность потеряна, рыба тоже.');
+  showMessage('Cast expired', 'More than 256 blocks passed — the randomness is lost, and so is the fish.');
   return true;
 }
 
@@ -210,13 +210,13 @@ function showCatchCard(c: {
       'div',
       { class: `reveal reveal-catch ${RARITY_CLASS[c.rarity]}` },
       c.note ? h('div', { class: 'muted small', text: c.note }) : null,
-      h('div', { class: 'reveal-title', text: 'Улов!' }),
+      h('div', { class: 'reveal-title', text: 'Catch!' }),
       img(c.image, c.name, 'reveal-img'),
       h('div', { class: 'reveal-name', text: c.name }),
-      h('div', { class: `rarity ${RARITY_CLASS[c.rarity]}`, text: RARITY_RU[c.rarity] ?? '' }),
+      h('div', { class: `rarity ${RARITY_CLASS[c.rarity]}`, text: RARITY_NAMES[c.rarity] ?? '' }),
       h('div', { class: 'reveal-stats' }, h('span', { text: fmtWeight(c.weight) }), h('span', { text: `≈ ${fmtToken(c.value)} PEARL` })),
-      h('div', { class: 'muted small', text: `Рыба #${c.fishId}` }),
-      h('button', { class: 'btn btn-primary', text: 'Отлично!', onclick: hideOverlay }),
+      h('div', { class: 'muted small', text: `Fish #${c.fishId}` }),
+      h('button', { class: 'btn btn-primary', text: 'Nice!', onclick: hideOverlay }),
     ),
   );
   overlayEl.classList.remove('hidden');
@@ -241,19 +241,19 @@ function controlsSig(): string {
 }
 
 function blockReason(): string | null {
-  if (!state.wallet) return 'Подключите кошелёк';
-  if (!state.catalogLoaded) return 'Загрузка…';
-  if (casting) return 'Забрасываем…';
-  if (state.cast) return 'Удочка уже в воде';
+  if (!state.wallet) return 'Connect a wallet';
+  if (!state.catalogLoaded) return 'Loading…';
+  if (casting) return 'Casting…';
+  if (state.cast) return 'Rod is already in the water';
   const rod = selectedRod();
-  if (!rod) return state.starterClaimed ? 'Нет удочки — купите в магазине' : 'Получите стартовую удочку';
+  if (!rod) return state.starterClaimed ? 'No rod — buy one in the shop' : 'Claim your starter rod';
   const spot = state.spots[state.sel.spot];
-  if (!spot) return 'Выберите место';
-  if (!spot.active) return 'Место закрыто';
-  if (rod.level < spot.minRodLevel) return `Нужна удочка ур. ${spot.minRodLevel}`;
-  if (rod.durability === 0) return 'Удочка сломана — почините';
-  if (state.energy < spot.energyCost) return 'Нет энергии';
-  if (state.sel.bait !== 0 && (state.baitBalance[state.sel.bait] ?? 0n) === 0n) return 'Нет наживки';
+  if (!spot) return 'Choose a spot';
+  if (!spot.active) return 'Spot is closed';
+  if (rod.level < spot.minRodLevel) return `Requires rod lvl ${spot.minRodLevel}`;
+  if (rod.durability === 0) return 'Rod is broken — repair it';
+  if (state.energy < spot.energyCost) return 'Not enough energy';
+  if (state.sel.bait !== 0 && (state.baitBalance[state.sel.bait] ?? 0n) === 0n) return 'Out of bait';
   return null;
 }
 
@@ -264,16 +264,16 @@ function renderControlsView(): HTMLElement[] {
       h(
         'div',
         { class: 'card starter' },
-        h('div', null, h('b', { text: 'Добро пожаловать на рыбалку!' }), h('p', {
+        h('div', null, h('b', { text: 'Welcome to Onchain Fishing!' }), h('p', {
             class: 'muted',
             text:
               cfgBig('starterRodFee') > 0n
-                ? `Получите стартовую удочку (плата ${formatEther(cfgBig('starterRodFee'))} ETH), чтобы начать.`
-                : 'Получите бесплатную стартовую удочку, чтобы начать.',
+                ? `Claim your starter rod (fee ${formatEther(cfgBig('starterRodFee'))} ETH) to get started.`
+                : 'Claim your free starter rod to get started.',
           })),
         h('button', {
           class: 'btn btn-primary',
-          text: 'Получить стартовую удочку',
+          text: 'Claim starter rod',
           onclick: (e) => {
             const b = e.currentTarget as HTMLButtonElement;
             b.disabled = true;
@@ -290,7 +290,7 @@ function renderControlsView(): HTMLElement[] {
     h(
       'section',
       { class: 'picker' },
-      h('h3', { text: 'Место' }),
+      h('h3', { text: 'Spot' }),
       h(
         'div',
         { class: 'spots' },
@@ -301,14 +301,14 @@ function renderControlsView(): HTMLElement[] {
             {
               class: `spot ${state.sel.spot === s.id ? 'sel' : ''} ${locked ? 'locked' : ''}`,
               disabled: !s.active || !!state.cast,
-              title: s.speciesIds.map((id) => ru(SPECIES_RU, state.species[id]?.name ?? '')).join(', '),
+              title: s.speciesIds.map((id) => state.species[id]?.name ?? '').join(', '),
               onclick: () => {
                 state.sel.spot = s.id;
                 emit();
               },
             },
-            h('span', { class: 'spot-name', text: ru(SPOTS_RU, s.name) }),
-            h('span', { class: 'spot-meta' }, locked ? `🔒 ур. ${s.minRodLevel}+` : `ур. ${s.minRodLevel}+`, ` · ⚡${s.energyCost}`),
+            h('span', { class: 'spot-name', text: s.name }),
+            h('span', { class: 'spot-meta' }, locked ? `🔒 lvl ${s.minRodLevel}+` : `lvl ${s.minRodLevel}+`, ` · ⚡${s.energyCost}`),
           );
         }),
       ),
@@ -320,9 +320,9 @@ function renderControlsView(): HTMLElement[] {
     h(
       'section',
       { class: 'picker' },
-      h('h3', { text: 'Удочка' }),
+      h('h3', { text: 'Rod' }),
       state.rods.length === 0
-        ? h('p', { class: 'muted', text: state.starterClaimed ? 'Удочек нет — купите в магазине.' : 'Пока нет удочки.' })
+        ? h('p', { class: 'muted', text: state.starterClaimed ? 'No rods — buy one in the shop.' : 'No rod yet.' })
         : h(
             'div',
             { class: 'rods' },
@@ -337,9 +337,9 @@ function renderControlsView(): HTMLElement[] {
                     emit();
                   },
                 },
-                h('span', { class: 'rod-title', text: `#${r.id} · ур. ${r.level}` }),
+                h('span', { class: 'rod-title', text: `#${r.id} · lvl ${r.level}` }),
                 h('span', { class: 'bar' }, h('span', { class: 'bar-fill dur', style: `width:${(100 * r.durability) / Math.max(1, r.maxDurability)}%` })),
-                h('span', { class: 'rod-meta', text: r.locked ? 'в воде' : `прочность ${r.durability}/${r.maxDurability}` }),
+                h('span', { class: 'rod-meta', text: r.locked ? 'in the water' : `durability ${r.durability}/${r.maxDurability}` }),
               ),
             ),
           ),
@@ -351,7 +351,7 @@ function renderControlsView(): HTMLElement[] {
     h(
       'section',
       { class: 'picker' },
-      h('h3', { text: 'Наживка' }),
+      h('h3', { text: 'Bait' }),
       h(
         'div',
         { class: 'baits' },
@@ -362,13 +362,13 @@ function renderControlsView(): HTMLElement[] {
             {
               class: `bait ${state.sel.bait === b.id ? 'sel' : ''}`,
               disabled: (bal !== null && bal === 0n) || !!state.cast,
-              title: b.id === 0 ? 'Без бонусов' : `+${b.catchBonusBps / 100}% к поклёвке, +${b.rarityBonus}% к редкости`,
+              title: b.id === 0 ? 'No bonuses' : `+${b.catchBonusBps / 100}% bite, +${b.rarityBonus}% rarity`,
               onclick: () => {
                 state.sel.bait = b.id;
                 emit();
               },
             },
-            h('span', { text: ru(BAITS_RU, b.name) }),
+            h('span', { text: b.name }),
             h('span', { class: 'bait-bal', text: bal === null ? '∞' : `×${bal}` }),
           );
         }),
@@ -385,12 +385,12 @@ function renderControlsView(): HTMLElement[] {
       h(
         'button',
         { class: 'btn btn-cast', disabled: !!reason, onclick: () => void doCast() },
-        state.cast ? 'В воде…' : 'Забросить',
+        state.cast ? 'In the water…' : 'Cast',
       ),
       h(
         'div',
         { class: 'cast-info' },
-        h('div', { class: reason ? 'warn' : 'muted', text: reason ?? `Шанс поклёвки: ${(chance / 100).toFixed(0)}%` }),
+        h('div', { class: reason ? 'warn' : 'muted', text: reason ?? `Bite chance: ${(chance / 100).toFixed(0)}%` }),
         h(
           'label',
           { class: 'toggle' },
@@ -399,7 +399,7 @@ function renderControlsView(): HTMLElement[] {
             cb.checked = state.autoReel;
             return cb;
           })(),
-          h('span', { text: 'Авто-подсечка' }),
+          h('span', { text: 'Auto reel' }),
         ),
       ),
     ),

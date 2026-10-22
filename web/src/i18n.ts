@@ -1,87 +1,47 @@
-// Russian names for the onchain catalog (contracts store English names).
+// UI labels and messages. Species, spot and bait names come straight from the contracts (already English).
 
-export const SPECIES_RU: Record<string, string> = {
-  Roach: 'Плотва',
-  'Crucian Carp': 'Карась',
-  Perch: 'Окунь',
-  Tench: 'Линь',
-  'Golden Carp': 'Золотой карп',
-  Pike: 'Щука',
-  Trout: 'Форель',
-  Zander: 'Судак',
-  Grayling: 'Хариус',
-  Taimen: 'Таймень',
-  Bream: 'Лещ',
-  Burbot: 'Налим',
-  Whitefish: 'Сиг',
-  'Wels Catfish': 'Сом',
-  'Lake Spirit': 'Дух озера',
-  Herring: 'Сельдь',
-  Cod: 'Треска',
-  'Atlantic Salmon': 'Сёмга',
-  Halibut: 'Палтус',
-  'Bluefin Tuna': 'Синий тунец',
-};
-
-export const SPOTS_RU: Record<string, string> = {
-  'Village Pond': 'Деревенский пруд',
-  'Forest River': 'Лесная река',
-  'Deep Lake': 'Глубокое озеро',
-  'Northern Sea': 'Северное море',
-  'Taimen Rapids': 'Таёжные пороги',
-};
-
-export const BAITS_RU: Record<string, string> = {
-  None: 'Без наживки',
-  Worm: 'Червь',
-  'Shiny Lure': 'Блесна',
-  'Golden Fly': 'Золотая мушка',
-};
-
-export const RARITY_RU = ['Обычная', 'Необычная', 'Редкая', 'Эпическая', 'Легендарная'];
+export const RARITY_NAMES = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
 export const RARITY_CLASS = ['r0', 'r1', 'r2', 'r3', 'r4'];
 
-export const ru = (map: Record<string, string>, name: string): string => map[name] ?? name;
-
-export const ERRORS_RU: Record<string, string> = {
+export const ERRORS: Record<string, string> = {
   // FishingGame
-  NotRodOwner: 'Это не ваша удочка',
-  RodLevelTooLow: 'Уровень удочки слишком низкий для этого места',
-  RodBroken: 'Удочка сломана — почините её в магазине',
-  SpotInactive: 'Это место сейчас закрыто',
-  UnknownSpot: 'Неизвестное место',
-  UnknownBait: 'Неизвестная наживка',
-  NotEnoughEnergy: 'Нет энергии',
-  NotEnoughBait: 'Закончилась наживка',
-  CastInProgress: 'Заброс ещё в процессе — дождитесь поклёвки',
-  NoActiveCast: 'Нет активного заброса',
-  TooEarly: 'Слишком рано — ждём нужный блок',
-  StarterAlreadyClaimed: 'Стартовая удочка уже получена',
-  MaxLevel: 'Удочка уже максимального уровня',
-  NothingToRepair: 'Удочка и так целая',
-  NotFishOwner: 'Это не ваша рыба',
-  BadConfig: 'Неверная конфигурация игры',
-  RodInUse: 'Удочка сейчас в воде',
-  WrongFee: 'Неверная плата за удочку',
-  RepairNotAllowed: 'Эту удочку нельзя починить — улучшите её',
+  NotRodOwner: 'This is not your rod',
+  RodLevelTooLow: 'Rod level is too low for this spot',
+  RodBroken: 'Rod is broken — repair it in the shop',
+  SpotInactive: 'This spot is currently closed',
+  UnknownSpot: 'Unknown spot',
+  UnknownBait: 'Unknown bait',
+  NotEnoughEnergy: 'Not enough energy',
+  NotEnoughBait: 'Out of bait',
+  CastInProgress: 'Cast still in progress — wait for a bite',
+  NoActiveCast: 'No active cast',
+  TooEarly: 'Too early — waiting for the target block',
+  StarterAlreadyClaimed: 'Starter rod already claimed',
+  MaxLevel: 'Rod is already at max level',
+  NothingToRepair: 'Rod is already in full condition',
+  NotFishOwner: 'This is not your fish',
+  BadConfig: 'Invalid game configuration',
+  RodInUse: 'Rod is in the water right now',
+  WrongFee: 'Wrong rod fee',
+  RepairNotAllowed: 'This rod cannot be repaired — upgrade it',
   // NFTs / token
-  NotGame: 'Только игровой контракт может это делать',
-  BadSpecies: 'Неверный вид рыбы',
-  RodLocked: 'Удочка заблокирована — она в воде',
-  NotMinter: 'Нет прав на выпуск PEARL',
-  ERC20InsufficientBalance: 'Недостаточно PEARL',
-  ERC20InsufficientAllowance: 'Недостаточно разрешения на списание PEARL (approve)',
-  ERC20InvalidReceiver: 'Неверный получатель',
-  ERC721NonexistentToken: 'Такого токена нет (уже продан или сожжён)',
-  ERC721InsufficientApproval: 'Нет разрешения на перевод NFT (approve)',
-  ERC721IncorrectOwner: 'Вы не владелец этого NFT',
-  ERC721InvalidReceiver: 'Неверный получатель NFT',
+  NotGame: 'Only the game contract can do this',
+  BadSpecies: 'Invalid fish species',
+  RodLocked: 'Rod is locked — it is in the water',
+  NotMinter: 'Not allowed to mint PEARL',
+  ERC20InsufficientBalance: 'Not enough PEARL',
+  ERC20InsufficientAllowance: 'Insufficient PEARL allowance (approve)',
+  ERC20InvalidReceiver: 'Invalid recipient',
+  ERC721NonexistentToken: 'Token does not exist (already sold or burned)',
+  ERC721InsufficientApproval: 'Not approved to transfer this NFT (approve)',
+  ERC721IncorrectOwner: 'You do not own this NFT',
+  ERC721InvalidReceiver: 'Invalid NFT recipient',
   // Marketplace
-  CollectionNotAllowed: 'Эту коллекцию нельзя продавать на рынке',
-  NotListed: 'Лот не найден или уже продан',
-  NotSeller: 'Вы не продавец этого лота',
-  ZeroPrice: 'Цена должна быть больше нуля',
-  FeeTooHigh: 'Слишком высокая комиссия',
-  ReentrancyGuardReentrantCall: 'Повторный вход запрещён',
-  OwnableUnauthorizedAccount: 'Нет прав владельца',
+  CollectionNotAllowed: 'This collection cannot be sold on the market',
+  NotListed: 'Listing not found or already sold',
+  NotSeller: 'You are not the seller of this listing',
+  ZeroPrice: 'Price must be greater than zero',
+  FeeTooHigh: 'Fee is too high',
+  ReentrancyGuardReentrantCall: 'Reentrant call rejected',
+  OwnableUnauthorizedAccount: 'Owner permission required',
 };
