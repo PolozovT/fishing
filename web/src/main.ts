@@ -1,5 +1,6 @@
 import './style.css';
-import { connectBurner, connectInjected, forgetMode, hasInjected, publicClient, savedMode } from './clients';
+import { connectBurner, connectInjected, forgetMode, publicClient, savedMode, savedWalletId } from './clients';
+import { findWallet, onWalletsChanged } from './wallets';
 import { CHAIN_ID, IS_LOCAL, RPC_URL, deployment } from './config';
 import { friendlyError } from './errors';
 import { emit, loadCatalog, loadHead, loadPlayer, loadWorld, state, subscribe } from './store';
@@ -88,11 +89,12 @@ selectTab(tab);
 
 // ------------------------------------------------------------------ wallet
 
-async function connect(mode: 'burner' | 'injected'): Promise<void> {
+async function connect(mode: 'burner' | 'injected', walletId?: string): Promise<void> {
   state.connecting = true;
   emit();
   try {
-    state.wallet = mode === 'burner' ? await connectBurner() : await connectInjected();
+    state.wallet = mode === 'burner' ? await connectBurner() : await connectInjected(walletId);
+    watchProvider();
     state.sel.rod = null;
     await loadPlayer();
     if (mode === 'burner') toast('Burner wallet connected (local anvil only)', 'info');
@@ -114,16 +116,23 @@ function disconnect(): void {
   emit();
 }
 
-if (hasInjected()) {
-  window.ethereum!.on?.('accountsChanged', () => state.wallet?.mode === 'injected' && location.reload());
-  window.ethereum!.on?.('chainChanged', () => state.wallet?.mode === 'injected' && location.reload());
+/** Reload on account/chain switches in the wallet the player actually connected with. */
+let watched: unknown = null;
+function watchProvider(): void {
+  const p = state.wallet?.provider;
+  if (!p || p === watched) return;
+  watched = p;
+  p.on?.('accountsChanged', () => state.wallet?.provider === p && location.reload());
+  p.on?.('chainChanged', () => state.wallet?.provider === p && location.reload());
 }
+
+onWalletsChanged(emit);
 
 // ------------------------------------------------------------------ render wiring
 
 const renders = [
   initHeader(headerEl, {
-    connectInjected: () => void connect('injected'),
+    connectInjected: (walletId?: string) => void connect('injected', walletId),
     connectBurner: () => void connect('burner'),
     disconnect,
   }),
@@ -171,9 +180,12 @@ async function boot(): Promise<void> {
   showBanner(null);
   const mode = savedMode();
   if (mode === 'burner' && IS_LOCAL) await connect('burner');
-  else if (mode === 'injected' && hasInjected()) {
-    const accs = (await window.ethereum!.request({ method: 'eth_accounts' }).catch(() => [])) as string[];
-    if (accs.length) await connect('injected');
+  else if (mode === 'injected') {
+    // give EIP-6963 wallets a moment to announce themselves before looking for the saved one
+    await new Promise((r) => setTimeout(r, 300));
+    const w = findWallet(savedWalletId());
+    const accs = w ? ((await w.provider.request({ method: 'eth_accounts' }).catch(() => [])) as string[]) : [];
+    if (w && accs.length) await connect('injected', w.id);
   }
   void loadWorld().catch((e) => console.warn('world', e));
 

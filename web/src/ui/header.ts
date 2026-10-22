@@ -1,11 +1,12 @@
 import { formatEther } from 'viem';
 import { hasInjected } from '../clients';
+import { listWallets } from '../wallets';
 import { IS_LOCAL } from '../config';
 import { cfg, chainNow, state } from '../store';
 import { fmtCountdown, fmtToken, h, mount, shortAddr, sigOf } from './dom';
 
 export interface HeaderHandlers {
-  connectInjected(): void;
+  connectInjected(walletId?: string): void;
   connectBurner(): void;
   disconnect(): void;
 }
@@ -26,6 +27,7 @@ export function initHeader(host: HTMLElement, on: HeaderHandlers): () => void {
         state.xp,
         state.catches,
         state.config.maxEnergy,
+        listWallets().map((w) => w.id),
       ),
     () => render(on),
   );
@@ -41,9 +43,7 @@ function render(on: HeaderHandlers): HTMLElement[] {
       h(
         'div',
         { class: 'connect' },
-        hasInjected()
-          ? h('button', { class: 'btn btn-primary', disabled: state.connecting, text: 'Connect wallet', onclick: on.connectInjected })
-          : null,
+        ...walletButtons(on),
         IS_LOCAL
           ? h('button', {
               class: 'btn btn-burner',
@@ -106,4 +106,31 @@ export function tickHeader(): void {
   const elapsed = Math.max(0, chainNow() - state.energyUpdatedAt);
   const left = regen - (elapsed % regen);
   regenEl.textContent = `+1 in ${fmtCountdown(left)}`;
+}
+
+/** One button per discovered wallet (EIP-6963), so a locked Phantom can't hijack a MetaMask connection. */
+function walletButtons(on: HeaderHandlers): HTMLElement[] {
+  const wallets = listWallets();
+  if (wallets.length <= 1) {
+    return hasInjected()
+      ? [h('button', { class: 'btn btn-primary', disabled: state.connecting, text: 'Connect wallet', onclick: () => on.connectInjected(wallets[0]?.id) })]
+      : [];
+  }
+  return wallets.map((w) => {
+    const btn = h('button', {
+      class: 'btn btn-primary btn-wallet',
+      disabled: state.connecting,
+      title: `Connect with ${w.name}`,
+      onclick: () => on.connectInjected(w.id),
+    });
+    if (w.icon) {
+      const img = document.createElement('img');
+      img.src = w.icon;
+      img.alt = '';
+      img.className = 'wallet-icon';
+      btn.append(img);
+    }
+    btn.append(w.name);
+    return btn;
+  });
 }

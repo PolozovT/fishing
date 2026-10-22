@@ -13,6 +13,7 @@ import {
 } from 'viem';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { CHAIN_ID, EXPLORER_URL, IS_LOCAL, RPC_URL, chain } from './config';
+import { findWallet, listWallets, type Eip1193Provider } from './wallets';
 
 export const publicClient: PublicClient = createPublicClient({
   chain,
@@ -28,10 +29,13 @@ export interface Wallet {
   /** LocalAccount for the burner, plain address for JSON-RPC (injected) accounts. */
   account: Account | Address;
   client: WalletClient;
+  /** EIP-1193 provider of the browser wallet (injected mode only), for account/chain change events. */
+  provider?: Eip1193Provider;
 }
 
 const BURNER_KEY = 'onchain-fishing:burner-key';
 const MODE_KEY = 'onchain-fishing:wallet-mode';
+const WALLET_KEY = 'onchain-fishing:wallet-id';
 
 function storageGet(k: string): string | null {
   try {
@@ -54,7 +58,8 @@ export const savedMode = (): WalletMode | null => {
   return m === 'burner' || m === 'injected' ? m : null;
 };
 export const forgetMode = (): void => storageSet(MODE_KEY, null);
-export const hasInjected = (): boolean => typeof window !== 'undefined' && !!window.ethereum;
+export const hasInjected = (): boolean => typeof window !== 'undefined' && listWallets().length > 0;
+export const savedWalletId = (): string | null => storageGet(WALLET_KEY);
 
 async function rpc(method: string, params: unknown[]): Promise<unknown> {
   const res = await fetch(RPC_URL, {
@@ -117,12 +122,22 @@ async function step<T>(what: string, fn: () => Promise<T>): Promise<T> {
   }
 }
 
-export async function connectInjected(): Promise<Wallet> {
-  const eth = window.ethereum;
-  if (!eth) throw new Error('No browser wallet found (window.ethereum)');
-  const accounts = (await step('account access', () =>
-    eth.request({ method: 'eth_requestAccounts' }),
-  )) as Address[];
+export async function connectInjected(walletId?: string): Promise<Wallet> {
+  const picked = findWallet(walletId ?? savedWalletId());
+  if (!picked) throw new Error('Browser wallet not found — is the extension enabled?');
+  const eth = picked.provider;
+  let accounts: Address[];
+  try {
+    accounts = (await eth.request({ method: 'eth_requestAccounts' })) as Address[];
+  } catch (e) {
+    if (errCode(e) !== 4001) return step('account access', () => Promise.reject(e));
+    const other = listWallets().filter((w) => w.id !== picked.id).map((w) => w.name);
+    const hint = other.length ? ` or connect with ${other.join(' / ')} instead` : '';
+    throw new Error(
+      `${picked.name} rejected account access. If no popup appeared, the wallet is probably locked — unlock it${hint}.`,
+      { cause: e },
+    );
+  }
   if (!accounts?.length) throw new Error('Wallet returned no address');
   const current = Number(await eth.request({ method: 'eth_chainId' }));
   if (current !== CHAIN_ID) {
@@ -158,6 +173,7 @@ export async function connectInjected(): Promise<Wallet> {
   // On anvil the wallet's account starts with 0 ETH — top it up so it can pay gas.
   if (IS_LOCAL) await fundBurner(address);
   storageSet(MODE_KEY, 'injected');
+  storageSet(WALLET_KEY, picked.id);
   const client = createWalletClient({ account: address, chain, transport: custom(eth) });
-  return { mode: 'injected', address, account: address, client };
+  return { mode: 'injected', address, account: address, client, provider: eth };
 }

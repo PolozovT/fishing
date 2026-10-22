@@ -821,3 +821,14 @@ div.item {
     flex: 1 1 calc(50% - 8px);
   }
 }
+
+.btn-wallet {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.wallet-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+}
