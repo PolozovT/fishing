@@ -3,7 +3,7 @@ import { hasInjected } from '../clients';
 import { listWallets } from '../wallets';
 import { IS_LOCAL } from '../config';
 import { cfg, chainNow, state } from '../store';
-import { fmtCountdown, fmtToken, h, mount, shortAddr, sigOf } from './dom';
+import { fmtCountdown, fmtToken, h, icon, mount, segBar, shortAddr, sigOf } from './dom';
 
 export interface HeaderHandlers {
   connectInjected(walletId?: string): void;
@@ -34,7 +34,12 @@ export function initHeader(host: HTMLElement, on: HeaderHandlers): () => void {
 }
 
 function render(on: HeaderHandlers): HTMLElement[] {
-  const brand = h('div', { class: 'brand' }, h('span', { class: 'logo', text: '〰' }), h('span', { text: 'Onchain Fishing' }));
+  const brand = h(
+    'div',
+    { class: 'brand', attrs: { 'aria-label': 'Onchain Fishing' } },
+    h('span', { class: 'logo' }, icon('bobber')),
+    h('span', { class: 'wordmark' }, h('span', { class: 'wm-top', text: 'Onchain' }), h('span', { class: 'wm-main', text: 'Fishing' })),
+  );
   const w = state.wallet;
   if (!w) {
     regenEl = null;
@@ -84,7 +89,7 @@ function render(on: HeaderHandlers): HTMLElement[] {
         'div',
         { class: 'stat energy' },
         h('span', { class: 'k', text: `Energy ${state.energy}/${max}` }),
-        h('span', { class: 'bar' }, h('span', { class: 'bar-fill en', style: `width:${(100 * state.energy) / max}%` })),
+        segBar(state.energy, max, 10, 'en'),
         regenEl,
       ),
       h('div', { class: 'stat' }, h('span', { class: 'k', text: 'XP' }), h('span', { class: 'v', text: String(state.xp) })),

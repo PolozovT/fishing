@@ -19,7 +19,7 @@ import {
   tokenImage,
 } from '../store';
 import { TxError } from '../tx';
-import { fmtToken, fmtWeight, h, img, mount, sigOf } from './dom';
+import { fmtToken, fmtWeight, h, icon, img, mount, segBar, sigOf } from './dom';
 import { toast } from './toast';
 
 let scene: WaterScene;
@@ -308,7 +308,15 @@ function renderControlsView(): HTMLElement[] {
               },
             },
             h('span', { class: 'spot-name', text: s.name }),
-            h('span', { class: 'spot-meta' }, locked ? `🔒 lvl ${s.minRodLevel}+` : `lvl ${s.minRodLevel}+`, ` · ⚡${s.energyCost}`),
+            h(
+              'span',
+              { class: 'spot-meta' },
+              locked ? icon('lock', 'Locked') : null,
+              `lvl ${s.minRodLevel}+`,
+              h('span', { class: 'sep', text: '·' }),
+              icon('bolt', 'Energy'),
+              String(s.energyCost),
+            ),
           );
         }),
       ),
@@ -338,7 +346,7 @@ function renderControlsView(): HTMLElement[] {
                   },
                 },
                 h('span', { class: 'rod-title', text: `#${r.id} · lvl ${r.level}` }),
-                h('span', { class: 'bar' }, h('span', { class: 'bar-fill dur', style: `width:${(100 * r.durability) / Math.max(1, r.maxDurability)}%` })),
+                segBar(r.durability, r.maxDurability, 8, 'dur'),
                 h('span', { class: 'rod-meta', text: r.locked ? 'in the water' : `durability ${r.durability}/${r.maxDurability}` }),
               ),
             ),
@@ -399,6 +407,7 @@ function renderControlsView(): HTMLElement[] {
             cb.checked = state.autoReel;
             return cb;
           })(),
+          h('span', { class: 'toggle-box', attrs: { 'aria-hidden': 'true' } }),
           h('span', { text: 'Auto reel' }),
         ),
       ),

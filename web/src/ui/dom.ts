@@ -73,7 +73,11 @@ export function fmtCountdown(sec: number): string {
 }
 
 export function img(src: string | undefined, alt: string, cls = 'nft-img'): HTMLElement {
-  if (!src) return h('div', { class: `${cls} nft-img-placeholder`, text: '🐟' });
+  if (!src) {
+    const ph = h('div', { class: `${cls} nft-img-placeholder` });
+    ph.append(icon('fish', 'Fish'));
+    return ph;
+  }
   return h('img', { class: cls, attrs: { src, alt, loading: 'lazy', decoding: 'async' } });
 }
 
@@ -83,4 +87,46 @@ export function plural(n: number, one: string, few: string, many: string): strin
   if (m10 === 1 && m100 !== 11) return one;
   if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
   return many;
+}
+
+/** Segmented pixel bar: `segs` blocks, lit in proportion to value/max (at least one lit while value > 0). */
+export function segBar(value: number, max: number, segs: number, cls = ''): HTMLElement {
+  const on = value <= 0 ? 0 : Math.max(1, Math.min(segs, Math.round((value / Math.max(1, max)) * segs)));
+  return h(
+    'span',
+    { class: `segbar ${cls}`, attrs: { role: 'meter', 'aria-valuemin': '0', 'aria-valuemax': String(max), 'aria-valuenow': String(value) } },
+    Array.from({ length: segs }, (_, i) => h('span', { class: i < on ? 'seg on' : 'seg' })),
+  );
+}
+
+// Tiny pixel icons drawn as rects (crispEdges). Each entry: [viewBox w, h, rects "x,y,w,h,color;..."]
+const ICONS: Record<string, [number, number, string]> = {
+  lock: [7, 8, '2,0,3,1,#afb4b5;1,1,1,3,#afb4b5;5,1,1,3,#afb4b5;0,3,7,5,#b8a071;3,5,1,2,#15171a'],
+  bolt: [5, 8, '2,0,3,1,#e2c47a;1,1,3,1,#e2c47a;0,2,3,1,#e2c47a;0,3,5,1,#e2c47a;2,4,2,1,#e2c47a;1,5,2,1,#e2c47a;1,6,1,1,#e2c47a;0,7,1,1,#e2c47a'],
+  fish: [10, 6, '3,0,4,1,#5a6670;1,1,7,1,#5a6670;0,2,9,2,#5a6670;1,4,7,1,#5a6670;3,5,4,1,#5a6670;7,1,1,1,#afb4b5;9,1,1,4,#5a6670'],
+  bobber: [5, 9, '2,0,1,2,#c9c6bc;1,2,3,1,#c2453b;0,3,5,2,#c2453b;1,3,1,1,#e7766a;0,5,5,2,#e6e4dc;1,7,3,1,#e6e4dc;2,8,1,1,#afb4b5'],
+};
+
+export function icon(name: keyof typeof ICONS, label?: string): SVGSVGElement {
+  const [w, hgt, rects] = ICONS[name];
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${w} ${hgt}`);
+  svg.setAttribute('width', String(w * 2));
+  svg.setAttribute('height', String(hgt * 2));
+  svg.setAttribute('shape-rendering', 'crispEdges');
+  svg.setAttribute('class', `pxi pxi-${name}`);
+  if (label) svg.setAttribute('aria-label', label);
+  else svg.setAttribute('aria-hidden', 'true');
+  for (const r of rects.split(';')) {
+    const [x, y, rw, rh, fill] = r.split(',');
+    const el = document.createElementNS(ns, 'rect');
+    el.setAttribute('x', x);
+    el.setAttribute('y', y);
+    el.setAttribute('width', rw);
+    el.setAttribute('height', rh);
+    el.setAttribute('fill', fill);
+    svg.append(el);
+  }
+  return svg;
 }

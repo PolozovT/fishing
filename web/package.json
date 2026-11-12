@@ -13,9 +13,18 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "viem": "2.57.2"
+    "@fluent.xyz/connect": "0.8.0",
+    "@fontsource/ibm-plex-sans": "5.3.0",
+    "@fontsource/silkscreen": "5.3.0",
+    "@tanstack/react-query": "5.107.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "viem": "2.57.2",
+    "wagmi": "2.19.5"
   },
   "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "typescript": "6.0.3",
     "vite": "8.3.2"
   }

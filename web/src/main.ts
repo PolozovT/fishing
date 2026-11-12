@@ -1,4 +1,10 @@
+import '@fontsource/silkscreen/400.css';
+import '@fontsource/silkscreen/700.css';
+import '@fontsource/ibm-plex-sans/400.css';
+import '@fontsource/ibm-plex-sans/500.css';
+import '@fontsource/ibm-plex-sans/600.css';
 import './style.css';
+import { initBackdrop } from './backdrop';
 import { connectBurner, connectInjected, forgetMode, publicClient, savedMode, savedWalletId } from './clients';
 import { findWallet, onWalletsChanged } from './wallets';
 import { CHAIN_ID, IS_LOCAL, RPC_URL, deployment } from './config';
@@ -14,6 +20,7 @@ import { initShop } from './ui/shop';
 import { toast } from './ui/toast';
 
 const app = document.getElementById('app')!;
+initBackdrop();
 
 if (!deployment) {
   app.append(
