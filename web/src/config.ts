@@ -13,6 +13,8 @@ const known = KNOWN[CHAIN_ID];
 export const RPC_URL: string = import.meta.env.VITE_RPC_URL ?? known?.rpc ?? 'http://127.0.0.1:8545';
 export const EXPLORER_URL: string | undefined = known?.explorer;
 export const IS_LOCAL = CHAIN_ID === 31337;
+/** Fluent Connect only works on Fluent's own networks. */
+export const IS_FLUENT = CHAIN_ID === 20994 || CHAIN_ID === 25363;
 
 export const chain: Chain = defineChain({
   id: CHAIN_ID,

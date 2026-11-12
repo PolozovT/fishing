@@ -95,6 +95,8 @@ export type GameConfig = Record<string, bigint | number>;
 
 export interface State {
   wallet: Wallet | null;
+  /** Fluent Connect widget status ('off' when it is not configured). */
+  fluentStatus: 'off' | 'restoring' | 'connecting' | 'connected' | 'disconnected';
   connecting: boolean;
   catalogLoaded: boolean;
   block: bigint;
@@ -142,6 +144,7 @@ const readAuto = (): boolean => {
 
 export const state: State = {
   wallet: null,
+  fluentStatus: 'off',
   connecting: false,
   catalogLoaded: false,
   block: 0n,

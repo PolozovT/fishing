@@ -213,6 +213,15 @@ h3::after {
   background: #221e15;
   box-shadow: inset 0 0 0 1px #5c4f33;
 }
+.badge-fluent {
+  color: #b9c7e8;
+  background: #161b26;
+  box-shadow: inset 0 0 0 1px #3a4a6b;
+}
+.connect .warn {
+  font-size: 12px;
+  max-width: 260px;
+}
 .rarity {
   align-self: flex-start;
   display: inline-block;

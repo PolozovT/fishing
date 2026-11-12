@@ -5,8 +5,8 @@ import '@fontsource/ibm-plex-sans/500.css';
 import '@fontsource/ibm-plex-sans/600.css';
 import './style.css';
 import { initBackdrop } from './backdrop';
-import { connectBurner, connectInjected, forgetMode, publicClient, savedMode, savedWalletId } from './clients';
-import { findWallet, onWalletsChanged } from './wallets';
+import { connectBurner, fluentWallet, forgetMode, publicClient, savedMode } from './clients';
+import { FLUENT_CONFIGURED, disconnectFluent, mountFluent, openFluentAccount, openFluentConnect, type FluentAccountState } from './fluent';
 import { CHAIN_ID, IS_LOCAL, RPC_URL, deployment } from './config';
 import { friendlyError } from './errors';
 import { emit, loadCatalog, loadHead, loadPlayer, loadWorld, state, subscribe } from './store';
@@ -96,15 +96,14 @@ selectTab(tab);
 
 // ------------------------------------------------------------------ wallet
 
-async function connect(mode: 'burner' | 'injected', walletId?: string): Promise<void> {
+async function connectBurnerWallet(): Promise<void> {
   state.connecting = true;
   emit();
   try {
-    state.wallet = mode === 'burner' ? await connectBurner() : await connectInjected(walletId);
-    watchProvider();
+    state.wallet = await connectBurner();
     state.sel.rod = null;
     await loadPlayer();
-    if (mode === 'burner') toast('Burner wallet connected (local anvil only)', 'info');
+    toast('Burner wallet connected (local anvil only)', 'info');
   } catch (e) {
     state.wallet = null;
     toast(`Connection: ${friendlyError(e)}`, 'err');
@@ -114,34 +113,65 @@ async function connect(mode: 'burner' | 'injected', walletId?: string): Promise<
   }
 }
 
-function disconnect(): void {
-  forgetMode();
+function clearPlayer(): void {
   state.wallet = null;
   state.rods = [];
   state.fish = [];
   state.cast = null;
+}
+
+async function disconnect(): Promise<void> {
+  const wasFluent = state.wallet?.mode === 'fluent';
+  forgetMode();
+  clearPlayer();
+  emit();
+  if (wasFluent) await disconnectFluent().catch((e) => console.warn('fluent disconnect', e));
+}
+
+/** The player asked to sign in with Fluent: the next connected account becomes the active wallet. */
+let fluentWanted = false;
+function connectFluent(): void {
+  fluentWanted = true;
+  openFluentConnect();
+}
+
+/** Mirrors the widget's account into the game: connect, switch account, or disconnect. */
+function onFluentChange(s: FluentAccountState): void {
+  state.fluentStatus = s.status;
+  const w = state.wallet;
+  if (s.status === 'connected' && s.address) {
+    // a restored Fluent session takes over unless the player is deliberately on the local burner
+    const take = fluentWanted || !w || w.mode === 'fluent';
+    if (take && w?.address !== s.address) {
+      fluentWanted = false;
+      forgetMode();
+      state.wallet = fluentWallet(s.address, s.kind);
+      state.sel.rod = null;
+      void loadPlayer().catch((e) => console.warn('player', e));
+    }
+  } else if (s.status === 'disconnected' && w?.mode === 'fluent') {
+    clearPlayer();
+  }
   emit();
 }
 
-/** Reload on account/chain switches in the wallet the player actually connected with. */
-let watched: unknown = null;
-function watchProvider(): void {
-  const p = state.wallet?.provider;
-  if (!p || p === watched) return;
-  watched = p;
-  p.on?.('accountsChanged', () => state.wallet?.provider === p && location.reload());
-  p.on?.('chainChanged', () => state.wallet?.provider === p && location.reload());
+if (FLUENT_CONFIGURED) {
+  state.fluentStatus = 'restoring';
+  mountFluent(onFluentChange, (m) => {
+    state.fluentStatus = 'off';
+    toast(`Fluent Connect: ${m}`, 'err');
+    emit();
+  });
 }
-
-onWalletsChanged(emit);
 
 // ------------------------------------------------------------------ render wiring
 
 const renders = [
   initHeader(headerEl, {
-    connectInjected: (walletId?: string) => void connect('injected', walletId),
-    connectBurner: () => void connect('burner'),
-    disconnect,
+    connectFluent,
+    openAccount: openFluentAccount,
+    connectBurner: () => void connectBurnerWallet(),
+    disconnect: () => void disconnect(),
   }),
   initFishing(sceneEl, controlsEl),
   initInventory(panels.inv),
@@ -186,14 +216,7 @@ async function boot(): Promise<void> {
   }
   showBanner(null);
   const mode = savedMode();
-  if (mode === 'burner' && IS_LOCAL) await connect('burner');
-  else if (mode === 'injected') {
-    // give EIP-6963 wallets a moment to announce themselves before looking for the saved one
-    await new Promise((r) => setTimeout(r, 300));
-    const w = findWallet(savedWalletId());
-    const accs = w ? ((await w.provider.request({ method: 'eth_accounts' }).catch(() => [])) as string[]) : [];
-    if (w && accs.length) await connect('injected', w.id);
-  }
+  if (mode === 'burner' && IS_LOCAL && !state.wallet) await connectBurnerWallet();
   void loadWorld().catch((e) => console.warn('world', e));
 
   let running = false;

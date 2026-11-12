@@ -7,6 +7,7 @@ import {
   type Abi,
   type Hex,
 } from 'viem';
+import { FluentReviewRejectedError } from '@fluent.xyz/connect';
 import { fishingGameAbi, fishNftAbi, marketplaceAbi, pearlTokenAbi, rodNftAbi } from './abi';
 import { ERRORS } from './i18n';
 
@@ -61,6 +62,7 @@ export function revertName(err: unknown): string | undefined {
 
 /** Human-readable message for any error thrown by viem / the wallet. */
 export function friendlyError(err: unknown): string {
+  if (err instanceof FluentReviewRejectedError) return 'Cancelled in the Fluent review';
   const name = revertName(err);
   if (name) return ERRORS[name] ?? `Contract error: ${name}`;
   if (err instanceof BaseError) {

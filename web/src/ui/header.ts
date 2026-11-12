@@ -1,12 +1,12 @@
 import { formatEther } from 'viem';
-import { hasInjected } from '../clients';
-import { listWallets } from '../wallets';
+import { FLUENT_CONFIGURED } from '../fluent';
 import { IS_LOCAL } from '../config';
 import { cfg, chainNow, state } from '../store';
 import { fmtCountdown, fmtToken, h, icon, mount, segBar, shortAddr, sigOf } from './dom';
 
 export interface HeaderHandlers {
-  connectInjected(walletId?: string): void;
+  connectFluent(): void;
+  openAccount(): void;
   connectBurner(): void;
   disconnect(): void;
 }
@@ -27,7 +27,7 @@ export function initHeader(host: HTMLElement, on: HeaderHandlers): () => void {
         state.xp,
         state.catches,
         state.config.maxEnergy,
-        listWallets().map((w) => w.id),
+        state.fluentStatus,
       ),
     () => render(on),
   );
@@ -48,7 +48,7 @@ function render(on: HeaderHandlers): HTMLElement[] {
       h(
         'div',
         { class: 'connect' },
-        ...walletButtons(on),
+        fluentButton(on),
         IS_LOCAL
           ? h('button', {
               class: 'btn btn-burner',
@@ -58,7 +58,6 @@ function render(on: HeaderHandlers): HTMLElement[] {
               onclick: on.connectBurner,
             })
           : null,
-        !hasInjected() && !IS_LOCAL ? h('span', { class: 'warn', text: 'Install a browser wallet' }) : null,
       ),
     ];
   }
@@ -75,12 +74,12 @@ function render(on: HeaderHandlers): HTMLElement[] {
         { class: 'stat who' },
         w.mode === 'burner'
           ? h('span', { class: 'badge badge-burner', text: 'burner · local only', title: 'The key is stored in this browser\'s localStorage. Do not use it for real funds.' })
-          : h('span', { class: 'badge', text: 'wallet' }),
+          : h('span', { class: 'badge badge-fluent', text: w.kind === 'eoa' ? 'fluent · wallet' : 'fluent id' }),
         h('span', {
           class: 'addr',
           text: shortAddr(w.address),
-          title: `${w.address} — click to copy`,
-          onclick: () => void navigator.clipboard?.writeText(w.address),
+          title: w.mode === 'fluent' ? `${w.address} — open account` : `${w.address} — click to copy`,
+          onclick: () => (w.mode === 'fluent' ? on.openAccount() : void navigator.clipboard?.writeText(w.address)),
         }),
       ),
       h('div', { class: 'stat' }, h('span', { class: 'k', text: 'ETH' }), h('span', { class: 'v', text: Number(formatEther(state.eth)).toFixed(3) })),
@@ -113,29 +112,25 @@ export function tickHeader(): void {
   regenEl.textContent = `+1 in ${fmtCountdown(left)}`;
 }
 
-/** One button per discovered wallet (EIP-6963), so a locked Phantom can't hijack a MetaMask connection. */
-function walletButtons(on: HeaderHandlers): HTMLElement[] {
-  const wallets = listWallets();
-  if (wallets.length <= 1) {
-    return hasInjected()
-      ? [h('button', { class: 'btn btn-primary', disabled: state.connecting, text: 'Connect wallet', onclick: () => on.connectInjected(wallets[0]?.id) })]
-      : [];
+/** The Fluent Connect entry point: the widget handles Fluent ID login and External wallets. */
+function fluentButton(on: HeaderHandlers): HTMLElement {
+  if (!FLUENT_CONFIGURED) {
+    return h('span', {
+      class: 'warn',
+      text: 'Fluent Connect: set VITE_FLUENT_APP_ID and VITE_FLUENT_PRIVY_CLIENT_ID',
+    });
   }
-  return wallets.map((w) => {
-    const btn = h('button', {
+  // stays clickable while restoring: if the widget never finishes initializing, the player can still retry
+  const pending = state.fluentStatus === 'connecting';
+  return h(
+    'button',
+    {
       class: 'btn btn-primary btn-wallet',
       disabled: state.connecting,
-      title: `Connect with ${w.name}`,
-      onclick: () => on.connectInjected(w.id),
-    });
-    if (w.icon) {
-      const img = document.createElement('img');
-      img.src = w.icon;
-      img.alt = '';
-      img.className = 'wallet-icon';
-      btn.append(img);
-    }
-    btn.append(w.name);
-    return btn;
-  });
+      title: 'Sign in with a Fluent ID or connect a wallet',
+      onclick: on.connectFluent,
+    },
+    icon('bobber'),
+    pending ? 'Fluent…' : 'Connect with Fluent',
+  );
 }

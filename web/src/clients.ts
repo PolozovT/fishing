@@ -1,7 +1,6 @@
 import {
   createPublicClient,
   createWalletClient,
-  custom,
   formatEther,
   http,
   numberToHex,
@@ -12,8 +11,7 @@ import {
   type WalletClient,
 } from 'viem';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
-import { CHAIN_ID, EXPLORER_URL, IS_LOCAL, RPC_URL, chain } from './config';
-import { findWallet, listWallets, type Eip1193Provider } from './wallets';
+import { IS_LOCAL, RPC_URL, chain } from './config';
 
 export const publicClient: PublicClient = createPublicClient({
   chain,
@@ -21,21 +19,26 @@ export const publicClient: PublicClient = createPublicClient({
   pollingInterval: 500,
 });
 
-export type WalletMode = 'burner' | 'injected';
+export type WalletMode = 'burner' | 'fluent';
 
 export interface Wallet {
   mode: WalletMode;
   address: Address;
-  /** LocalAccount for the burner, plain address for JSON-RPC (injected) accounts. */
+  /** LocalAccount for the burner; the account's address for Fluent Connect. */
   account: Account | Address;
-  client: WalletClient;
-  /** EIP-1193 provider of the browser wallet (injected mode only), for account/chain change events. */
-  provider?: Eip1193Provider;
+  /** Signs and sends for the burner. Fluent Connect sends through the widget instead (see tx.ts). */
+  client?: WalletClient;
+  /** "smart" for a Fluent ID, "eoa" for an External wallet connected through Fluent Connect. */
+  kind?: 'smart' | 'eoa';
+}
+
+/** Wallet record for an account connected through the Fluent Connect widget. */
+export function fluentWallet(address: Address, kind?: 'smart' | 'eoa'): Wallet {
+  return { mode: 'fluent', address, account: address, kind };
 }
 
 const BURNER_KEY = 'onchain-fishing:burner-key';
 const MODE_KEY = 'onchain-fishing:wallet-mode';
-const WALLET_KEY = 'onchain-fishing:wallet-id';
 
 function storageGet(k: string): string | null {
   try {
@@ -55,11 +58,9 @@ function storageSet(k: string, v: string | null): void {
 
 export const savedMode = (): WalletMode | null => {
   const m = storageGet(MODE_KEY);
-  return m === 'burner' || m === 'injected' ? m : null;
+  return m === 'burner' ? m : null;
 };
 export const forgetMode = (): void => storageSet(MODE_KEY, null);
-export const hasInjected = (): boolean => typeof window !== 'undefined' && listWallets().length > 0;
-export const savedWalletId = (): string | null => storageGet(WALLET_KEY);
 
 async function rpc(method: string, params: unknown[]): Promise<unknown> {
   const res = await fetch(RPC_URL, {
@@ -100,80 +101,4 @@ export async function fundBurner(address: Address, minEth = '1'): Promise<void> 
 /** Replace the burner key (old one is lost — only fine on a local chain). */
 export function resetBurner(): void {
   storageSet(BURNER_KEY, null);
-}
-
-type RpcError = { code?: number; message?: string; data?: { originalError?: { code?: number } } };
-
-const errCode = (e: unknown): number | undefined => {
-  const r = e as RpcError | null;
-  return r?.data?.originalError?.code ?? r?.code; // MetaMask mobile wraps 4902 inside -32603
-};
-
-/** Runs one wallet request and turns a failure into a message that says which step failed. */
-async function step<T>(what: string, fn: () => Promise<T>): Promise<T> {
-  try {
-    return await fn();
-  } catch (e) {
-    const code = errCode(e);
-    if (code === 4001) throw new Error(`Rejected in wallet: ${what}`);
-    if (code === -32002) throw new Error(`Request "${what}" is already pending in the wallet — open the extension`);
-    const msg = (e as RpcError | null)?.message ?? String(e);
-    throw new Error(`${what}: ${msg}`);
-  }
-}
-
-export async function connectInjected(walletId?: string): Promise<Wallet> {
-  const picked = findWallet(walletId ?? savedWalletId());
-  if (!picked) throw new Error('Browser wallet not found — is the extension enabled?');
-  const eth = picked.provider;
-  let accounts: Address[];
-  try {
-    accounts = (await eth.request({ method: 'eth_requestAccounts' })) as Address[];
-  } catch (e) {
-    if (errCode(e) !== 4001) return step('account access', () => Promise.reject(e));
-    const other = listWallets().filter((w) => w.id !== picked.id).map((w) => w.name);
-    const hint = other.length ? ` or connect with ${other.join(' / ')} instead` : '';
-    throw new Error(
-      `${picked.name} rejected account access. If no popup appeared, the wallet is probably locked — unlock it${hint}.`,
-      { cause: e },
-    );
-  }
-  if (!accounts?.length) throw new Error('Wallet returned no address');
-  const current = Number(await eth.request({ method: 'eth_chainId' }));
-  if (current !== CHAIN_ID) {
-    const hexId = numberToHex(CHAIN_ID);
-    try {
-      await eth.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hexId }] });
-    } catch (e) {
-      if (errCode(e) === 4001) throw new Error(`Wallet rejected switching to network ${chain.name} (chainId ${CHAIN_ID})`);
-      // 4902 = unknown chain; some wallets report other codes for the same thing, so try adding it either way
-      await step(`adding network ${chain.name} (chainId ${CHAIN_ID}, RPC ${RPC_URL})`, () =>
-        eth.request({
-          method: 'wallet_addEthereumChain',
-          params: [
-            {
-              chainId: hexId,
-              chainName: chain.name,
-              nativeCurrency: chain.nativeCurrency,
-              rpcUrls: [RPC_URL],
-              ...(EXPLORER_URL ? { blockExplorerUrls: [EXPLORER_URL] } : {}),
-            },
-          ],
-        }),
-      );
-      const now = Number(await eth.request({ method: 'eth_chainId' }));
-      if (now !== CHAIN_ID) {
-        await step(`switching to network ${chain.name}`, () =>
-          eth.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hexId }] }),
-        );
-      }
-    }
-  }
-  const address = accounts[0];
-  // On anvil the wallet's account starts with 0 ETH — top it up so it can pay gas.
-  if (IS_LOCAL) await fundBurner(address);
-  storageSet(MODE_KEY, 'injected');
-  storageSet(WALLET_KEY, picked.id);
-  const client = createWalletClient({ account: address, chain, transport: custom(eth) });
-  return { mode: 'injected', address, account: address, client, provider: eth };
 }

@@ -78,7 +78,7 @@ To deploy from your own wallet (a key in the Foundry keystore) instead:
 contracts/deploy-fluent.sh --account <key-name>
 ```
 
-3. Client for Fluent (connects through MetaMask; the network is added automatically):
+3. Client for Fluent (players connect with Fluent Connect — set the widget ids in `web/.env.local`, see `web/.env.example`):
 
 ```bash
 cd web && pnpm dev:fluent

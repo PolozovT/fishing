@@ -11,7 +11,7 @@ After deploying (`contracts/deploy-fluent.sh`, see the root README), start the c
 pnpm dev:fluent
 ```
 
-The client reads addresses from `deployments/20994.json` and adds the Fluent Testnet network (chainId 20994) to MetaMask on its own. There is no burner wallet in this mode: use MetaMask with test ETH from https://portal.fluent.xyz/builder/faucet.
+The client reads addresses from `deployments/20994.json`. Players connect with Fluent Connect (see Wallets below); there is no burner wallet in this mode.
 
 ## Quick start (local, anvil)
 
@@ -37,8 +37,17 @@ The client reads addresses from `deployments/20994.json` and adds the Fluent Tes
 
 ## Wallets
 
-- **Browser wallet** (`window.ethereum`, e.g. MetaMask) — the "Connect wallet" button. The client will ask you to
-  switch to the right network (or add it).
+- **Fluent Connect** ([`@fluent.xyz/connect`](https://www.npmjs.com/package/@fluent.xyz/connect)) — the
+  "Connect with Fluent" button. The widget signs players in with a Fluent ID (a smart account, gas can be
+  sponsored) or connects an External wallet through its own picker. Every game action is sent as a widget Batch
+  operation (`src/fluent.tsx`, `src/tx.ts`). It needs, from the Fluent Dashboard:
+  - `VITE_FLUENT_APP_ID` (`app_…`) and `VITE_FLUENT_PRIVY_CLIENT_ID` (`client-…`) in `web/.env.local`
+    (see `.env.example`);
+  - every page origin (e.g. `http://localhost:5180`) allow-listed for Direct login;
+  - for sponsored gas: the app enabled for Sponsorship and Auth tokens.
+
+  The widget works on Fluent Testnet/Mainnet only, so game actions through it need the contracts deployed there
+  (`pnpm dev:fluent`).
 - **Local burner** — chainId 31337 (anvil) only. A random private key is generated and stored in this browser's
   `localStorage`, and 10 ETH is credited via `anvil_setBalance`. **Do not use this mode
   with real funds.** To start over with a new address, delete the `onchain-fishing:burner-key` key from localStorage.
@@ -81,7 +90,8 @@ scripts/sync-abi.mjs   generates src/generated/* from ../contracts/out and ../de
 src/generated/         ABIs (as const) and addresses — generated, do not edit by hand
 src/abi/index.ts       ABI re-exports
 src/config.ts          network, RPC, addresses
-src/clients.ts         publicClient, burner and injected wallets
+src/clients.ts         publicClient, burner wallet, Fluent wallet record
+src/fluent.tsx         Fluent Connect widget (React island) and the Batch-operation sender
 src/store.ts           state and loading data from the chain (logs, view functions)
 src/actions.ts         game and market transactions
 src/tx.ts              simulate → send → receipt, toasts

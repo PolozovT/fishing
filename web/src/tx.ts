@@ -1,5 +1,7 @@
 import type { Abi, ContractFunctionArgs, ContractFunctionName, Address, TransactionReceipt } from 'viem';
 import { publicClient, type Wallet } from './clients';
+import { IS_FLUENT } from './config';
+import { fluentSend } from './fluent';
 import { friendlyError } from './errors';
 import { toast } from './ui/toast';
 
@@ -48,11 +50,23 @@ export async function sendTx<const abi extends Abi, fn extends WriteFn<abi>>(
       ...(params as unknown as Parameters<typeof publicClient.simulateContract>[0]),
       account: wallet.account,
     });
-    const hash = await wallet.client.writeContract({
-      ...(sim.request as Parameters<typeof wallet.client.writeContract>[0]),
-      account: wallet.account,
-      chain: wallet.client.chain,
-    });
+    let hash: `0x${string}`;
+    if (wallet.mode === 'fluent') {
+      if (!IS_FLUENT) throw new Error('Fluent Connect sends on Fluent Testnet, but this build talks to a local chain');
+      // One Batch operation per action; the widget shows its Review and may sponsor the gas.
+      hash = await fluentSend(
+        [{ to: params.address, abi: params.abi, method: params.functionName as string, args: params.args as readonly unknown[], value: params.value }],
+        label,
+      );
+    } else {
+      const client = wallet.client;
+      if (!client) throw new Error('Wallet cannot sign');
+      hash = await client.writeContract({
+        ...(sim.request as Parameters<typeof client.writeContract>[0]),
+        account: wallet.account,
+        chain: client.chain,
+      });
+    }
     const receipt = await publicClient.waitForTransactionReceipt({ hash, pollingInterval: 300 });
     if (receipt.status !== 'success') throw new Error('Transaction reverted');
     if (!opts.quiet) toast(`${label}: done`, 'ok');
