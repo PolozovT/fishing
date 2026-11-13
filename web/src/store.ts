@@ -1,9 +1,20 @@
 import { zeroAddress, type Address } from 'viem';
 import { fishingGameAbi, fishNftAbi, marketplaceAbi, pearlTokenAbi, rodNftAbi } from './abi';
 import { publicClient, type Wallet } from './clients';
-import { requireDeployment } from './config';
+import { deployment } from './config';
+import { OFFLINE_BAITS, OFFLINE_CONFIG, OFFLINE_FEE_BPS, OFFLINE_SPECIES, OFFLINE_SPOTS } from './offlineCatalog';
 
-const dep = requireDeployment();
+/** False until the contracts are deployed on this network: the UI then shows the seed catalog and reads no game state. */
+export const DEPLOYED = deployment !== undefined;
+const dep = deployment ?? {
+  chainId: 0,
+  startBlock: 0,
+  game: zeroAddress,
+  fish: zeroAddress,
+  rod: zeroAddress,
+  pearl: zeroAddress,
+  market: zeroAddress,
+};
 export const ADDR = dep;
 const START = BigInt(dep.startBlock);
 /** Public RPCs cap eth_getLogs ranges (Fluent: 100k blocks), so every scan walks the chain in chunks. */
@@ -235,6 +246,7 @@ export function decodeTokenURI(uri: string): { name?: string; image?: string } {
 export async function tokenImage(kind: 'fish' | 'rod', id: bigint, fresh = false): Promise<string | undefined> {
   const key = `${kind}:${id}`;
   if (!fresh && imageCache.has(key)) return imageCache.get(key);
+  if (!DEPLOYED) return undefined;
   try {
     const uri = await publicClient.readContract({
       address: kind === 'fish' ? dep.fish : dep.rod,
@@ -254,6 +266,16 @@ export const cachedImage = (kind: 'fish' | 'rod', id: bigint): string | undefine
 // ------------------------------------------------------------------ catalog (rarely changes)
 
 export async function loadCatalog(): Promise<void> {
+  if (!DEPLOYED) {
+    state.config = OFFLINE_CONFIG;
+    state.feeBps = OFFLINE_FEE_BPS;
+    state.spots = OFFLINE_SPOTS;
+    state.baits = OFFLINE_BAITS;
+    state.species = OFFLINE_SPECIES;
+    state.catalogLoaded = true;
+    emit();
+    return;
+  }
   const g = { address: dep.game, abi: fishingGameAbi } as const;
   const configItem = fishingGameAbi.find((i) => i.type === 'function' && i.name === 'config');
   const names = configItem && 'outputs' in configItem ? configItem.outputs.map((o) => o.name) : [];
@@ -416,6 +438,12 @@ export async function loadPlayer(): Promise<void> {
   const w = state.wallet;
   if (!w) return;
   const me = w.address;
+  if (!DEPLOYED) {
+    state.eth = await publicClient.getBalance({ address: me });
+    state.energy = Number(OFFLINE_CONFIG.maxEnergy);
+    emit();
+    return;
+  }
   const g = { address: dep.game, abi: fishingGameAbi } as const;
   const head = await publicClient.getBlockNumber({ cacheTime: 0 });
   await scanOwned(me, head);
@@ -557,6 +585,7 @@ function scanCaught(from: bigint, to: bigint) {
 }
 
 export async function loadWorld(): Promise<void> {
+  if (!DEPLOYED) return;
   const head = await publicClient.getBlockNumber({ cacheTime: 0 });
   const g = { address: dep.game, abi: fishingGameAbi } as const;
 

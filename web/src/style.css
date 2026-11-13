@@ -402,6 +402,12 @@ body {
   box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px #5a2f2a;
   color: #e8bcb4;
 }
+.banner.banner-note {
+  background: var(--panel);
+  box-shadow: var(--px-border);
+  color: var(--muted);
+  font-size: 13px;
+}
 
 /* ------------------------------------------------------------ layout */
 .layout {

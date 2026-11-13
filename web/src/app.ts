@@ -1,8 +1,8 @@
 import { fluentWallet, publicClient } from './clients';
 import { FLUENT_CONFIGURED, disconnectFluent, mountFluent, openFluentAccount, openFluentConnect, type FluentAccountState } from './fluent';
-import { CHAIN_ID, RPC_URL, chain, requireDeployment } from './config';
+import { CHAIN_ID, RPC_URL, chain, deployment } from './config';
 import { friendlyError } from './errors';
-import { emit, loadCatalog, loadHead, loadPlayer, loadWorld, state, subscribe } from './store';
+import { DEPLOYED, emit, loadCatalog, loadHead, loadPlayer, loadWorld, state, subscribe } from './store';
 import { h } from './ui/dom';
 import { initFishing, tickStatus } from './ui/fishing';
 import { initHeader, tickHeader } from './ui/header';
@@ -13,7 +13,6 @@ import { initShop } from './ui/shop';
 import { toast } from './ui/toast';
 
 const app = document.getElementById('app')!;
-const deployment = requireDeployment();
 
 // ------------------------------------------------------------------ layout
 
@@ -75,7 +74,7 @@ app.append(
   h(
     'footer',
     { class: 'footer' },
-    `${chain.name} (${CHAIN_ID}) · RPC ${RPC_URL} · game ${deployment.game}`,
+    `${chain.name} (${CHAIN_ID}) · RPC ${RPC_URL} · ${deployment ? `game ${deployment.game}` : 'contracts not deployed yet'}`,
   ),
 );
 selectTab(tab);
@@ -141,9 +140,16 @@ setInterval(() => {
   tickStatus();
 }, 1000);
 
+/** Shown whenever nothing more urgent is: the UI runs on the seed catalog until the contracts are deployed. */
+const PREVIEW_NOTE = DEPLOYED
+  ? null
+  : `Preview: the game contracts are not deployed on ${chain.name} yet, so the catalog comes from GameSetup and actions are off.`;
+
 function showBanner(text: string | null): void {
-  banner.textContent = text ?? '';
-  banner.classList.toggle('hidden', !text);
+  const shown = text ?? PREVIEW_NOTE;
+  banner.textContent = shown ?? '';
+  banner.classList.toggle('hidden', !shown);
+  banner.classList.toggle('banner-note', !text && !!shown);
 }
 
 // ------------------------------------------------------------------ boot + polling
