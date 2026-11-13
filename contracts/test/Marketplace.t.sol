@@ -3,85 +3,59 @@ pragma solidity ^0.8.28;
 
 import {BaseTest} from "./Base.t.sol";
 import {Marketplace} from "../src/Marketplace.sol";
-import {RodNFT} from "../src/RodNFT.sol";
 
 contract MarketplaceTest is BaseTest {
-    function test_listAndBuyRodBurnsFee() public {
-        uint256 id = _starter(alice);
+    function test_listAndBuyFishBurnsFeeAndMovesTheSpecimenCount() public {
+        uint256 id = _catch(alice, 0, 1);
+        uint16 species = fish.fish(id).speciesId;
         vm.startPrank(alice);
-        rod.approve(address(market), id);
-        market.list(address(rod), id, 100e18);
+        fish.approve(address(market), id);
+        market.list(address(fish), id, 100e18);
         vm.stopPrank();
-        assertEq(rod.ownerOf(id), address(market));
+        assertEq(fish.ownerOf(id), address(market));
+        assertEq(fish.heldOf(alice, species), 0);
 
         _fund(bob, 100e18);
         uint256 supplyBefore = pearl.totalSupply();
         vm.startPrank(bob);
         pearl.approve(address(market), 100e18);
-        market.buy(address(rod), id);
+        market.buy(address(fish), id);
         vm.stopPrank();
 
-        assertEq(rod.ownerOf(id), bob);
+        assertEq(fish.ownerOf(id), bob);
+        assertEq(fish.heldOf(bob, species), 1);
         assertEq(pearl.balanceOf(alice), 95e18);
         assertEq(pearl.balanceOf(bob), 0);
         assertEq(pearl.totalSupply(), supplyBefore - 5e18);
+        // a bought fish is in the buyer's keepnet and can be sold to the game
+        (uint256[] memory ids,,) = lens.keepnet(bob);
+        assertEq(ids[0], id);
     }
 
     function test_cancel() public {
-        uint256 id = _starter(alice);
+        uint256 id = _catch(alice, 0, 2);
         vm.startPrank(alice);
-        rod.approve(address(market), id);
-        market.list(address(rod), id, 1e18);
-        market.cancel(address(rod), id);
+        fish.approve(address(market), id);
+        market.list(address(fish), id, 1e18);
+        market.cancel(address(fish), id);
         vm.stopPrank();
-        assertEq(rod.ownerOf(id), alice);
-
+        assertEq(fish.ownerOf(id), alice);
         vm.prank(bob);
         vm.expectRevert(Marketplace.NotListed.selector);
-        market.buy(address(rod), id);
+        market.buy(address(fish), id);
     }
 
-    function test_onlySellerCancels() public {
-        uint256 id = _starter(alice);
+    function test_onlySellerCancelsAndOnlyAllowedCollections() public {
+        uint256 id = _catch(alice, 0, 3);
         vm.startPrank(alice);
-        rod.approve(address(market), id);
-        market.list(address(rod), id, 1e18);
+        fish.approve(address(market), id);
+        market.list(address(fish), id, 1e18);
         vm.stopPrank();
         vm.prank(bob);
         vm.expectRevert(Marketplace.NotSeller.selector);
-        market.cancel(address(rod), id);
-    }
-
-    function test_cannotListRodInWater() public {
-        uint256 id = _starter(alice);
-        vm.startPrank(alice);
-        game.cast(id, 0, 0);
-        rod.approve(address(market), id);
-        vm.expectRevert(RodNFT.RodLocked.selector);
-        market.list(address(rod), id, 1e18);
-        vm.stopPrank();
-    }
-
-    function test_cannotListOthersNft() public {
-        uint256 id = _starter(alice);
-        vm.prank(bob);
-        vm.expectRevert();
-        market.list(address(rod), id, 1e18);
-    }
-
-    function test_unknownCollectionRejected() public {
+        market.cancel(address(fish), id);
         vm.prank(alice);
         vm.expectRevert(Marketplace.CollectionNotAllowed.selector);
         market.list(address(pearl), 1, 1e18);
-    }
-
-    function test_listedRodCannotFish() public {
-        uint256 id = _starter(alice);
-        vm.startPrank(alice);
-        rod.approve(address(market), id);
-        market.list(address(rod), id, 1e18);
-        vm.expectRevert();
-        game.cast(id, 0, 0);
-        vm.stopPrank();
     }
 }

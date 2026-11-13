@@ -1,11 +1,13 @@
 /** Header of the local game: level, PEARL, energy, and the optional Fluent Connect sign-in. */
-import { energyCountdown, energyNow, refillEnergy, refillPrice } from '../../game/actions';
+import { energyCountdown, energyNow, refillPrice } from '../../game/actions';
 import { BLEND_PRIZE, TUNING } from '../../game/content';
 import { levelOf, xpForLevel } from '../../game/economy';
 import { state } from '../../store';
 import { fmtCountdown, h, icon, mount, segBar, shortAddr, sigOf } from '../../ui/dom';
 import { fluentButton, type HeaderHandlers } from '../../ui/header';
-import { apply, getSave, rev } from '../state';
+import { world } from '../chain';
+import { CHAIN, ops } from '../ops';
+import { getSave, rev } from '../state';
 import { pearl } from './fmt';
 
 let regenEl: HTMLElement | null = null;
@@ -13,7 +15,7 @@ let regenEl: HTMLElement | null = null;
 export function initLocalHeader(host: HTMLElement, on: HeaderHandlers): () => void {
   return mount(
     host,
-    () => sigOf(rev(), energyNow(getSave(), Date.now()), state.wallet?.address, state.fluentStatus, location.hash),
+    () => sigOf(rev(), energyNow(getSave(), Date.now()), state.wallet?.address, state.fluentStatus, location.hash, world.blend?.balance),
     () => render(on),
   );
 }
@@ -58,9 +60,9 @@ function render(on: HeaderHandlers): HTMLElement[] {
       h('div', { class: 'stat' }, h('span', { class: 'k', text: 'PEARL' }), h('span', { class: 'v pearl', text: pearl(s.pearl) })),
       h(
         'div',
-        { class: 'stat', title: `There is a small chance to fish out a sealed bottle with ${BLEND_PRIZE.amount} BLEND in any water. Preview: a local counter, nothing is paid out yet.` },
+        { class: 'stat', title: `There is a small chance to fish out a sealed bottle with ${BLEND_PRIZE.amount} BLEND in any water. ${CHAIN && world.blend ? 'Shown here: the BLEND in your wallet, which buys PEARL on the Tackle page. A bottle win is recorded by the contract and not paid out yet.' : `Preview: ${CHAIN ? 'recorded by the contract' : 'a local counter'}, nothing is paid out yet.`}` },
         h('span', { class: 'k', text: 'BLEND' }),
-        h('span', { class: 'v blend', text: pearl(s.blend) }),
+        h('span', { class: 'v blend', text: (CHAIN && world.blend ? world.blend.balance : s.blend).toLocaleString('en-US', { maximumFractionDigits: 2 }) }),
       ),
       h(
         'div',
@@ -75,7 +77,7 @@ function render(on: HeaderHandlers): HTMLElement[] {
             text: `Refill · ${pearl(price)}`,
             title: 'Fills energy to the maximum. Each further refill on the same day costs twice as much.',
             disabled: s.pearl < price,
-            onclick: () => void apply((x) => refillEnergy(x, Date.now())),
+            onclick: () => void ops.refillEnergy(),
           })
         : null,
       h('div', { class: 'stat hide-sm' }, h('span', { class: 'k', text: 'Catches' }), h('span', { class: 'v', text: String(s.stats.catches) })),

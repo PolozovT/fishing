@@ -1,6 +1,6 @@
 import type { Abi, ContractFunctionArgs, ContractFunctionName, Address, TransactionReceipt } from 'viem';
 import { publicClient, type Wallet } from './clients';
-import { DEPLOYED } from './store';
+import { deployment } from './config';
 import { fluentSend } from './fluent';
 import { friendlyError } from './errors';
 import { toast } from './ui/toast';
@@ -45,7 +45,7 @@ export async function sendTx<const abi extends Abi, fn extends WriteFn<abi>>(
 ): Promise<TransactionReceipt> {
   setBusy(1);
   try {
-    if (!DEPLOYED) throw new Error('The game contracts are not deployed on this network yet');
+    if (!deployment) throw new Error('The game contracts are not deployed on this network yet');
     // viem's generics don't survive this indirection; the call-site types are checked by WriteParams.
     await publicClient.simulateContract({
       ...(params as unknown as Parameters<typeof publicClient.simulateContract>[0]),

@@ -1,5 +1,4 @@
 /** Fish collection: the permanent encyclopedia, grouped by location. */
-import { claimAchievement } from '../../game/actions';
 import { LOCATIONS, SPECIES, special } from '../../game/content';
 import { achievements, collectorStats, isUnlocked, locationProgress, unlockText } from '../../game/progress';
 import type { Save } from '../../game/types';
@@ -7,7 +6,8 @@ import { RARITY_CLASS } from '../../i18n';
 import { fmtWeight, h, icon, mount, sigOf } from '../../ui/dom';
 import { toast } from '../../ui/toast';
 import { fishArt } from '../fishSprite';
-import { act, getSave, rev } from '../state';
+import { ops } from '../ops';
+import { getSave, rev } from '../state';
 import { pearl, rarityTag } from './fmt';
 
 export function initCollection(host: HTMLElement): () => void {
@@ -19,11 +19,7 @@ export function claimButton(id: string, reward: number): HTMLElement {
     class: 'btn btn-primary btn-sm',
     text: `Claim ${pearl(reward)} PEARL`,
     onclick: () => {
-      const r = act(
-        (s) => claimAchievement(s, id),
-        (x) => x.save,
-      );
-      if (r) toast(`+${pearl(r.reward)} PEARL`, 'ok');
+      void ops.claimAchievement(id).then((got) => got !== undefined && toast(`+${pearl(got)} PEARL`, 'ok'));
     },
   });
 }

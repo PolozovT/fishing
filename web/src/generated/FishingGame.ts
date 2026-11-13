@@ -19,11 +19,6 @@ export const fishingGameAbi = [
         "internalType": "contract FishNFT"
       },
       {
-        "name": "rod_",
-        "type": "address",
-        "internalType": "contract RodNFT"
-      },
-      {
         "name": "config_",
         "type": "tuple",
         "internalType": "struct FishingGame.Config",
@@ -44,37 +39,27 @@ export const fishingGameAbi = [
             "internalType": "uint8"
           },
           {
-            "name": "maxRodLevel",
+            "name": "baseBiteBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "maxBiteBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "maxRarityBonus",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "maxWeightBonus",
             "type": "uint8",
             "internalType": "uint8"
           },
           {
-            "name": "baseCatchBps",
-            "type": "uint16",
-            "internalType": "uint16"
-          },
-          {
-            "name": "catchBpsPerLevel",
-            "type": "uint16",
-            "internalType": "uint16"
-          },
-          {
-            "name": "maxCatchBps",
-            "type": "uint16",
-            "internalType": "uint16"
-          },
-          {
-            "name": "rarityBoostPerLevel",
-            "type": "uint16",
-            "internalType": "uint16"
-          },
-          {
-            "name": "starterDurability",
-            "type": "uint16",
-            "internalType": "uint16"
-          },
-          {
-            "name": "durabilityPerLevel",
+            "name": "repairShareBps",
             "type": "uint16",
             "internalType": "uint16"
           },
@@ -84,14 +69,9 @@ export const fishingGameAbi = [
             "internalType": "uint96"
           },
           {
-            "name": "rodPrice",
-            "type": "uint96",
-            "internalType": "uint96"
-          },
-          {
-            "name": "repairPricePerPoint",
-            "type": "uint96",
-            "internalType": "uint96"
+            "name": "refillPriceGrowthBps",
+            "type": "uint32",
+            "internalType": "uint32"
           },
           {
             "name": "emissionSoftCap",
@@ -99,19 +79,29 @@ export const fishingGameAbi = [
             "internalType": "uint256"
           },
           {
-            "name": "refillPriceGrowthBps",
+            "name": "qualityPerCatch",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "qualityPerRarity",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "blendAmount",
+            "type": "uint96",
+            "internalType": "uint96"
+          },
+          {
+            "name": "blendChancePpm",
             "type": "uint32",
             "internalType": "uint32"
           },
           {
-            "name": "minRepairLevel",
+            "name": "blendMaxWins",
             "type": "uint8",
             "internalType": "uint8"
-          },
-          {
-            "name": "starterRodFee",
-            "type": "uint96",
-            "internalType": "uint96"
           }
         ]
       }
@@ -120,87 +110,7 @@ export const fishingGameAbi = [
   },
   {
     "type": "function",
-    "name": "addBait",
-    "inputs": [
-      {
-        "name": "b",
-        "type": "tuple",
-        "internalType": "struct FishingGame.Bait",
-        "components": [
-          {
-            "name": "name",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "price",
-            "type": "uint96",
-            "internalType": "uint96"
-          },
-          {
-            "name": "catchBonusBps",
-            "type": "uint16",
-            "internalType": "uint16"
-          },
-          {
-            "name": "rarityBonus",
-            "type": "uint16",
-            "internalType": "uint16"
-          }
-        ]
-      }
-    ],
-    "outputs": [
-      {
-        "name": "id",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "addSpot",
-    "inputs": [
-      {
-        "name": "name",
-        "type": "string",
-        "internalType": "string"
-      },
-      {
-        "name": "minRodLevel",
-        "type": "uint8",
-        "internalType": "uint8"
-      },
-      {
-        "name": "energyCost",
-        "type": "uint8",
-        "internalType": "uint8"
-      },
-      {
-        "name": "speciesIds",
-        "type": "uint16[]",
-        "internalType": "uint16[]"
-      },
-      {
-        "name": "weights",
-        "type": "uint16[]",
-        "internalType": "uint16[]"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "id",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "bait",
+    "name": "achievement",
     "inputs": [
       {
         "name": "id",
@@ -212,27 +122,22 @@ export const fishingGameAbi = [
       {
         "name": "",
         "type": "tuple",
-        "internalType": "struct FishingGame.Bait",
+        "internalType": "struct FishingGame.Achievement",
         "components": [
           {
-            "name": "name",
-            "type": "string",
-            "internalType": "string"
+            "name": "kind",
+            "type": "uint8",
+            "internalType": "uint8"
           },
           {
-            "name": "price",
+            "name": "arg",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "reward",
             "type": "uint96",
             "internalType": "uint96"
-          },
-          {
-            "name": "catchBonusBps",
-            "type": "uint16",
-            "internalType": "uint16"
-          },
-          {
-            "name": "rarityBonus",
-            "type": "uint16",
-            "internalType": "uint16"
           }
         ]
       }
@@ -241,7 +146,407 @@ export const fishingGameAbi = [
   },
   {
     "type": "function",
-    "name": "baitBalance",
+    "name": "achievementCount",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "achievementDone",
+    "inputs": [
+      {
+        "name": "player",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "addAchievement",
+    "inputs": [
+      {
+        "name": "a",
+        "type": "tuple",
+        "internalType": "struct FishingGame.Achievement",
+        "components": [
+          {
+            "name": "kind",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "arg",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "reward",
+            "type": "uint96",
+            "internalType": "uint96"
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "addLocation",
+    "inputs": [
+      {
+        "name": "l",
+        "type": "tuple",
+        "internalType": "struct FishingGame.Location",
+        "components": [
+          {
+            "name": "energyCost",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "unlockType",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "unlockArg",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "special",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "active",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "speciesIds",
+            "type": "uint16[]",
+            "internalType": "uint16[]"
+          },
+          {
+            "name": "weights",
+            "type": "uint16[]",
+            "internalType": "uint16[]"
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "addLure",
+    "inputs": [
+      {
+        "name": "it",
+        "type": "tuple",
+        "internalType": "struct FishingGame.Item",
+        "components": [
+          {
+            "name": "price",
+            "type": "uint96",
+            "internalType": "uint96"
+          },
+          {
+            "name": "wear",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "catchPts",
+            "type": "int8",
+            "internalType": "int8"
+          },
+          {
+            "name": "rarity",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "weight",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "repairBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "a",
+            "type": "tuple",
+            "internalType": "struct FishingGame.Effect",
+            "components": [
+              {
+                "name": "mask",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "catchPts",
+                "type": "int8",
+                "internalType": "int8"
+              },
+              {
+                "name": "rarity",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "weight",
+                "type": "uint8",
+                "internalType": "uint8"
+              }
+            ]
+          },
+          {
+            "name": "b",
+            "type": "tuple",
+            "internalType": "struct FishingGame.Effect",
+            "components": [
+              {
+                "name": "mask",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "catchPts",
+                "type": "int8",
+                "internalType": "int8"
+              },
+              {
+                "name": "rarity",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "weight",
+                "type": "uint8",
+                "internalType": "uint8"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "addRod",
+    "inputs": [
+      {
+        "name": "it",
+        "type": "tuple",
+        "internalType": "struct FishingGame.Item",
+        "components": [
+          {
+            "name": "price",
+            "type": "uint96",
+            "internalType": "uint96"
+          },
+          {
+            "name": "wear",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "catchPts",
+            "type": "int8",
+            "internalType": "int8"
+          },
+          {
+            "name": "rarity",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "weight",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "repairBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "a",
+            "type": "tuple",
+            "internalType": "struct FishingGame.Effect",
+            "components": [
+              {
+                "name": "mask",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "catchPts",
+                "type": "int8",
+                "internalType": "int8"
+              },
+              {
+                "name": "rarity",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "weight",
+                "type": "uint8",
+                "internalType": "uint8"
+              }
+            ]
+          },
+          {
+            "name": "b",
+            "type": "tuple",
+            "internalType": "struct FishingGame.Effect",
+            "components": [
+              {
+                "name": "mask",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "catchPts",
+                "type": "int8",
+                "internalType": "int8"
+              },
+              {
+                "name": "rarity",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "weight",
+                "type": "uint8",
+                "internalType": "uint8"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "addSpecial",
+    "inputs": [
+      {
+        "name": "s",
+        "type": "tuple",
+        "internalType": "struct FishingGame.Special",
+        "components": [
+          {
+            "name": "speciesId",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "chancePpm",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "pity",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "mask",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "catchPts",
+            "type": "int8",
+            "internalType": "int8"
+          },
+          {
+            "name": "rarity",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "weight",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "hiddenMult",
+            "type": "uint8",
+            "internalType": "uint8"
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "bestAt",
     "inputs": [
       {
         "name": "",
@@ -256,17 +561,62 @@ export const fishingGameAbi = [
     ],
     "outputs": [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
+        "name": "speciesId",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
+        "name": "weight",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "at",
+        "type": "uint40",
+        "internalType": "uint40"
       }
     ],
     "stateMutability": "view"
   },
   {
     "type": "function",
-    "name": "baitCount",
-    "inputs": [],
+    "name": "bestCatch",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "speciesId",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
+        "name": "weight",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "at",
+        "type": "uint40",
+        "internalType": "uint40"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "blendWon",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
     "outputs": [
       {
         "name": "",
@@ -278,17 +628,12 @@ export const fishingGameAbi = [
   },
   {
     "type": "function",
-    "name": "buyBait",
+    "name": "buyLure",
     "inputs": [
       {
-        "name": "baitId",
+        "name": "id",
         "type": "uint8",
         "internalType": "uint8"
-      },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "internalType": "uint256"
       }
     ],
     "outputs": [],
@@ -297,32 +642,9 @@ export const fishingGameAbi = [
   {
     "type": "function",
     "name": "buyRod",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "rodId",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "cast",
     "inputs": [
       {
-        "name": "rodId",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "spotId",
-        "type": "uint8",
-        "internalType": "uint8"
-      },
-      {
-        "name": "baitId",
+        "name": "id",
         "type": "uint8",
         "internalType": "uint8"
       }
@@ -332,79 +654,80 @@ export const fishingGameAbi = [
   },
   {
     "type": "function",
-    "name": "casts",
+    "name": "cast",
     "inputs": [
       {
-        "name": "",
+        "name": "locationId",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "castOf",
+    "inputs": [
+      {
+        "name": "who",
         "type": "address",
         "internalType": "address"
       }
     ],
     "outputs": [
       {
-        "name": "targetBlock",
-        "type": "uint64",
-        "internalType": "uint64"
-      },
-      {
-        "name": "nonce",
-        "type": "uint64",
-        "internalType": "uint64"
-      },
-      {
-        "name": "spotId",
-        "type": "uint8",
-        "internalType": "uint8"
-      },
-      {
-        "name": "baitId",
-        "type": "uint8",
-        "internalType": "uint8"
-      },
-      {
-        "name": "rodId",
-        "type": "uint256",
-        "internalType": "uint256"
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct FishingGame.Cast",
+        "components": [
+          {
+            "name": "targetBlock",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "nonce",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "locationId",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "rod",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "lure",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "special",
+            "type": "uint8",
+            "internalType": "uint8"
+          }
+        ]
       }
     ],
     "stateMutability": "view"
   },
   {
     "type": "function",
-    "name": "catchChanceBps",
+    "name": "claimAchievement",
     "inputs": [
       {
-        "name": "rodLevel",
-        "type": "uint8",
-        "internalType": "uint8"
-      },
-      {
-        "name": "baitId",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "chance",
+        "name": "index",
         "type": "uint256",
         "internalType": "uint256"
       }
     ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "claimStarterRod",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "rodId",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "payable"
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -427,37 +750,27 @@ export const fishingGameAbi = [
         "internalType": "uint8"
       },
       {
-        "name": "maxRodLevel",
+        "name": "baseBiteBps",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
+        "name": "maxBiteBps",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
+        "name": "maxRarityBonus",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
+        "name": "maxWeightBonus",
         "type": "uint8",
         "internalType": "uint8"
       },
       {
-        "name": "baseCatchBps",
-        "type": "uint16",
-        "internalType": "uint16"
-      },
-      {
-        "name": "catchBpsPerLevel",
-        "type": "uint16",
-        "internalType": "uint16"
-      },
-      {
-        "name": "maxCatchBps",
-        "type": "uint16",
-        "internalType": "uint16"
-      },
-      {
-        "name": "rarityBoostPerLevel",
-        "type": "uint16",
-        "internalType": "uint16"
-      },
-      {
-        "name": "starterDurability",
-        "type": "uint16",
-        "internalType": "uint16"
-      },
-      {
-        "name": "durabilityPerLevel",
+        "name": "repairShareBps",
         "type": "uint16",
         "internalType": "uint16"
       },
@@ -467,14 +780,9 @@ export const fishingGameAbi = [
         "internalType": "uint96"
       },
       {
-        "name": "rodPrice",
-        "type": "uint96",
-        "internalType": "uint96"
-      },
-      {
-        "name": "repairPricePerPoint",
-        "type": "uint96",
-        "internalType": "uint96"
+        "name": "refillPriceGrowthBps",
+        "type": "uint32",
+        "internalType": "uint32"
       },
       {
         "name": "emissionSoftCap",
@@ -482,19 +790,29 @@ export const fishingGameAbi = [
         "internalType": "uint256"
       },
       {
-        "name": "refillPriceGrowthBps",
+        "name": "qualityPerCatch",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
+        "name": "qualityPerRarity",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
+        "name": "blendAmount",
+        "type": "uint96",
+        "internalType": "uint96"
+      },
+      {
+        "name": "blendChancePpm",
         "type": "uint32",
         "internalType": "uint32"
       },
       {
-        "name": "minRepairLevel",
+        "name": "blendMaxWins",
         "type": "uint8",
         "internalType": "uint8"
-      },
-      {
-        "name": "starterRodFee",
-        "type": "uint96",
-        "internalType": "uint96"
       }
     ],
     "stateMutability": "view"
@@ -533,6 +851,85 @@ export const fishingGameAbi = [
   },
   {
     "type": "function",
+    "name": "dex",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "count",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "best",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "dryCatches",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "equipLure",
+    "inputs": [
+      {
+        "name": "lure",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "equipRod",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "fishNft",
     "inputs": [],
     "outputs": [
@@ -559,6 +956,333 @@ export const fishingGameAbi = [
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "hiddenSpecies",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isUnlocked",
+    "inputs": [
+      {
+        "name": "player",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "locationId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "levelOf",
+    "inputs": [
+      {
+        "name": "xp",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "level",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "pure"
+  },
+  {
+    "type": "function",
+    "name": "loadout",
+    "inputs": [
+      {
+        "name": "rod",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "lure",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "special",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "loc",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "rodCatch",
+        "type": "int256",
+        "internalType": "int256"
+      },
+      {
+        "name": "biteBps",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "rarity",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "weight",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "hiddenMult",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "location",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct FishingGame.Location",
+        "components": [
+          {
+            "name": "energyCost",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "unlockType",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "unlockArg",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "special",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "active",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "speciesIds",
+            "type": "uint16[]",
+            "internalType": "uint16[]"
+          },
+          {
+            "name": "weights",
+            "type": "uint16[]",
+            "internalType": "uint16[]"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "locationCount",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "lureCasts",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "lureCount",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "lureItem",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct FishingGame.Item",
+        "components": [
+          {
+            "name": "price",
+            "type": "uint96",
+            "internalType": "uint96"
+          },
+          {
+            "name": "wear",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "catchPts",
+            "type": "int8",
+            "internalType": "int8"
+          },
+          {
+            "name": "rarity",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "weight",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "repairBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "a",
+            "type": "tuple",
+            "internalType": "struct FishingGame.Effect",
+            "components": [
+              {
+                "name": "mask",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "catchPts",
+                "type": "int8",
+                "internalType": "int8"
+              },
+              {
+                "name": "rarity",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "weight",
+                "type": "uint8",
+                "internalType": "uint8"
+              }
+            ]
+          },
+          {
+            "name": "b",
+            "type": "tuple",
+            "internalType": "struct FishingGame.Effect",
+            "components": [
+              {
+                "name": "mask",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "catchPts",
+                "type": "int8",
+                "internalType": "int8"
+              },
+              {
+                "name": "rarity",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "weight",
+                "type": "uint8",
+                "internalType": "uint8"
+              }
+            ]
+          }
+        ]
       }
     ],
     "stateMutability": "view"
@@ -597,6 +1321,30 @@ export const fishingGameAbi = [
   },
   {
     "type": "function",
+    "name": "ownsRod",
+    "inputs": [
+      {
+        "name": "player",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "pearl",
     "inputs": [],
     "outputs": [
@@ -610,54 +1358,96 @@ export const fishingGameAbi = [
   },
   {
     "type": "function",
-    "name": "players",
+    "name": "playerOf",
     "inputs": [
       {
-        "name": "",
+        "name": "who",
         "type": "address",
         "internalType": "address"
       }
     ],
     "outputs": [
       {
-        "name": "energy",
-        "type": "uint32",
-        "internalType": "uint32"
-      },
-      {
-        "name": "energyUpdatedAt",
-        "type": "uint40",
-        "internalType": "uint40"
-      },
-      {
-        "name": "starterClaimed",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "xp",
-        "type": "uint64",
-        "internalType": "uint64"
-      },
-      {
-        "name": "catches",
-        "type": "uint64",
-        "internalType": "uint64"
-      },
-      {
-        "name": "casts",
-        "type": "uint64",
-        "internalType": "uint64"
-      },
-      {
-        "name": "bestWeight",
-        "type": "uint32",
-        "internalType": "uint32"
-      },
-      {
-        "name": "bestFishId",
-        "type": "uint256",
-        "internalType": "uint256"
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct FishingGame.Player",
+        "components": [
+          {
+            "name": "energy",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "energyUpdatedAt",
+            "type": "uint40",
+            "internalType": "uint40"
+          },
+          {
+            "name": "xp",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "catches",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "casts",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "rods",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "rod",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "lure",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "unlocks",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "specialsFound",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "activeSpecial",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "dexCount",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "legends",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "claimed",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "blendWins",
+            "type": "uint8",
+            "internalType": "uint8"
+          }
+        ]
       }
     ],
     "stateMutability": "view"
@@ -729,30 +1519,6 @@ export const fishingGameAbi = [
   },
   {
     "type": "function",
-    "name": "refillState",
-    "inputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "day",
-        "type": "uint32",
-        "internalType": "uint32"
-      },
-      {
-        "name": "count",
-        "type": "uint32",
-        "internalType": "uint32"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "renounceOwnership",
     "inputs": [],
     "outputs": [],
@@ -763,7 +1529,12 @@ export const fishingGameAbi = [
     "name": "repairCost",
     "inputs": [
       {
-        "name": "rodId",
+        "name": "player",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "id",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -782,9 +1553,9 @@ export const fishingGameAbi = [
     "name": "repairRod",
     "inputs": [
       {
-        "name": "rodId",
-        "type": "uint256",
-        "internalType": "uint256"
+        "name": "id",
+        "type": "uint8",
+        "internalType": "uint8"
       }
     ],
     "outputs": [],
@@ -792,16 +1563,206 @@ export const fishingGameAbi = [
   },
   {
     "type": "function",
-    "name": "rodNft",
+    "name": "rodCount",
     "inputs": [],
     "outputs": [
       {
         "name": "",
-        "type": "address",
-        "internalType": "contract RodNFT"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "rodDurability",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "rodItem",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct FishingGame.Item",
+        "components": [
+          {
+            "name": "price",
+            "type": "uint96",
+            "internalType": "uint96"
+          },
+          {
+            "name": "wear",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "catchPts",
+            "type": "int8",
+            "internalType": "int8"
+          },
+          {
+            "name": "rarity",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "weight",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "repairBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "a",
+            "type": "tuple",
+            "internalType": "struct FishingGame.Effect",
+            "components": [
+              {
+                "name": "mask",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "catchPts",
+                "type": "int8",
+                "internalType": "int8"
+              },
+              {
+                "name": "rarity",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "weight",
+                "type": "uint8",
+                "internalType": "uint8"
+              }
+            ]
+          },
+          {
+            "name": "b",
+            "type": "tuple",
+            "internalType": "struct FishingGame.Effect",
+            "components": [
+              {
+                "name": "mask",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "catchPts",
+                "type": "int8",
+                "internalType": "int8"
+              },
+              {
+                "name": "rarity",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "weight",
+                "type": "uint8",
+                "internalType": "uint8"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "scoreOf",
+    "inputs": [
+      {
+        "name": "s",
+        "type": "tuple",
+        "internalType": "struct FishNFT.Species",
+        "components": [
+          {
+            "name": "name",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "rarity",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "minWeight",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "maxWeight",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "basePrice",
+            "type": "uint96",
+            "internalType": "uint96"
+          },
+          {
+            "name": "color",
+            "type": "uint24",
+            "internalType": "uint24"
+          }
+        ]
+      },
+      {
+        "name": "weight",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "quality",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "pure"
   },
   {
     "type": "function",
@@ -820,6 +1781,19 @@ export const fishingGameAbi = [
         "internalType": "uint256"
       }
     ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setActiveSpecial",
+    "inputs": [
+      {
+        "name": "special",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "outputs": [],
     "stateMutability": "nonpayable"
   },
   {
@@ -847,37 +1821,27 @@ export const fishingGameAbi = [
             "internalType": "uint8"
           },
           {
-            "name": "maxRodLevel",
+            "name": "baseBiteBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "maxBiteBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "maxRarityBonus",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "maxWeightBonus",
             "type": "uint8",
             "internalType": "uint8"
           },
           {
-            "name": "baseCatchBps",
-            "type": "uint16",
-            "internalType": "uint16"
-          },
-          {
-            "name": "catchBpsPerLevel",
-            "type": "uint16",
-            "internalType": "uint16"
-          },
-          {
-            "name": "maxCatchBps",
-            "type": "uint16",
-            "internalType": "uint16"
-          },
-          {
-            "name": "rarityBoostPerLevel",
-            "type": "uint16",
-            "internalType": "uint16"
-          },
-          {
-            "name": "starterDurability",
-            "type": "uint16",
-            "internalType": "uint16"
-          },
-          {
-            "name": "durabilityPerLevel",
+            "name": "repairShareBps",
             "type": "uint16",
             "internalType": "uint16"
           },
@@ -887,14 +1851,9 @@ export const fishingGameAbi = [
             "internalType": "uint96"
           },
           {
-            "name": "rodPrice",
-            "type": "uint96",
-            "internalType": "uint96"
-          },
-          {
-            "name": "repairPricePerPoint",
-            "type": "uint96",
-            "internalType": "uint96"
+            "name": "refillPriceGrowthBps",
+            "type": "uint32",
+            "internalType": "uint32"
           },
           {
             "name": "emissionSoftCap",
@@ -902,19 +1861,29 @@ export const fishingGameAbi = [
             "internalType": "uint256"
           },
           {
-            "name": "refillPriceGrowthBps",
+            "name": "qualityPerCatch",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "qualityPerRarity",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "blendAmount",
+            "type": "uint96",
+            "internalType": "uint96"
+          },
+          {
+            "name": "blendChancePpm",
             "type": "uint32",
             "internalType": "uint32"
           },
           {
-            "name": "minRepairLevel",
+            "name": "blendMaxWins",
             "type": "uint8",
             "internalType": "uint8"
-          },
-          {
-            "name": "starterRodFee",
-            "type": "uint96",
-            "internalType": "uint96"
           }
         ]
       }
@@ -924,12 +1893,17 @@ export const fishingGameAbi = [
   },
   {
     "type": "function",
-    "name": "setUpgradePrices",
+    "name": "setHidden",
     "inputs": [
       {
-        "name": "prices",
-        "type": "uint96[]",
-        "internalType": "uint96[]"
+        "name": "speciesId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "hidden",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "outputs": [],
@@ -937,7 +1911,20 @@ export const fishingGameAbi = [
   },
   {
     "type": "function",
-    "name": "spot",
+    "name": "specialCount",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "specialInfo",
     "inputs": [
       {
         "name": "id",
@@ -949,37 +1936,47 @@ export const fishingGameAbi = [
       {
         "name": "",
         "type": "tuple",
-        "internalType": "struct FishingGame.Spot",
+        "internalType": "struct FishingGame.Special",
         "components": [
           {
-            "name": "name",
-            "type": "string",
-            "internalType": "string"
+            "name": "speciesId",
+            "type": "uint16",
+            "internalType": "uint16"
           },
           {
-            "name": "minRodLevel",
+            "name": "chancePpm",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "pity",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "mask",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "catchPts",
+            "type": "int8",
+            "internalType": "int8"
+          },
+          {
+            "name": "rarity",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "weight",
             "type": "uint8",
             "internalType": "uint8"
           },
           {
-            "name": "energyCost",
+            "name": "hiddenMult",
             "type": "uint8",
             "internalType": "uint8"
-          },
-          {
-            "name": "active",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "speciesIds",
-            "type": "uint16[]",
-            "internalType": "uint16[]"
-          },
-          {
-            "name": "weights",
-            "type": "uint16[]",
-            "internalType": "uint16[]"
           }
         ]
       }
@@ -988,7 +1985,20 @@ export const fishingGameAbi = [
   },
   {
     "type": "function",
-    "name": "spotCount",
+    "name": "syncUnlocks",
+    "inputs": [
+      {
+        "name": "player",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "totalBlendWon",
     "inputs": [],
     "outputs": [
       {
@@ -1027,7 +2037,7 @@ export const fishingGameAbi = [
   },
   {
     "type": "function",
-    "name": "updateBait",
+    "name": "updateLocation",
     "inputs": [
       {
         "name": "id",
@@ -1035,29 +2045,44 @@ export const fishingGameAbi = [
         "internalType": "uint256"
       },
       {
-        "name": "b",
+        "name": "l",
         "type": "tuple",
-        "internalType": "struct FishingGame.Bait",
+        "internalType": "struct FishingGame.Location",
         "components": [
           {
-            "name": "name",
-            "type": "string",
-            "internalType": "string"
+            "name": "energyCost",
+            "type": "uint8",
+            "internalType": "uint8"
           },
           {
-            "name": "price",
-            "type": "uint96",
-            "internalType": "uint96"
+            "name": "unlockType",
+            "type": "uint8",
+            "internalType": "uint8"
           },
           {
-            "name": "catchBonusBps",
+            "name": "unlockArg",
             "type": "uint16",
             "internalType": "uint16"
           },
           {
-            "name": "rarityBonus",
-            "type": "uint16",
-            "internalType": "uint16"
+            "name": "special",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "active",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "speciesIds",
+            "type": "uint16[]",
+            "internalType": "uint16[]"
+          },
+          {
+            "name": "weights",
+            "type": "uint16[]",
+            "internalType": "uint16[]"
           }
         ]
       }
@@ -1067,7 +2092,7 @@ export const fishingGameAbi = [
   },
   {
     "type": "function",
-    "name": "updateSpot",
+    "name": "updateLure",
     "inputs": [
       {
         "name": "id",
@@ -1075,29 +2100,95 @@ export const fishingGameAbi = [
         "internalType": "uint256"
       },
       {
-        "name": "minRodLevel",
-        "type": "uint8",
-        "internalType": "uint8"
-      },
-      {
-        "name": "energyCost",
-        "type": "uint8",
-        "internalType": "uint8"
-      },
-      {
-        "name": "active",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "speciesIds",
-        "type": "uint16[]",
-        "internalType": "uint16[]"
-      },
-      {
-        "name": "weights",
-        "type": "uint16[]",
-        "internalType": "uint16[]"
+        "name": "it",
+        "type": "tuple",
+        "internalType": "struct FishingGame.Item",
+        "components": [
+          {
+            "name": "price",
+            "type": "uint96",
+            "internalType": "uint96"
+          },
+          {
+            "name": "wear",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "catchPts",
+            "type": "int8",
+            "internalType": "int8"
+          },
+          {
+            "name": "rarity",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "weight",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "repairBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "a",
+            "type": "tuple",
+            "internalType": "struct FishingGame.Effect",
+            "components": [
+              {
+                "name": "mask",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "catchPts",
+                "type": "int8",
+                "internalType": "int8"
+              },
+              {
+                "name": "rarity",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "weight",
+                "type": "uint8",
+                "internalType": "uint8"
+              }
+            ]
+          },
+          {
+            "name": "b",
+            "type": "tuple",
+            "internalType": "struct FishingGame.Effect",
+            "components": [
+              {
+                "name": "mask",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "catchPts",
+                "type": "int8",
+                "internalType": "int8"
+              },
+              {
+                "name": "rarity",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "weight",
+                "type": "uint8",
+                "internalType": "uint8"
+              }
+            ]
+          }
+        ]
       }
     ],
     "outputs": [],
@@ -1105,50 +2196,103 @@ export const fishingGameAbi = [
   },
   {
     "type": "function",
-    "name": "upgradeCost",
+    "name": "updateRod",
     "inputs": [
       {
-        "name": "rodId",
+        "name": "id",
         "type": "uint256",
         "internalType": "uint256"
-      }
-    ],
-    "outputs": [
+      },
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "upgradePrices",
-    "inputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint96",
-        "internalType": "uint96"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "upgradeRod",
-    "inputs": [
-      {
-        "name": "rodId",
-        "type": "uint256",
-        "internalType": "uint256"
+        "name": "it",
+        "type": "tuple",
+        "internalType": "struct FishingGame.Item",
+        "components": [
+          {
+            "name": "price",
+            "type": "uint96",
+            "internalType": "uint96"
+          },
+          {
+            "name": "wear",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "catchPts",
+            "type": "int8",
+            "internalType": "int8"
+          },
+          {
+            "name": "rarity",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "weight",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "repairBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "a",
+            "type": "tuple",
+            "internalType": "struct FishingGame.Effect",
+            "components": [
+              {
+                "name": "mask",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "catchPts",
+                "type": "int8",
+                "internalType": "int8"
+              },
+              {
+                "name": "rarity",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "weight",
+                "type": "uint8",
+                "internalType": "uint8"
+              }
+            ]
+          },
+          {
+            "name": "b",
+            "type": "tuple",
+            "internalType": "struct FishingGame.Effect",
+            "components": [
+              {
+                "name": "mask",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "catchPts",
+                "type": "int8",
+                "internalType": "int8"
+              },
+              {
+                "name": "rarity",
+                "type": "uint16",
+                "internalType": "uint16"
+              },
+              {
+                "name": "weight",
+                "type": "uint8",
+                "internalType": "uint8"
+              }
+            ]
+          }
+        ]
       }
     ],
     "outputs": [],
@@ -1156,54 +2300,125 @@ export const fishingGameAbi = [
   },
   {
     "type": "function",
-    "name": "weeklyBest",
+    "name": "weekEntries",
     "inputs": [
       {
-        "name": "",
+        "name": "week",
         "type": "uint256",
         "internalType": "uint256"
-      }
-    ],
-    "outputs": [
+      },
       {
-        "name": "angler",
+        "name": "player",
         "type": "address",
         "internalType": "address"
-      },
+      }
+    ],
+    "outputs": [
       {
-        "name": "fishId",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "weight",
-        "type": "uint32",
-        "internalType": "uint32"
-      },
-      {
-        "name": "speciesId",
-        "type": "uint16",
-        "internalType": "uint16"
+        "name": "",
+        "type": "tuple[]",
+        "internalType": "struct FishingGame.WeekEntry[]",
+        "components": [
+          {
+            "name": "score",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "speciesId",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "weight",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "quality",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "at",
+            "type": "uint40",
+            "internalType": "uint40"
+          }
+        ]
       }
     ],
     "stateMutability": "view"
   },
   {
     "type": "function",
-    "name": "withdraw",
+    "name": "weekPlayer",
     "inputs": [
       {
-        "name": "to",
-        "type": "address",
-        "internalType": "address payable"
+        "name": "week",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "weekPlayerCount",
+    "inputs": [
+      {
+        "name": "week",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "weekTotal",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "event",
-    "name": "BaitBought",
+    "name": "AchievementClaimed",
     "inputs": [
       {
         "name": "player",
@@ -1212,19 +2427,32 @@ export const fishingGameAbi = [
         "internalType": "address"
       },
       {
-        "name": "baitId",
-        "type": "uint8",
-        "indexed": true,
-        "internalType": "uint8"
-      },
-      {
-        "name": "amount",
+        "name": "index",
         "type": "uint256",
-        "indexed": false,
+        "indexed": true,
         "internalType": "uint256"
       },
       {
-        "name": "cost",
+        "name": "reward",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "BottleFound",
+    "inputs": [
+      {
+        "name": "player",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -1241,12 +2469,6 @@ export const fishingGameAbi = [
         "type": "address",
         "indexed": true,
         "internalType": "address"
-      },
-      {
-        "name": "rodId",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -1262,19 +2484,19 @@ export const fishingGameAbi = [
         "internalType": "address"
       },
       {
-        "name": "rodId",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      },
-      {
-        "name": "spotId",
+        "name": "locationId",
         "type": "uint8",
         "indexed": false,
         "internalType": "uint8"
       },
       {
-        "name": "baitId",
+        "name": "rod",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
+        "name": "lure",
         "type": "uint8",
         "indexed": false,
         "internalType": "uint8"
@@ -1317,16 +2539,28 @@ export const fishingGameAbi = [
         "internalType": "uint32"
       },
       {
-        "name": "spotId",
+        "name": "quality",
         "type": "uint8",
         "indexed": false,
         "internalType": "uint8"
       },
       {
-        "name": "rodId",
-        "type": "uint256",
+        "name": "locationId",
+        "type": "uint8",
         "indexed": false,
-        "internalType": "uint256"
+        "internalType": "uint8"
+      },
+      {
+        "name": "score",
+        "type": "uint16",
+        "indexed": false,
+        "internalType": "uint16"
+      },
+      {
+        "name": "special",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
       }
     ],
     "anonymous": false
@@ -1377,6 +2611,50 @@ export const fishingGameAbi = [
   },
   {
     "type": "event",
+    "name": "LocationUnlocked",
+    "inputs": [
+      {
+        "name": "player",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "locationId",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "LureBought",
+    "inputs": [
+      {
+        "name": "player",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "lure",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
+        "name": "cost",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "Missed",
     "inputs": [
       {
@@ -1386,16 +2664,10 @@ export const fishingGameAbi = [
         "internalType": "address"
       },
       {
-        "name": "spotId",
+        "name": "locationId",
         "type": "uint8",
         "indexed": false,
         "internalType": "uint8"
-      },
-      {
-        "name": "rodId",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -1421,7 +2693,7 @@ export const fishingGameAbi = [
   },
   {
     "type": "event",
-    "name": "RodMinted",
+    "name": "RodBought",
     "inputs": [
       {
         "name": "player",
@@ -1430,63 +2702,7 @@ export const fishingGameAbi = [
         "internalType": "address"
       },
       {
-        "name": "rodId",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      },
-      {
-        "name": "starter",
-        "type": "bool",
-        "indexed": false,
-        "internalType": "bool"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "RodRepaired",
-    "inputs": [
-      {
-        "name": "player",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "rodId",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      },
-      {
-        "name": "cost",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "RodUpgraded",
-    "inputs": [
-      {
-        "name": "player",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "rodId",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      },
-      {
-        "name": "newLevel",
+        "name": "rod",
         "type": "uint8",
         "indexed": false,
         "internalType": "uint8"
@@ -1502,7 +2718,32 @@ export const fishingGameAbi = [
   },
   {
     "type": "event",
-    "name": "WeeklyRecordSet",
+    "name": "RodRepaired",
+    "inputs": [
+      {
+        "name": "player",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "rod",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
+        "name": "cost",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "WeekScore",
     "inputs": [
       {
         "name": "week",
@@ -1511,25 +2752,29 @@ export const fishingGameAbi = [
         "internalType": "uint256"
       },
       {
-        "name": "angler",
+        "name": "player",
         "type": "address",
         "indexed": true,
         "internalType": "address"
       },
       {
-        "name": "fishId",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "weight",
+        "name": "total",
         "type": "uint32",
         "indexed": false,
         "internalType": "uint32"
       }
     ],
     "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "AlreadyClaimed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AlreadyOwned",
+    "inputs": []
   },
   {
     "type": "error",
@@ -1543,7 +2788,17 @@ export const fishingGameAbi = [
   },
   {
     "type": "error",
-    "name": "MaxLevel",
+    "name": "EnergyFull",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "LocationInactive",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "LocationLocked",
     "inputs": []
   },
   {
@@ -1553,7 +2808,7 @@ export const fishingGameAbi = [
   },
   {
     "type": "error",
-    "name": "NotEnoughBait",
+    "name": "NotCompleted",
     "inputs": []
   },
   {
@@ -1568,7 +2823,7 @@ export const fishingGameAbi = [
   },
   {
     "type": "error",
-    "name": "NotRodOwner",
+    "name": "NotOwned",
     "inputs": []
   },
   {
@@ -1600,32 +2855,12 @@ export const fishingGameAbi = [
   },
   {
     "type": "error",
-    "name": "RepairNotAllowed",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "RodBroken",
     "inputs": []
   },
   {
     "type": "error",
-    "name": "RodInUse",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "RodLevelTooLow",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "SpotInactive",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "StarterAlreadyClaimed",
+    "name": "SpecialNotHeld",
     "inputs": []
   },
   {
@@ -1635,22 +2870,27 @@ export const fishingGameAbi = [
   },
   {
     "type": "error",
-    "name": "UnknownBait",
+    "name": "UnknownAchievement",
     "inputs": []
   },
   {
     "type": "error",
-    "name": "UnknownSpot",
+    "name": "UnknownLocation",
     "inputs": []
   },
   {
     "type": "error",
-    "name": "WithdrawFailed",
+    "name": "UnknownLure",
     "inputs": []
   },
   {
     "type": "error",
-    "name": "WrongFee",
+    "name": "UnknownRod",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UnknownSpecial",
     "inputs": []
   }
 ] as const;

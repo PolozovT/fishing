@@ -144,6 +144,67 @@ export const fishNftAbi = [
             "internalType": "uint8"
           },
           {
+            "name": "quality",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "caughtAt",
+            "type": "uint40",
+            "internalType": "uint40"
+          },
+          {
+            "name": "angler",
+            "type": "address",
+            "internalType": "address"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "fishOf",
+    "inputs": [
+      {
+        "name": "owner_",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "ids",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "list",
+        "type": "tuple[]",
+        "internalType": "struct FishNFT.Fish[]",
+        "components": [
+          {
+            "name": "speciesId",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "weight",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "spotId",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "quality",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
             "name": "caughtAt",
             "type": "uint40",
             "internalType": "uint40"
@@ -186,6 +247,30 @@ export const fishNftAbi = [
         "name": "",
         "type": "address",
         "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "heldOf",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -240,6 +325,11 @@ export const fishNftAbi = [
           },
           {
             "name": "spotId",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "quality",
             "type": "uint8",
             "internalType": "uint8"
           },
@@ -510,6 +600,49 @@ export const fishNftAbi = [
   },
   {
     "type": "function",
+    "name": "tokenByIndex",
+    "inputs": [
+      {
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "tokenOfOwnerByIndex",
+    "inputs": [
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "tokenURI",
     "inputs": [
       {
@@ -752,6 +885,11 @@ export const fishNftAbi = [
   },
   {
     "type": "error",
+    "name": "ERC721EnumerableForbiddenBatchMint",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "ERC721IncorrectOwner",
     "inputs": [
       {
@@ -848,6 +986,22 @@ export const fishNftAbi = [
     "inputs": [
       {
         "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC721OutOfBoundsIndex",
+    "inputs": [
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "index",
         "type": "uint256",
         "internalType": "uint256"
       }

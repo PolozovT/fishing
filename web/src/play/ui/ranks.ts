@@ -4,7 +4,12 @@ import { achievements, collectorStats } from '../../game/progress';
 import { COUNTED_CATCHES, SETTLEMENT_ENABLED, WEEKLY_REWARDS, standings, weekEnd, weekId, weekStart, weekTotal } from '../../game/tournament';
 import { RARITY_CLASS } from '../../i18n';
 import { fmtWeight, h, mount, sigOf } from '../../ui/dom';
+import { EXPLORER_URL } from '../../config';
+import { world } from '../chain';
+import { CHAIN } from '../ops';
 import { getSave, rev } from '../state';
+import { state } from '../../store';
+import { shortAddr } from '../../ui/dom';
 import { claimButton } from './collection';
 import { ago, duration, pearl, qualityTag } from './fmt';
 
@@ -20,7 +25,7 @@ let countdownEl: HTMLElement | null = null;
 export function initRanks(host: HTMLElement): () => void {
   const rerender = mount(
     host,
-    () => sigOf(rev(), view, weekId(Date.now()), Math.floor(Date.now() / 60_000)),
+    () => sigOf(rev(), view, weekId(Date.now()), Math.floor(Date.now() / 60_000), world.standings, world.history, state.wallet?.address),
     () => render(rerender),
   );
   return rerender;
@@ -28,6 +33,12 @@ export function initRanks(host: HTMLElement): () => void {
 
 export function tickRanks(): void {
   if (countdownEl) countdownEl.textContent = `resets in ${duration(weekEnd(weekId(Date.now())) - Date.now())}`;
+}
+
+/** An angler's name linking to their address in the block explorer (plain text when the network has none). */
+function anglerLink(name: string, address: string): HTMLElement | string {
+  if (!EXPLORER_URL) return name;
+  return h('a', { class: 'addr-link', text: name, title: `${address} · open in the explorer`, attrs: { href: `${EXPLORER_URL}/address/${address}`, target: '_blank', rel: 'noopener noreferrer' } });
 }
 
 const dot = (speciesId: number): HTMLElement => h('span', { class: RARITY_CLASS[SPECIES[speciesId].rarity] }, h('span', { class: 'dot' }), SPECIES[speciesId].name);
@@ -38,7 +49,11 @@ function weekly(): HTMLElement[] {
   const week = weekId(now);
   const mine = s.weeks[week] ?? [];
   const total = weekTotal(mine);
-  const table = standings(week, now, total);
+  const me = state.wallet?.address.toLowerCase();
+  // on the contracts the table is every angler who landed a fish this week; locally it is the labelled demo field
+  const table: { name: string; total: number; demo: boolean; you?: boolean; address?: string }[] = CHAIN
+    ? world.standings.map((r) => ({ name: r.address.toLowerCase() === me ? 'You' : shortAddr(r.address), total: r.total, demo: false, you: r.address.toLowerCase() === me, address: r.address }))
+    : standings(week, now, total);
   const rank = table.findIndex((r) => r.you) + 1;
   countdownEl = h('span', { class: 'muted small' });
   tickRanks();
@@ -59,16 +74,19 @@ function weekly(): HTMLElement[] {
         h(
           'div',
           null,
-          h('b', { text: mine.length ? `Your score · place ${rank} of ${table.length}` : 'No catches this week yet' }),
+          h('b', { text: mine.length ? (rank > 0 ? `Your score · place ${rank} of ${table.length}` : 'Your score') : 'No catches this week yet' }),
           h('div', { class: 'muted small', text: `Sum of your ${COUNTED_CATCHES} best catches this week (${mine.length}/${COUNTED_CATCHES} counted). Points are fixed when the fish is landed: selling it keeps them.` }),
         ),
       ),
-      h(
-        'p',
-        { class: 'note-demo small' },
-        h('span', { class: 'badge badge-demo', text: 'Demo' }),
-        ' Opponents below are generated for preview. They are not real players, and no rank rewards are paid until online tournaments exist.',
-      ),
+      CHAIN
+        ? h('p', { class: 'muted small', text: 'Live standings from the game contract: every angler who landed a fish this week.' })
+        : h(
+            'p',
+            { class: 'note-demo small' },
+            h('span', { class: 'badge badge-demo', text: 'Demo' }),
+            ' Opponents below are generated for preview. They are not real players, and no rank rewards are paid until online tournaments exist.',
+          ),
+      table.length === 0 ? h('p', { class: 'empty', text: 'Nobody has landed a fish this week yet.' }) : null,
       h(
         'table',
         { class: 'board' },
@@ -81,7 +99,7 @@ function weekly(): HTMLElement[] {
               'tr',
               { class: r.you ? 'me' : '' },
               h('td', { text: String(i + 1) }),
-              h('td', null, r.name, r.demo ? h('span', { class: 'badge badge-demo', text: 'Demo' }) : null),
+              h('td', null, r.address ? anglerLink(r.name, r.address) : r.name, r.demo ? h('span', { class: 'badge badge-demo', text: 'Demo' }) : null),
               h('td', { text: pearl(r.total) }),
             ),
           ),
@@ -115,9 +133,10 @@ function weekly(): HTMLElement[] {
         { class: 'board' },
         h('tbody', null, WEEKLY_REWARDS.map((t) => h('tr', null, h('td', { text: t.from === t.to ? `${t.from}` : `${t.from}–${t.to}` }), h('td', { text: `${pearl(t.pearl)} PEARL${t.trophy ? ' + trophy' : ''}` })))),
       ),
-      h('p', { class: 'muted small', text: SETTLEMENT_ENABLED ? '' : 'Not paid out yet: rank rewards need real opponents and a trusted server.' }),
+      h('p', { class: 'muted small', text: SETTLEMENT_ENABLED ? '' : CHAIN ? 'Not paid out yet: scores are recorded onchain, the prize payout is not switched on.' : 'Not paid out yet: rank rewards need real opponents and a trusted server.' }),
     ),
-    past.length
+    CHAIN ? chainHistory() : null,
+    !CHAIN && past.length
       ? h(
           'section',
           { class: 'shop-sec' },
@@ -147,6 +166,27 @@ function weekly(): HTMLElement[] {
         )
       : null,
   ].filter((x): x is HTMLElement => !!x);
+}
+
+function chainHistory(): HTMLElement | null {
+  if (world.history.length === 0) return null;
+  return h(
+    'section',
+    { class: 'shop-sec' },
+    h('h3', { text: 'Past weeks' }),
+    h(
+      'table',
+      { class: 'board' },
+      h('thead', null, h('tr', null, h('th', { text: 'Week of' }), h('th', { text: 'Score' }))),
+      h(
+        'tbody',
+        null,
+        world.history.map((w) =>
+          h('tr', null, h('td', { text: new Date(weekStart(w.week)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) }), h('td', { text: pearl(w.total) })),
+        ),
+      ),
+    ),
+  );
 }
 
 function biggest(): HTMLElement[] {

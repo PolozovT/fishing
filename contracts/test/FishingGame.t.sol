@@ -3,596 +3,605 @@ pragma solidity ^0.8.28;
 
 import {BaseTest} from "./Base.t.sol";
 import {FishNFT} from "../src/FishNFT.sol";
-import {RodNFT} from "../src/RodNFT.sol";
 import {FishingGame} from "../src/FishingGame.sol";
+import {GameLens} from "../src/GameLens.sol";
+import {GameSetup} from "../script/GameSetup.sol";
 
 contract FishingGameTest is BaseTest {
-    // ------------------------------------------------------------- rods
+    // ------------------------------------------------------------------ catalog
 
-    function test_starterRodOncePerAddress() public {
-        uint256 id = _starter(alice);
-        assertEq(rod.ownerOf(id), alice);
-        RodNFT.Rod memory r = rod.rods(id);
-        assertEq(r.level, 1);
-        assertEq(r.durability, 60);
-
-        vm.prank(alice);
-        vm.expectRevert(FishingGame.StarterAlreadyClaimed.selector);
-        game.claimStarterRod();
+    function test_catalogIsSeeded() public view {
+        GameLens.Catalog memory c = lens.catalog();
+        assertEq(c.rods.length, 6);
+        assertEq(c.lures.length, 6);
+        assertEq(c.locations.length, 8);
+        assertEq(c.specials.length, 3);
+        assertEq(c.achievements.length, 14);
+        assertEq(c.species.length, 36);
+        assertTrue(c.hidden[14] && c.hidden[34] && c.hidden[35]);
+        assertEq(c.rods[5].price, 25_000 * E);
     }
 
-    function test_starterRodFee() public {
-        FishingGame.Config memory c = GameSetupConfig.get(game);
-        c.starterRodFee = 0.001 ether;
-        vm.prank(owner);
-        game.setConfig(c);
-        vm.deal(alice, 1 ether);
-        vm.startPrank(alice);
-        vm.expectRevert(FishingGame.WrongFee.selector);
-        game.claimStarterRod();
-        vm.expectRevert(FishingGame.WrongFee.selector);
-        game.claimStarterRod{value: 0.002 ether}();
-        game.claimStarterRod{value: 0.001 ether}();
-        vm.stopPrank();
-        assertEq(address(game).balance, 0.001 ether);
-
-        vm.prank(alice);
-        vm.expectRevert();
-        game.withdraw(payable(alice));
-        address treasury = makeAddr("treasury");
-        vm.prank(owner);
-        game.withdraw(payable(treasury));
-        assertEq(treasury.balance, 0.001 ether);
+    function test_legendAchievementMatchesTheCatalog() public view {
+        GameLens.Catalog memory c = lens.catalog();
+        uint256 legends;
+        for (uint256 i; i < c.species.length; i++) if (c.species[i].rarity >= 4) legends++;
+        assertEq(c.achievements[12].arg, legends, "the 'all legends' goal must equal the number of legendary+ species");
     }
 
-    function test_buyRodBurnsPearl() public {
-        _fund(alice, 25e18);
-        vm.prank(alice);
-        game.buyRod();
-        assertEq(pearl.balanceOf(alice), 0);
-        assertEq(rod.balanceOf(alice), 1);
-    }
-
-    function test_buyRodWithoutPearlReverts() public {
-        vm.prank(alice);
-        vm.expectRevert();
-        game.buyRod();
-    }
-
-    function test_upgradeRod() public {
-        uint256 id = _starter(alice);
-        _fund(alice, 80e18);
-        vm.prank(alice);
-        game.upgradeRod(id);
-        RodNFT.Rod memory r = rod.rods(id);
-        assertEq(r.level, 2);
-        assertEq(r.maxDurability, 90);
-        assertEq(r.durability, 90);
-        assertEq(pearl.balanceOf(alice), 0);
-    }
-
-    function test_upgradeRodStopsAtMax() public {
-        uint256 id = _starter(alice);
-        _fund(alice, 10_000e18);
-        vm.startPrank(alice);
-        for (uint256 i; i < 4; i++) game.upgradeRod(id);
-        assertEq(rod.rods(id).level, 5);
-        vm.expectRevert(FishingGame.MaxLevel.selector);
-        game.upgradeRod(id);
-        vm.stopPrank();
-        assertEq(pearl.balanceOf(alice), 10_000e18 - (80 + 450 + 1500 + 5000) * 1e18);
-    }
-
-    function test_onlyOwnerCanUpgrade() public {
-        uint256 id = _starter(alice);
-        _fund(bob, 100e18);
-        vm.prank(bob);
-        vm.expectRevert(FishingGame.NotRodOwner.selector);
-        game.upgradeRod(id);
-    }
-
-    function test_repairRod() public {
-        uint256 id = _starter(alice);
-        for (uint256 i; i < 5; i++) {
-            _fishOnce(alice, id, 0, 0, keccak256(abi.encode(i)));
+    function test_everyUnlockFishLivesSomewhereReachable() public view {
+        GameLens.Catalog memory c = lens.catalog();
+        // walk the unlock graph: special-gated locations open once their special lives in an open location
+        bool[] memory open = new bool[](c.locations.length);
+        bool[] memory found = new bool[](c.specials.length);
+        for (uint256 round; round < 10; round++) {
+            for (uint256 i; i < open.length; i++) {
+                FishingGame.Location memory l = c.locations[i];
+                if (l.unlockType != 3 || found[l.unlockArg]) open[i] = true;
+                if (open[i] && l.special != 0) found[l.special - 1] = true;
+            }
         }
-        assertEq(rod.rods(id).durability, 55);
-        uint256 cost = game.repairCost(id);
-        assertEq(cost, 5 * 1e17); // 5 points * 0.1 * level 1
-        _fund(alice, cost);
-        vm.prank(alice);
-        game.repairRod(id);
-        assertEq(rod.rods(id).durability, 60);
-
-        vm.prank(alice);
-        vm.expectRevert(FishingGame.NothingToRepair.selector);
-        game.repairRod(id);
+        for (uint256 i; i < open.length; i++) assertTrue(open[i], "location can never open");
     }
 
-    function test_brokenRodCannotCast() public {
-        uint256 id = _starter(alice);
-        RodNFT.Rod memory r = rod.rods(id);
-        r.durability = 0;
-        vm.prank(address(game));
-        rod.setRod(id, r);
-        vm.prank(alice);
-        vm.expectRevert(FishingGame.RodBroken.selector);
-        game.cast(id, 0, 0);
+    // ------------------------------------------------------------------ bonuses
+
+    function test_loadoutAddsRodLureAndLocationBonus() public view {
+        // Deep Troller (4) + Glow Jig (3 → 4) at Northern Sea (3)
+        (int256 rodCatch, uint256 bite, uint256 rarity, uint256 weight, uint256 hm) = game.loadout(4, 4, 0, 3);
+        assertEq(rodCatch, 7);
+        assertEq(bite, 6_500 + 1_000);
+        assertEq(rarity, 45);
+        assertEq(weight, 20);
+        assertEq(hm, 1);
+        // the same tackle on the pond gets no location bonus
+        (rodCatch, bite, rarity, weight,) = game.loadout(4, 4, 0, 0);
+        assertEq(rodCatch, 2);
+        assertEq(bite, 6_500 + 200);
+        assertEq(rarity, 0);
+        assertEq(weight, 8);
     }
 
-    // ------------------------------------------------------------- cast / reel
+    function test_flyRodLosesCatchAwayFromMovingWater() public view {
+        (int256 pond,,,,) = game.loadout(3, 0, 0, 0);
+        (int256 rapids,, uint256 rarity,,) = game.loadout(3, 3, 0, 4);
+        assertEq(pond, -4);
+        assertEq(rapids, 4);
+        assertEq(rarity, 40 + 60 + 40 + 70);
+    }
 
-    function test_castLocksRodAndSpendsEnergy() public {
-        uint256 id = _starter(alice);
+    function test_specialBonusRespectsItsLocations() public view {
+        (,, uint256 atGolden,,) = game.loadout(0, 0, 1, 5);
+        (,, uint256 atPond,,) = game.loadout(0, 0, 1, 0);
+        assertEq(atGolden, 25);
+        assertEq(atPond, 0);
+        (,,, uint256 weight,) = game.loadout(0, 0, 2, 0);
+        assertEq(weight, 8);
+        (,,,, uint256 hm) = game.loadout(0, 0, 3, 7);
+        assertEq(hm, 3);
+    }
+
+    function test_loadoutIsCappedEverywhere() public view {
+        for (uint256 r; r < 6; r++) {
+            for (uint256 l; l <= 6; l++) {
+                for (uint256 s; s <= 3; s++) {
+                    for (uint256 loc; loc < 8; loc++) {
+                        (, uint256 bite, uint256 rarity, uint256 weight,) = game.loadout(r, l, s, loc);
+                        assertLe(bite, 9_500);
+                        assertGe(bite, 500);
+                        assertLe(rarity, 300);
+                        assertLe(weight, 60);
+                    }
+                }
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------ cast and reel
+
+    function test_castSpendsEnergyAndCommitsToAFutureBlock() public {
         vm.prank(alice);
-        game.cast(id, 0, 0);
-        assertTrue(rod.locked(id));
+        game.cast(0);
+        FishingGame.Cast memory c = game.castOf(alice);
+        assertEq(c.targetBlock, block.number + 2);
         assertEq(game.currentEnergy(alice), 19);
-
-        vm.prank(alice);
-        vm.expectRevert(RodNFT.RodLocked.selector);
-        rod.transferFrom(alice, bob, id);
-    }
-
-    function test_reelTooEarlyReverts() public {
-        uint256 id = _starter(alice);
-        vm.prank(alice);
-        game.cast(id, 0, 0);
-        (uint64 target,,,,) = game.casts(alice);
-        vm.roll(target);
         vm.prank(alice);
         vm.expectRevert(FishingGame.TooEarly.selector);
         game.reel();
-    }
-
-    function test_reelWithoutCastReverts() public {
         vm.prank(alice);
-        vm.expectRevert(FishingGame.NoActiveCast.selector);
-        game.reel();
-    }
-
-    function test_cannotDoubleCast() public {
-        uint256 id = _starter(alice);
-        vm.startPrank(alice);
-        game.cast(id, 0, 0);
         vm.expectRevert(FishingGame.CastInProgress.selector);
-        game.cast(id, 0, 0);
-        vm.stopPrank();
+        game.cast(0);
     }
 
-    function test_newCastAutoResolvesFinishedOne() public {
-        uint256 id = _starter(alice);
-        vm.prank(alice);
-        game.cast(id, 0, 0);
-        (uint64 target,,,,) = game.casts(alice);
-        vm.roll(target + 1);
-        vm.setBlockhash(target, bytes32(uint256(1)));
-        vm.prank(alice);
-        game.cast(id, 0, 0); // resolves the first one, starts a new one
-        assertEq(rod.rods(id).durability, 59);
-        (uint64 target2,,,,) = game.casts(alice);
-        assertGt(target2, target);
-    }
-
-    function test_catchMintsFishWithValidStats() public {
-        uint256 id = _starter(alice);
-        // find an entropy that catches
-        uint256 fishId;
-        for (uint256 i; fishId == 0; i++) {
-            fishId = _fishOnce(alice, id, 0, 0, keccak256(abi.encode("catch", i)));
-        }
-        FishNFT.Fish memory f = fish.fish(fishId);
-        FishNFT.Species memory s = fish.species(f.speciesId);
-        assertEq(fish.ownerOf(fishId), alice);
-        assertEq(f.angler, alice);
-        assertEq(f.spotId, 0);
-        assertLe(f.speciesId, 4);
-        assertGe(f.weight, s.minWeight);
-        assertLe(f.weight, s.maxWeight);
-        assertFalse(rod.locked(id));
-
-        (,,, uint64 xp, uint64 catches,, uint32 best, uint256 bestId) = game.players(alice);
-        assertEq(catches, 1);
-        assertEq(xp, 10 * (uint64(s.rarity) + 1));
-        assertEq(best, f.weight);
-        assertEq(bestId, fishId);
-    }
-
-    function test_expiredCastLosesFish() public {
-        uint256 id = _starter(alice);
-        vm.prank(alice);
-        game.cast(id, 0, 0);
-        (uint64 target,,,,) = game.casts(alice);
-        vm.roll(target + 300); // blockhash(target) == 0
-        vm.expectEmit(true, false, false, true);
-        emit FishingGame.CastExpired(alice, id);
+    function test_reelNeedsACast() public {
+        vm.expectRevert(FishingGame.NoActiveCast.selector);
         vm.prank(alice);
         game.reel();
-        assertEq(fish.balanceOf(alice), 0);
-        assertFalse(rod.locked(id));
-        assertEq(rod.rods(id).durability, 59); // wear is charged: expiring a bad outcome is never free
-        assertEq(game.currentEnergy(alice), 19); // energy stays spent
     }
 
-    /// The core fairness property: the outcome is a pure function of a block that did not exist at cast time.
-    /// Re-trying the reel (e.g. reverting it in a wrapper contract) can never change the result.
-    function test_outcomeIsFixedOnceTargetBlockExists() public {
-        uint256 id = _starter(alice);
+    function test_lockedLocationCannotBeFished() public {
         vm.prank(alice);
-        game.cast(id, 0, 0);
-        (uint64 target,,,,) = game.casts(alice);
-        vm.roll(target + 1);
-        vm.setBlockhash(target, keccak256("fixed"));
-
-        uint256 snap = vm.snapshotState();
+        vm.expectRevert(FishingGame.LocationLocked.selector);
+        game.cast(7);
         vm.prank(alice);
-        game.reel();
-        uint256 n1 = fish.balanceOf(alice);
-        uint256 w1 = n1 > 0 ? fish.fish(1).weight : 0;
-
-        vm.revertToState(snap);
-        vm.roll(target + 50); // reel later, different caller
-        vm.prank(bob);
-        game.reelFor(alice);
-        uint256 n2 = fish.balanceOf(alice);
-        uint256 w2 = n2 > 0 ? fish.fish(1).weight : 0;
-
-        assertEq(n1, n2);
-        assertEq(w1, w2);
+        vm.expectRevert(FishingGame.UnknownLocation.selector);
+        game.cast(8);
     }
 
-    function test_reelForGivesFishToPlayer() public {
-        uint256 id = _starter(alice);
-        uint256 caught;
-        for (uint256 i; caught == 0 && i < 50; i++) {
-            vm.prank(alice);
-            game.cast(id, 0, 0);
-            (uint64 target,,,,) = game.casts(alice);
-            vm.roll(target + 1);
-            vm.setBlockhash(target, keccak256(abi.encode("keeper", i)));
-            vm.prank(bob);
-            game.reelFor(alice);
-            caught = fish.balanceOf(alice);
-        }
-        assertGt(caught, 0);
-        assertEq(fish.balanceOf(bob), 0);
-    }
-
-    function test_spotRequiresRodLevel() public {
-        uint256 id = _starter(alice);
-        vm.prank(alice);
-        vm.expectRevert(FishingGame.RodLevelTooLow.selector);
-        game.cast(id, 1, 0);
-
-        _setRodLevel(id, 2);
-        vm.prank(alice);
-        game.cast(id, 1, 0);
-    }
-
-    function test_cannotFishWithSomeoneElsesRod() public {
-        uint256 id = _starter(alice);
-        vm.prank(bob);
-        vm.expectRevert(FishingGame.NotRodOwner.selector);
-        game.cast(id, 0, 0);
-    }
-
-    function test_unknownSpotAndBait() public {
-        uint256 id = _starter(alice);
-        vm.startPrank(alice);
-        vm.expectRevert(FishingGame.UnknownSpot.selector);
-        game.cast(id, 99, 0);
-        vm.expectRevert(FishingGame.UnknownBait.selector);
-        game.cast(id, 0, 99);
-        vm.stopPrank();
-    }
-
-    function test_inactiveSpot() public {
-        uint256 id = _starter(alice);
-        FishingGame.Spot memory s = game.spot(0);
-        vm.prank(owner);
-        game.updateSpot(0, s.minRodLevel, s.energyCost, false, s.speciesIds, s.weights);
-        vm.prank(alice);
-        vm.expectRevert(FishingGame.SpotInactive.selector);
-        game.cast(id, 0, 0);
-    }
-
-    // ------------------------------------------------------------- bait
-
-    function test_baitIsBoughtAndConsumed() public {
-        uint256 id = _starter(alice);
-        _fund(alice, 5e18);
-        vm.prank(alice);
-        game.buyBait(1, 10);
-        assertEq(pearl.balanceOf(alice), 0);
-        assertEq(game.baitBalance(alice, 1), 10);
-        _fishOnce(alice, id, 0, 1, bytes32(uint256(7)));
-        assertEq(game.baitBalance(alice, 1), 9);
-    }
-
-    function test_castWithoutBaitReverts() public {
-        uint256 id = _starter(alice);
-        vm.prank(alice);
-        vm.expectRevert(FishingGame.NotEnoughBait.selector);
-        game.cast(id, 0, 2);
-    }
-
-    function test_catchChance() public view {
-        assertEq(game.catchChanceBps(1, 0), 5_500);
-        assertEq(game.catchChanceBps(3, 0), 6_900);
-        assertEq(game.catchChanceBps(1, 1), 7_000);
-        assertEq(game.catchChanceBps(5, 3), 9_500); // capped
-    }
-
-    // ------------------------------------------------------------- energy
-
-    function test_energyRunsOutAndRegenerates() public {
-        uint256 id = _starter(alice);
-        for (uint256 i; i < 20; i++) {
-            _fishOnce(alice, id, 0, 0, keccak256(abi.encode(i)));
-        }
-        assertEq(game.currentEnergy(alice), 0);
+    function test_notEnoughEnergy() public {
+        for (uint256 i; i < 20; i++) _fishOnce(alice, 0, bytes32(i + 1));
         vm.prank(alice);
         vm.expectRevert(FishingGame.NotEnoughEnergy.selector);
-        game.cast(id, 0, 0);
-
-        vm.warp(block.timestamp + 15 minutes);
-        assertEq(game.currentEnergy(alice), 1);
-        vm.warp(block.timestamp + 100 days);
-        assertEq(game.currentEnergy(alice), 20);
-    }
-
-    function test_energyKeepsPartialRegenProgress() public {
-        uint256 id = _starter(alice);
-        for (uint256 i; i < 20; i++) {
-            _fishOnce(alice, id, 0, 0, keccak256(abi.encode(i)));
-        }
-        vm.warp(block.timestamp + 25 minutes); // 1 energy + 10 min progress
-        _fishOnce(alice, id, 0, 0, bytes32(uint256(1)));
-        assertEq(game.currentEnergy(alice), 0);
-        vm.warp(block.timestamp + 5 minutes); // 10 + 5 = 15 min → 1 energy
+        game.cast(0);
+        vm.warp(block.timestamp + 2 minutes);
         assertEq(game.currentEnergy(alice), 1);
     }
 
-    function test_refillEnergy() public {
-        uint256 id = _starter(alice);
-        for (uint256 i; i < 5; i++) {
-            _fishOnce(alice, id, 0, 0, keccak256(abi.encode(i)));
+    function test_anyoneCanReelForAPlayer() public {
+        vm.prank(alice);
+        game.cast(0);
+        uint64 target = game.castOf(alice).targetBlock;
+        vm.roll(target + 1);
+        // find an entropy that lands a fish, then let bob finish the cast
+        vm.setBlockhash(target, keccak256("some block"));
+        vm.prank(bob);
+        game.reelFor(alice);
+        assertEq(fish.balanceOf(bob), 0);
+        assertEq(game.castOf(alice).targetBlock, 0);
+    }
+
+    function test_expiredCastLosesTheFish() public {
+        vm.prank(alice);
+        game.cast(0);
+        vm.roll(block.number + 300);
+        vm.expectEmit(true, false, false, false);
+        emit FishingGame.CastExpired(alice);
+        vm.prank(alice);
+        game.reel();
+        assertEq(fish.balanceOf(alice), 0);
+    }
+
+    function test_newCastResolvesTheFinishedOne() public {
+        vm.prank(alice);
+        game.cast(0);
+        vm.roll(block.number + 3);
+        vm.prank(alice);
+        game.cast(0);
+        assertEq(game.playerOf(alice).casts, 2);
+    }
+
+    function testFuzz_catchIsAlwaysFromTheLocationPool(bytes32 entropy) public {
+        uint256 id = _fishOnce(alice, 0, entropy);
+        if (id == 0) return;
+        FishNFT.Fish memory f = fish.fish(id);
+        FishNFT.Species memory s = fish.species(f.speciesId);
+        assertTrue(f.speciesId <= 4 || f.speciesId == 20, "not a Village Pond species");
+        assertGe(f.weight, s.minWeight);
+        assertLe(f.weight, s.maxWeight);
+        assertLe(f.quality, 4);
+        assertEq(f.angler, alice);
+        assertEq(fish.ownerOf(id), alice);
+    }
+
+    function test_biteRateIsNearTheConfiguredChance() public {
+        uint256 bites;
+        uint256 n = 600;
+        for (uint256 i; i < n; i++) {
+            if (game.currentEnergy(alice) == 0) _rest();
+            uint256 before = game.playerOf(alice).catches + game.playerOf(alice).blendWins;
+            _fishOnce(alice, 0, keccak256(abi.encode("bite", i)));
+            if (game.playerOf(alice).catches + game.playerOf(alice).blendWins > before) bites++;
         }
-        _fund(alice, 20e18);
-        vm.prank(alice);
-        game.refillEnergy();
-        assertEq(game.currentEnergy(alice), 20);
-        assertEq(pearl.balanceOf(alice), 0);
+        assertApproxEqAbs(bites, (n * 65) / 100, 40);
     }
 
-    function test_refillPriceGrowsWithinDayAndResets() public {
-        FishingGame.Config memory c = GameSetupConfig.get(game);
-        _fund(alice, 1_000e18);
-        uint256 base = c.energyRefillPrice;
-        vm.startPrank(alice);
-        assertEq(game.refillPrice(alice), base);
-        game.refillEnergy();
-        assertEq(game.refillPrice(alice), base * 2);
-        game.refillEnergy();
-        assertEq(game.refillPrice(alice), base * 4);
-        vm.stopPrank();
-        assertEq(pearl.balanceOf(alice), 1_000e18 - base * 3);
-        vm.warp(block.timestamp + 1 days);
-        assertEq(game.refillPrice(alice), base);
+    // ------------------------------------------------------------------ what a catch records
+
+    function test_catchUpdatesProgress() public {
+        uint256 id = _catch(alice, 0, 1);
+        FishNFT.Fish memory f = fish.fish(id);
+        FishNFT.Species memory s = fish.species(f.speciesId);
+        FishingGame.Player memory p = game.playerOf(alice);
+        assertEq(p.catches, 1);
+        assertEq(p.dexCount, 1);
+        assertEq(p.xp, s.rarity >= 5 ? 80 : 10 * (uint256(s.rarity) + 1));
+        (uint32 count, uint32 best) = game.dex(alice, f.speciesId);
+        assertEq(count, 1);
+        assertEq(best, f.weight);
+        (, uint32 w,) = game.bestCatch(alice);
+        assertEq(w, f.weight);
+        FishingGame.WeekEntry[] memory week = game.weekEntries(game.currentWeek(), alice);
+        assertEq(week.length, 1);
+        assertEq(week[0].score, game.scoreOf(s, f.weight, f.quality));
+        assertEq(game.weekTotal(game.currentWeek(), alice), week[0].score);
+        assertEq(game.weekPlayerCount(game.currentWeek()), 1);
     }
 
-    function test_repairBlockedBelowMinLevel() public {
-        FishingGame.Config memory c = GameSetupConfig.get(game);
-        c.minRepairLevel = 2;
-        vm.prank(owner);
-        game.setConfig(c);
-        uint256 id = _starter(alice);
-        _fishOnce(alice, id, 0, 0, bytes32(uint256(3)));
-        _fund(alice, 100e18);
-        vm.prank(alice);
-        vm.expectRevert(FishingGame.RepairNotAllowed.selector);
-        game.repairRod(id);
-        vm.prank(alice);
-        game.upgradeRod(id); // upgrading turns the consumable into a repairable rod
-        _fishOnce(alice, id, 0, 0, bytes32(uint256(4)));
-        vm.prank(alice);
-        game.repairRod(id);
+    function test_scoreFormula() public view {
+        FishNFT.Species memory taimen = fish.species(9);
+        uint256 avg = uint256(8000) + uint256(50000 - 8000) / 3;
+        assertEq(game.scoreOf(taimen, avg, 2), 400);
+        assertEq(game.scoreOf(taimen, 50000, 4), 780); // 400 × 1.5 × 1.3
+        assertEq(game.scoreOf(taimen, 8000, 0), 224); // 400 × 0.7 × 0.8
+        assertEq(game.scoreOf(fish.species(22), uint256(1000) + uint256(8000) / 3, 2), 800);
     }
 
-    // ------------------------------------------------------------- selling
+    function test_levelCurve() public view {
+        assertEq(game.levelOf(0), 1);
+        assertEq(game.levelOf(299), 2);
+        assertEq(game.levelOf(300), 3);
+        assertEq(game.levelOf(6600), 12);
+    }
 
-    function _catchOne(address who, uint256 rodId) internal returns (uint256 fishId) {
-        for (uint256 i; fishId == 0; i++) {
-            fishId = _fishOnce(who, rodId, 0, 0, keccak256(abi.encode(who, "sell", i, block.number)));
+    function test_weekKeepsTheTenBestSortedAndSurvivesSelling() public {
+        uint256[] memory ids = new uint256[](25);
+        for (uint256 i; i < 25; i++) ids[i] = _catch(alice, 0, 100 + i);
+        uint256 week = game.currentWeek();
+        FishingGame.WeekEntry[] memory list = game.weekEntries(week, alice);
+        assertEq(list.length, 10);
+        uint256 sum;
+        for (uint256 i; i < 10; i++) {
+            sum += list[i].score;
+            if (i > 0) assertGe(list[i - 1].score, list[i].score);
         }
+        assertEq(game.weekTotal(week, alice), sum);
+        vm.prank(alice);
+        game.sellFish(ids);
+        assertEq(game.weekTotal(week, alice), sum, "selling must not remove tournament points");
+        assertEq(game.playerOf(alice).dexCount > 0, true);
     }
 
-    function test_sellFishMintsValue() public {
-        uint256 id = _starter(alice);
-        uint256 f1 = _catchOne(alice, id);
-        uint256 f2 = _catchOne(alice, id);
-        uint256 expected = game.fishValue(f1) + game.fishValue(f2);
-        uint256[] memory ids = new uint256[](2);
-        ids[0] = f1;
-        ids[1] = f2;
+    function test_aNewWeekStartsEmptyAndKeepsTheOldOne() public {
+        _catch(alice, 0, 7);
+        uint256 week = game.currentWeek();
+        uint32 total = game.weekTotal(week, alice);
+        vm.warp((week + 1) * 1 weeks);
+        assertEq(game.currentWeek(), week + 1);
+        assertEq(game.weekEntries(week + 1, alice).length, 0);
+        _catch(alice, 0, 8);
+        assertEq(game.weekTotal(week, alice), total);
+        assertEq(game.weekEntries(week + 1, alice).length, 1);
+        (uint256[] memory ids, uint32[] memory totals) = lens.weekHistory(alice, 2);
+        assertEq(ids[0], week);
+        assertEq(totals[0], total);
+    }
+
+    function test_standingsListEveryAnglerOfTheWeek() public {
+        _catch(alice, 0, 1);
+        _catch(bob, 0, 2);
+        (address[] memory anglers, uint32[] memory totals) = lens.weekStandings(game.currentWeek(), 0, 50);
+        assertEq(anglers.length, 2);
+        assertEq(anglers[0], alice);
+        assertEq(totals[1], game.weekTotal(game.currentWeek(), bob));
+    }
+
+    // ------------------------------------------------------------------ selling
+
+    function test_priceFormulaAndExactPayout() public {
+        uint256 id = _catch(alice, 0, 3);
+        FishNFT.Fish memory f = fish.fish(id);
+        FishNFT.Species memory s = fish.species(f.speciesId);
+        uint256 avg = uint256(s.minWeight) + (uint256(s.maxWeight) - s.minWeight) / 3;
+        uint256 ratio = (uint256(f.weight) * 10_000) / avg;
+        if (ratio < 4_000) ratio = 4_000;
+        if (ratio > 30_000) ratio = 30_000;
+        uint256[5] memory q = [uint256(8_000), 9_000, 10_000, 11_500, 13_000];
+        uint256 expected = (uint256(s.basePrice) * ratio * q[f.quality]) / 1e8;
+        assertEq(game.fishValue(id), expected);
+
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = id;
         vm.prank(alice);
-        uint256 got = game.sellFish(ids);
-        assertEq(got, expected);
+        game.sellFish(ids);
         assertEq(pearl.balanceOf(alice), expected);
         assertEq(fish.balanceOf(alice), 0);
-        assertEq(fish.totalSupply(), 0);
+        vm.prank(alice);
+        vm.expectRevert(); // the fish is burned: it cannot be sold twice
+        game.sellFish(ids);
+        assertEq(pearl.balanceOf(alice), expected);
     }
 
-    function test_cannotSellOthersFish() public {
-        uint256 id = _starter(alice);
-        uint256 f1 = _catchOne(alice, id);
-        uint256[] memory ids = new uint256[](1);
-        ids[0] = f1;
-        vm.prank(bob);
+    function test_sellIsAllOrNothing() public {
+        uint256 mine = _catch(alice, 0, 4);
+        uint256 theirs = _catch(bob, 0, 5);
+        uint256[] memory ids = new uint256[](2);
+        ids[0] = mine;
+        ids[1] = theirs;
+        vm.prank(alice);
         vm.expectRevert(FishingGame.NotFishOwner.selector);
         game.sellFish(ids);
-    }
-
-    function test_cannotSellSameFishTwiceInBatch() public {
-        uint256 id = _starter(alice);
-        uint256 f1 = _catchOne(alice, id);
-        uint256[] memory ids = new uint256[](2);
-        ids[0] = f1;
-        ids[1] = f1;
-        vm.prank(alice);
-        vm.expectRevert();
-        game.sellFish(ids);
+        assertEq(fish.ownerOf(mine), alice);
+        assertEq(pearl.balanceOf(alice), 0);
     }
 
     function test_emissionSoftCapShrinksPayouts() public {
-        FishingGame.Config memory c = GameSetupConfig.get(game);
-        c.emissionSoftCap = 1e18;
+        FishingGame.Config memory c = GameSetup.defaultConfig();
+        c.emissionSoftCap = 1; // 1 wei a day: everything after the first sale is capped
         vm.prank(owner);
         game.setConfig(c);
-
-        uint256 id = _starter(alice);
-        uint256[] memory ids = new uint256[](1);
-        uint256 lastRatio = type(uint256).max;
-        for (uint256 k; k < 6; k++) {
-            uint256 f = _catchOne(alice, id);
-            uint256 full = game.fishValue(f);
-            ids[0] = f;
-            vm.prank(alice);
-            uint256 got = game.sellFish(ids);
-            assertLe(got, full);
-            uint256 ratio = (got * 1e18) / full;
-            assertLe(ratio, lastRatio);
-            lastRatio = ratio;
-        }
-        assertLt(lastRatio, 1e18);
-        // next day the cap resets
-        vm.warp(block.timestamp + 1 days);
-        uint256 f2 = _catchOne(alice, id);
-        assertEq(game.quoteSell(f2), game.fishValue(f2));
-    }
-
-    // ------------------------------------------------------------- records & metadata
-
-    function test_weeklyRecordTracksHeaviest() public {
-        uint256 id = _starter(alice);
-        uint256 maxW;
-        for (uint256 i; i < 15; i++) {
-            uint256 f = _fishOnce(alice, id, 0, 0, keccak256(abi.encode("rec", i)));
-            if (f != 0 && fish.fish(f).weight > maxW) maxW = fish.fish(f).weight;
-        }
-        (address angler,, uint32 w,) = game.weeklyBest(game.currentWeek());
-        assertEq(w, maxW);
-        if (maxW > 0) assertEq(angler, alice);
-    }
-
-    function test_tokenURIs() public {
-        uint256 id = _starter(alice);
-        uint256 f = _catchOne(alice, id);
-        string memory uri = fish.tokenURI(f);
-        assertEq(_prefix(uri, 29), "data:application/json;base64,");
-        assertEq(_prefix(rod.tokenURI(id), 29), "data:application/json;base64,");
-    }
-
-    function _prefix(string memory s, uint256 n) internal pure returns (string memory) {
-        bytes memory b = bytes(s);
-        bytes memory out = new bytes(n);
-        for (uint256 i; i < n; i++) out[i] = b[i];
-        return string(out);
-    }
-
-    // ------------------------------------------------------------- access control
-
-    function test_onlyOwnerAdmin() public {
-        FishingGame.Config memory c = GameSetupConfig.get(game);
+        uint256[] memory a = new uint256[](1);
+        a[0] = _catch(alice, 0, 6);
+        uint256[] memory b = new uint256[](1);
+        b[0] = _catch(alice, 0, 7);
+        uint256 full = game.fishValue(b[0]);
         vm.startPrank(alice);
-        vm.expectRevert();
-        game.setConfig(c);
-        vm.expectRevert();
-        game.setUpgradePrices(new uint96[](0));
-        vm.expectRevert(FishNFT.NotGame.selector);
-        fish.burn(1);
-        vm.expectRevert(RodNFT.NotGame.selector);
-        rod.setLocked(1, false);
+        game.sellFish(a);
+        assertLt(game.quoteSell(b[0]), full);
         vm.stopPrank();
     }
 
-    function test_badConfigRejected() public {
-        FishingGame.Config memory c = GameSetupConfig.get(game);
-        c.maxCatchBps = 10_001;
+    // ------------------------------------------------------------------ tackle
+
+    function test_buyRodBurnsPearlAndEquips() public {
+        _fund(alice, 500 * E);
+        vm.prank(alice);
+        game.buyRod(1);
+        assertEq(pearl.balanceOf(alice), 50 * E);
+        assertEq(game.playerOf(alice).rod, 1);
+        assertEq(game.rodDurability(alice, 1), 80);
+        vm.prank(alice);
+        vm.expectRevert(FishingGame.AlreadyOwned.selector);
+        game.buyRod(1);
+        vm.prank(alice);
+        vm.expectRevert(FishingGame.AlreadyOwned.selector);
+        game.buyRod(0); // everyone owns the starter rod
+    }
+
+    function test_cannotBuyWithoutPearl() public {
+        vm.prank(alice);
+        vm.expectRevert();
+        game.buyRod(1);
+        vm.prank(alice);
+        vm.expectRevert();
+        game.buyLure(0);
+        assertEq(game.playerOf(alice).rod, 0);
+    }
+
+    function test_cannotEquipWhatYouDoNotOwn() public {
+        vm.startPrank(alice);
+        vm.expectRevert(FishingGame.NotOwned.selector);
+        game.equipRod(2);
+        vm.expectRevert(FishingGame.NotOwned.selector);
+        game.equipLure(1);
+        vm.expectRevert(FishingGame.UnknownRod.selector);
+        game.equipRod(6);
+        vm.stopPrank();
+    }
+
+    function test_lureIsUsedUpAndTakenOff() public {
+        _fund(alice, 3_000 * E);
+        vm.startPrank(alice);
+        game.buyLure(5); // Abyss Spoon: 25 casts
+        game.buyLure(5);
+        vm.stopPrank();
+        assertEq(game.lureCasts(alice, 5), 50);
+        assertEq(game.playerOf(alice).lure, 6);
+        for (uint256 i; i < 50; i++) {
+            if (game.currentEnergy(alice) == 0) _rest();
+            _fishOnce(alice, 0, bytes32(i + 1));
+        }
+        assertEq(game.lureCasts(alice, 5), 0);
+        assertEq(game.playerOf(alice).lure, 0);
+    }
+
+    function test_rodWearsOutAndIsRepaired() public {
+        _fund(alice, 10_000 * E);
+        vm.prank(alice);
+        game.buyRod(4); // Deep Troller: 50 durability
+        for (uint256 i; i < 50; i++) {
+            if (game.currentEnergy(alice) == 0) _rest();
+            _fishOnce(alice, 0, bytes32(i + 1));
+        }
+        assertEq(game.rodDurability(alice, 4), 0);
+        vm.prank(alice);
+        vm.expectRevert(FishingGame.RodBroken.selector);
+        game.cast(0);
+
+        uint256 cost = game.repairCost(alice, 4);
+        assertEq(cost, (4_000 * E * 6) / 100); // 6% of the price for a full repair
+        uint256 before = pearl.balanceOf(alice);
+        vm.startPrank(alice);
+        game.repairRod(4);
+        assertEq(before - pearl.balanceOf(alice), cost);
+        assertEq(game.rodDurability(alice, 4), 50);
+        vm.expectRevert(FishingGame.NothingToRepair.selector);
+        game.repairRod(4);
+        // the starter rod never wears out
+        game.equipRod(0);
+        vm.expectRevert(FishingGame.NothingToRepair.selector);
+        game.repairRod(0);
+        vm.stopPrank();
+    }
+
+    function test_ironwoodRepairsCheaper() public {
+        _fund(alice, 1_000 * E);
+        vm.prank(alice);
+        game.buyRod(2);
+        _fishOnce(alice, 0, bytes32(uint256(1)));
+        assertEq(game.repairCost(alice, 2), (900 * E * 600 * 7_000) / (160 * 1e8));
+    }
+
+    function test_refillDoublesWithinADay() public {
+        _fund(alice, 1_000 * E);
+        vm.prank(alice);
+        vm.expectRevert(FishingGame.EnergyFull.selector);
+        game.refillEnergy();
+        _fishOnce(alice, 0, bytes32(uint256(1)));
+        vm.prank(alice);
+        game.refillEnergy();
+        assertEq(pearl.balanceOf(alice), 900 * E);
+        assertEq(game.refillPrice(alice), 200 * E);
+        vm.warp(block.timestamp + 1 days);
+        assertEq(game.refillPrice(alice), 100 * E);
+    }
+
+    // ------------------------------------------------------------------ special fish and unlocks
+
+    /// @dev Fishes the pond until the Golden Koi comes up. Pity bounds this at 120 catches.
+    function _findKoi(address who) internal returns (uint256 koiId) {
+        for (uint256 i; i < 200; i++) {
+            uint256 id = _catch(who, 0, 5000 + i);
+            if (fish.fish(id).speciesId == 20) return id;
+        }
+        revert("no koi within the pity window");
+    }
+
+    function test_pityGuaranteesTheSpecialAndItUnlocksForGood() public {
+        assertFalse(game.isUnlocked(alice, 5));
+        uint256 koi = _findKoi(alice);
+        FishingGame.Player memory p = game.playerOf(alice);
+        assertLe(p.catches, 120);
+        assertEq(p.specialsFound & 1, 1);
+        assertEq(p.activeSpecial, 1, "the first special takes the empty bonus slot");
+        assertTrue(game.isUnlocked(alice, 5));
+        assertEq(fish.heldOf(alice, 20), 1);
+
+        // selling it keeps the location, but the bonus needs a specimen in hand
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = koi;
+        vm.prank(alice);
+        game.sellFish(ids);
+        assertTrue(game.isUnlocked(alice, 5));
+        assertEq(fish.heldOf(alice, 20), 0);
+        _rest();
+        vm.prank(alice);
+        game.cast(5);
+        assertEq(game.castOf(alice).special, 0);
+        vm.prank(alice);
+        vm.expectRevert(FishingGame.SpecialNotHeld.selector);
+        game.setActiveSpecial(1);
+    }
+
+    function test_activeSpecialIsFixedAtCastTime() public {
+        _findKoi(alice);
+        _rest();
+        vm.prank(alice);
+        game.cast(5);
+        assertEq(game.castOf(alice).special, 1);
+        vm.startPrank(alice);
+        game.setActiveSpecial(0);
+        vm.expectRevert(FishingGame.UnknownSpecial.selector);
+        game.setActiveSpecial(4);
+        vm.expectRevert(FishingGame.SpecialNotHeld.selector);
+        game.setActiveSpecial(2);
+        vm.stopPrank();
+    }
+
+    function test_levelAndSpeciesGatesOpenThroughPlay() public {
+        assertFalse(game.isUnlocked(alice, 1));
+        for (uint256 i; game.playerOf(alice).xp < 300; i++) _catch(alice, 0, 9000 + i);
+        assertTrue(game.isUnlocked(alice, 1), "Forest River opens at level 3");
+        for (uint256 i; game.playerOf(alice).dexCount < 8; i++) _catch(alice, 1, 12000 + i);
+        assertTrue(game.isUnlocked(alice, 2), "Deep Lake opens at 8 species");
+    }
+
+    // ------------------------------------------------------------------ achievements
+
+    function test_achievementPaysOnce() public {
+        vm.prank(alice);
+        vm.expectRevert(FishingGame.NotCompleted.selector);
+        game.claimAchievement(11);
+        _findKoi(alice); // a legendary species
+        assertTrue(game.achievementDone(alice, 11));
+        uint256 before = pearl.balanceOf(alice);
+        vm.startPrank(alice);
+        game.claimAchievement(11);
+        assertEq(pearl.balanceOf(alice) - before, 500 * E);
+        vm.expectRevert(FishingGame.AlreadyClaimed.selector);
+        game.claimAchievement(11);
+        vm.expectRevert(FishingGame.UnknownAchievement.selector);
+        game.claimAchievement(14);
+        vm.stopPrank();
+    }
+
+    // ------------------------------------------------------------------ the BLEND bottle
+
+    function test_bottleIsRecordedOnceAndNothingIsTransferred() public {
+        FishingGame.Config memory c = GameSetup.defaultConfig();
+        c.blendChancePpm = 1_000_000; // every bite is a bottle
+        vm.prank(owner);
+        game.setConfig(c);
+        uint256 i;
+        while (game.playerOf(alice).blendWins == 0) _fishOnce(alice, 0, bytes32(++i));
+        assertEq(game.blendWon(alice), 100 * E);
+        assertEq(game.totalBlendWon(), 100 * E);
+        assertEq(fish.balanceOf(alice), 0, "a bottle is not a fish");
+        assertEq(pearl.balanceOf(alice), 0);
+        // the limit is one bottle: from now on bites are fish again
+        _catch(alice, 0, 77);
+        assertEq(game.playerOf(alice).blendWins, 1);
+        assertEq(game.blendWon(alice), 100 * E);
+    }
+
+    function test_bottleRateIsNearItsChance() public {
+        FishingGame.Config memory c = GameSetup.defaultConfig();
+        c.blendChancePpm = 200_000; // 20% of bites, so a short run is enough
+        c.blendMaxWins = 255;
+        vm.prank(owner);
+        game.setConfig(c);
+        uint256 n = 500;
+        for (uint256 i; i < n; i++) {
+            if (game.currentEnergy(alice) == 0) _rest();
+            _fishOnce(alice, 0, keccak256(abi.encode("bottle", i)));
+        }
+        FishingGame.Player memory p = game.playerOf(alice);
+        uint256 bites = uint256(p.catches) + p.blendWins;
+        assertApproxEqAbs(p.blendWins, bites / 5, 30);
+    }
+
+    // ------------------------------------------------------------------ admin
+
+    function test_onlyOwnerConfigures() public {
+        FishingGame.Config memory c = GameSetup.defaultConfig();
+        vm.prank(alice);
+        vm.expectRevert();
+        game.setConfig(c);
+        c.maxEnergy = 0;
         vm.prank(owner);
         vm.expectRevert(FishingGame.BadConfig.selector);
         game.setConfig(c);
+        vm.prank(alice);
+        vm.expectRevert();
+        game.setHidden(1, true);
     }
 
-    // ------------------------------------------------------------- fuzz & statistics
-
-    function testFuzz_catchStaysInSpeciesBounds(bytes32 entropy, uint8 level, uint8 baitId) public {
-        level = uint8(bound(level, 1, 5));
-        baitId = uint8(bound(baitId, 0, 3));
-        uint256 id = _starter(alice);
-        _setRodLevel(id, level);
-        if (baitId != 0) {
-            _fund(alice, 100e18);
-            vm.prank(alice);
-            game.buyBait(baitId, 1);
-        }
-        uint8 spotId = level - 1; // highest spot the rod can reach
-        uint256 f = _fishOnce(alice, id, spotId, baitId, entropy);
-        if (f == 0) return;
-        FishNFT.Fish memory fi = fish.fish(f);
-        FishNFT.Species memory s = fish.species(fi.speciesId);
-        assertGe(fi.weight, s.minWeight);
-        assertLe(fi.weight, s.maxWeight);
-        FishingGame.Spot memory sp = game.spot(spotId);
-        bool inTable;
-        for (uint256 i; i < sp.speciesIds.length; i++) {
-            if (sp.speciesIds[i] == fi.speciesId) inTable = true;
-        }
-        assertTrue(inTable);
+    function test_onlyTheGameMintsFishAndPearl() public {
+        vm.prank(alice);
+        vm.expectRevert(FishNFT.NotGame.selector);
+        fish.mint(alice, FishNFT.Fish(0, 100, 0, 2, 0, alice));
+        vm.prank(alice);
+        vm.expectRevert();
+        pearl.mint(alice, 1);
     }
 
-    /// Empirical catch rate over 1000 casts must match the configured 55% (± 4.5pp ≈ 3σ).
-    function test_catchRateMatchesConfig() public {
-        uint256 id = _starter(alice);
-        _setRodLevel(id, 1);
-        uint256 caught;
-        uint256 n = 1000;
-        uint256 t = block.timestamp;
-        for (uint256 i; i < n; i++) {
-            t += 1 days; // keep energy full (local var: via-ir caches block.timestamp after vm.warp)
-            vm.warp(t);
-            RodNFT.Rod memory r = rod.rods(id);
-            if (r.durability < 2) {
-                r.durability = r.maxDurability;
-                vm.prank(address(game));
-                rod.setRod(id, r);
-            }
-            if (_fishOnce(alice, id, 0, 0, keccak256(abi.encode("rate", i))) != 0) caught++;
-        }
-        assertApproxEqAbs(caught, 550, 45);
-    }
-}
+    // ------------------------------------------------------------------ lens
 
-library GameSetupConfig {
-    function get(FishingGame g) internal view returns (FishingGame.Config memory c) {
-        (
-            c.maxEnergy,
-            c.energyRegenSeconds,
-            c.revealDelay,
-            c.maxRodLevel,
-            c.baseCatchBps,
-            c.catchBpsPerLevel,
-            c.maxCatchBps,
-            c.rarityBoostPerLevel,
-            c.starterDurability,
-            c.durabilityPerLevel,
-            c.energyRefillPrice,
-            c.rodPrice,
-            c.repairPricePerPoint,
-            c.emissionSoftCap,
-            c.refillPriceGrowthBps,
-            c.minRepairLevel,
-            c.starterRodFee
-        ) = g.config();
+    function test_playerViewMatchesTheGame() public {
+        _fund(alice, 1_000 * E);
+        vm.startPrank(alice);
+        game.buyRod(1);
+        game.buyLure(0);
+        vm.stopPrank();
+        uint256 id = _catch(alice, 0, 42);
+        GameLens.PlayerView memory v = lens.playerView(alice);
+        assertEq(v.p.rod, 1);
+        assertEq(v.p.lure, 1);
+        assertEq(v.pearl, pearl.balanceOf(alice));
+        assertEq(v.energyNow, game.currentEnergy(alice));
+        assertEq(v.rodDurability[1], game.rodDurability(alice, 1));
+        assertEq(v.lureCasts[0], game.lureCasts(alice, 0));
+        assertEq(v.dex[fish.fish(id).speciesId].count, 1);
+        assertEq(v.weekEntries.length, 1);
+        assertEq(v.best.weight, fish.fish(id).weight);
+        assertEq(v.bestByLocation[0].weight, fish.fish(id).weight);
+        (uint256[] memory ids,, uint256[] memory values) = lens.keepnet(alice);
+        assertEq(ids.length, 1);
+        assertEq(ids[0], id);
+        assertEq(values[0], game.fishValue(id));
+    }
+
+    function test_tokenUriBuilds() public {
+        uint256 id = _catch(alice, 0, 1);
+        assertGt(bytes(fish.tokenURI(id)).length, 200);
     }
 }

@@ -5,9 +5,10 @@
  * Everything stored here is player-editable and therefore untrusted: fine for a local game, never a proof of
  * a real catch, reward or NFT eligibility.
  */
+import { LOCAL_GAME } from '../config';
 import { GameError } from '../game/actions';
 import { grantUnlocks } from '../game/progress';
-import { loadSave } from '../game/save';
+import { freshSave, loadSave } from '../game/save';
 import type { Save } from '../game/types';
 import { emit } from '../store';
 import { toast } from '../ui/toast';
@@ -26,6 +27,8 @@ function read(): string | null {
 let writable = true;
 
 function boot(): Save {
+  // On the contracts the save is a view of chain state: it starts empty and play/chain.ts fills it in.
+  if (!LOCAL_GAME) return freshSave(Date.now());
   const raw = read();
   const loaded = loadSave(raw, Date.now());
   if (loaded.status === 'corrupt' || loaded.status === 'newer') {
@@ -53,7 +56,7 @@ export const getSave = (): Save => save;
 export const rev = (): number => revision;
 
 function persist(): void {
-  if (!writable) return;
+  if (!writable || !LOCAL_GAME) return;
   try {
     localStorage.setItem(KEY, JSON.stringify(save));
   } catch (e) {
@@ -66,6 +69,13 @@ export function commit(next: Save): void {
   save = next;
   revision++;
   persist();
+  emit();
+}
+
+/** Chain mode: swaps in the state just read from the contracts. Nothing is persisted. */
+export function replaceSave(next: Save): void {
+  save = next;
+  revision++;
   emit();
 }
 
@@ -87,7 +97,7 @@ export const apply = (fn: (s: Save) => Save): boolean => act(fn, (s) => s) !== u
 
 // another tab saved: follow it, so two tabs cannot pay out the same fish twice
 window.addEventListener('storage', (e) => {
-  if (e.key !== KEY || e.newValue === null) return;
+  if (!LOCAL_GAME || e.key !== KEY || e.newValue === null) return;
   const loaded = loadSave(e.newValue, Date.now());
   if (loaded.status === 'ok' || loaded.status === 'migrated') {
     save = loaded.save;

@@ -4,7 +4,7 @@
  * the whole save in one assignment (play/state.ts), which is what makes PEARL move exactly once.
  */
 import { LURES, RODS, lureById, rodById } from '../tackle/catalog';
-import { BLEND_PRIZE, LOCATIONS, SPECIES, TUNING, special } from './content';
+import { BLEND_PRIZE, LOCATIONS, PEARL_PER_BLEND, SPECIES, TUNING, special } from './content';
 import { fishPrice, levelOf, refillCost, repairCost, xpForCatch } from './economy';
 import { totals, type Totals } from './equipment';
 import { pickSpecies, rollSpecial, rollWeight, speciesOdds } from './generate';
@@ -49,6 +49,16 @@ export function refillEnergy(s: Save, now: number): Save {
   const price = refillPrice(s, now);
   if (s.pearl < price) fail('Not enough PEARL');
   return { ...s, pearl: s.pearl - price, energy: TUNING.maxEnergy, energyAt: now, refills: { day: utcDay(now), count: refillsToday(s, now) + 1 } };
+}
+
+// ------------------------------------------------------------------ BLEND → PEARL
+
+/** Buys PEARL for BLEND at the fixed rate. One way only; the PEARL spends like any other. */
+export function buyPearl(s: Save, blendAmount: number): { save: Save; pearl: number } {
+  if (!Number.isFinite(blendAmount) || blendAmount <= 0) fail('Enter an amount of BLEND');
+  if (s.blend < blendAmount) fail('Not enough BLEND');
+  const out = blendAmount * PEARL_PER_BLEND;
+  return { save: { ...s, blend: s.blend - blendAmount, pearl: s.pearl + out }, pearl: out };
 }
 
 // ------------------------------------------------------------------ tackle

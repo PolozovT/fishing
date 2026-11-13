@@ -4,9 +4,24 @@ export interface Deployment {
   startBlock: number;
   game: `0x${string}`;
   fish: `0x${string}`;
-  rod: `0x${string}`;
+  lens: `0x${string}`;
   pearl: `0x${string}`;
   market: `0x${string}`;
+  /** Set once the BLEND → PEARL exchange is deployed. */
+  blend?: `0x${string}`;
+  exchange?: `0x${string}`;
 }
 
-export const deployments: Record<string, Deployment> = {};
+export const deployments: Record<string, Deployment> = {
+  "20994": {
+    "chainId": 20994,
+    "startBlock": 42597081,
+    "game": "0xCAA247e5Bf3251e8246E373aAfd1d7178946E945",
+    "fish": "0x76BB17044f47FD1f24F28F7c233488b080C6089F",
+    "lens": "0xA63248375f5f18feDD7D7514b995A792E75cB624",
+    "pearl": "0x3FbEA20b71Db8475738764153F716a6ea9eBB6E9",
+    "market": "0x6d2423685C9842f0ae8a70bb0dc3E47Dc16044a1",
+    "blend": "0x83Fed707A8dDDC2535aE591CF19fB6C91D542D8E",
+    "exchange": "0xB089CFA87C88E60351E5dEcA72e0e186159fF7e8"
+  }
+};

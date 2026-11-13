@@ -1,5 +1,5 @@
 /** Keepnet: the fish you hold. Sort, filter, star favourites, sell one, several, or everything eligible. */
-import { bulkSellable, isValuable, sellFish, toggleFavorite } from '../../game/actions';
+import { bulkSellable, isValuable } from '../../game/actions';
 import { LOCATIONS, SPECIES } from '../../game/content';
 import type { FishInstance } from '../../game/types';
 import { RARITY_CLASS, RARITY_NAMES } from '../../i18n';
@@ -7,7 +7,8 @@ import { fmtWeight, h, mount, sigOf } from '../../ui/dom';
 import { dropdown } from '../../ui/dropdown';
 import { toast } from '../../ui/toast';
 import { fishArt } from '../fishSprite';
-import { act, apply, getSave, rev } from '../state';
+import { ops } from '../ops';
+import { getSave, rev } from '../state';
 import { ago, pearl, qualityTag, rarityTag } from './fmt';
 
 type Sort = 'date' | 'rarity' | 'weight' | 'value';
@@ -66,15 +67,13 @@ function render(rerender: () => void): HTMLElement[] {
       return;
     }
     confirming = null;
-    const r = act(
-      (x) => sellFish(x, ids),
-      (x) => x.save,
-    );
-    if (r) {
-      ids.forEach((id) => selected.delete(id));
-      toast(`Sold ${ids.length} fish for ${pearl(r.earned)} PEARL`, 'ok');
-    }
     rerender();
+    void ops.sellFish(ids).then((earned) => {
+      if (earned === undefined) return;
+      ids.forEach((id) => selected.delete(id));
+      toast(`Sold ${ids.length} fish for ${pearl(earned)} PEARL`, 'ok');
+      rerender();
+    });
   };
   const armed = (key: string, list: FishInstance[]): boolean => confirming === `${key}:${list.map((f) => f.id).join(',')}`;
   const valuableIn = (list: FishInstance[]): number => list.filter(isValuable).length;
@@ -156,7 +155,7 @@ function render(rerender: () => void): HTMLElement[] {
               onclick: (e) => {
                 e.stopPropagation();
                 selected.delete(f.id);
-                apply((x) => toggleFavorite(x, f.id));
+                void ops.toggleFavorite(f.id);
               },
             }),
         on ? h('span', { class: 'check', text: '✓' }) : null,

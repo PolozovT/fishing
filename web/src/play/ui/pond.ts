@@ -4,40 +4,39 @@ import {
   castBlocker,
   currentTotals,
   energyNow,
-  equipLure,
-  equipRod,
   hookFish,
   landFish,
   landPrize,
   recordEscape,
-  repairRod,
   rodBroken,
   rodRepairPrice,
   rollBite,
-  sellFish,
-  setLocation,
   startCast,
   isValuable,
   type CastTicket,
   type Hooked,
   type Landing,
 } from '../../game/actions';
-import { BLEND_PRIZE, LOCATIONS, SPECIES, special } from '../../game/content';
+import { BLEND_PRIZE, LOCATIONS, QUALITIES, SPECIES, special } from '../../game/content';
+import { fishPrice, levelOf } from '../../game/economy';
 import { START_DIST, accuracy, bandOf, greenWidth, qualityOf, reelParams, reelStart, reelStep, type ReelParams, type ReelState } from '../../game/minigame';
 import { canEnter, isUnlocked, unlockText } from '../../game/progress';
 import { RARITY_CLASS } from '../../i18n';
 import { WaterScene } from '../../scene';
-import { emit } from '../../store';
+import { emit, state } from '../../store';
 import { lureById, rodById } from '../../tackle/catalog';
 import { lureSprite, rodSprite } from '../../tackle/sprites';
 import { fmtWeight, h, icon, mount, segBar, sigOf } from '../../ui/dom';
 import { dropdown } from '../../ui/dropdown';
 import { toast } from '../../ui/toast';
 import { fishArt } from '../fishSprite';
-import { act, apply, commit, getSave, rev } from '../state';
+import { outcomeOf, tx, waitPastBlock, world } from '../chain';
+import { CHAIN, ops, refresh, refreshStandings } from '../ops';
+import { act, commit, getSave, rev } from '../state';
 import { pearl, qualityTag, rarityTag } from './fmt';
 
-type Phase = 'idle' | 'casting' | 'waiting' | 'bite' | 'reeling' | 'result';
+/** 'landing' exists on the contracts only: the reel transaction is on its way. */
+type Phase = 'idle' | 'casting' | 'waiting' | 'bite' | 'landing' | 'reeling' | 'result';
 
 let scene: WaterScene;
 let statusEl: HTMLElement;
@@ -73,9 +72,10 @@ export function initPond(sceneHost: HTMLElement, controlsHost: HTMLElement): () 
   window.addEventListener('pointerup', () => (holding = false));
   window.addEventListener('blur', () => (holding = false));
 
-  const renderControls = mount(controlsHost, () => sigOf(rev(), phase, viewLoc, energyNow(getSave(), Date.now())), renderControlsView);
+  const renderControls = mount(controlsHost, () => sigOf(rev(), phase, viewLoc, energyNow(getSave(), Date.now()), state.wallet?.address), renderControlsView);
   return () => {
     renderControls();
+    resumeChainCast();
     scene.setPalette(LOCATIONS[ticket?.locationId ?? getSave().location].palette);
     statusEl.textContent = statusText();
   };
@@ -86,6 +86,7 @@ export const pondBusy = (): boolean => phase !== 'idle' && phase !== 'result';
 function setPhase(p: Phase): void {
   phase = p;
   hookBtn.classList.toggle('hidden', p !== 'bite');
+  hookBtn.disabled = false;
   reelEl.classList.toggle('hidden', p !== 'reeling');
   statusEl.textContent = statusText();
   emit();
@@ -99,6 +100,8 @@ function statusText(): string {
       return 'Waiting for a bite…';
     case 'bite':
       return 'Bite! Hook it!';
+    case 'landing':
+      return 'Setting the hook…';
     case 'reeling':
       return 'Fish on! Reel it in';
     default:
@@ -110,6 +113,7 @@ function statusText(): string {
 
 function doCast(): void {
   if (pondBusy()) return;
+  if (CHAIN) return void castOnChain();
   hideOverlay();
   const r = act(
     (s) => startCast(s, Date.now()),
@@ -150,11 +154,120 @@ function onWaitOver(): void {
 }
 
 function doHook(): void {
+  if (CHAIN) return void hookOnChain();
   if (phase !== 'bite' || !ticket || !hooked) return;
   clearTimeout(timer);
   scene.setPhase('reeling');
   setPhase('reeling');
   startReel(reelParams(hookedRarity(hooked), ticket.totals.zone));
+}
+
+// ------------------------------------------------------------------ the same flow on the contracts
+
+/** What to show once the fight animation ends. The catch itself was decided by the reel transaction. */
+let reveal: (() => void) | null = null;
+
+async function castOnChain(): Promise<void> {
+  hideOverlay();
+  const s = getSave();
+  const locationId = s.location;
+  const totalsNow = currentTotals(s, locationId);
+  scene.setPalette(LOCATIONS[locationId].palette);
+  scene.setPhase('casting');
+  setPhase('casting');
+  const receipt = await tx('Cast', { functionName: 'cast', args: [locationId] }, true);
+  if (!receipt) {
+    scene.setPhase('idle');
+    finish();
+    return;
+  }
+  ticket = { locationId, totals: totalsNow };
+  await refresh();
+  if (world.cast) void watchChainCast(world.cast.targetBlock);
+  else finish();
+}
+
+/** Waits for the randomness block, then lets the player hook. */
+async function watchChainCast(target: bigint): Promise<void> {
+  scene.setPhase('waiting');
+  setPhase('waiting');
+  await waitPastBlock(target, () => phase === 'waiting');
+  if (phase !== 'waiting') return;
+  scene.setPhase('bite');
+  setPhase('bite');
+}
+
+/** A cast left in the water by an earlier visit (or another tab) is picked up again. */
+function resumeChainCast(): void {
+  if (!CHAIN || phase !== 'idle' || !world.cast || !state.wallet) return;
+  const s = getSave();
+  ticket = { locationId: world.cast.locationId, totals: currentTotals(s, world.cast.locationId) };
+  void watchChainCast(world.cast.targetBlock);
+}
+
+async function hookOnChain(): Promise<void> {
+  if (phase !== 'bite') return;
+  const me = state.wallet?.address;
+  if (!me) return;
+  setPhase('landing');
+  const before = getSave();
+  const receipt = await tx('Reel in', { functionName: 'reel', args: [] }, true);
+  if (!receipt) {
+    // rejected or failed: the fish is still on the line (until the randomness block is 256 blocks old)
+    await refresh();
+    if (world.cast) setPhase('bite');
+    else {
+      scene.setPhase('idle');
+      finish();
+    }
+    return;
+  }
+  const out = outcomeOf(receipt, me);
+  await refresh();
+  void refreshStandings();
+  if (!out || out.kind === 'missed' || out.kind === 'expired') {
+    scene.setPhase('missed');
+    finish();
+    if (out?.kind === 'expired') showMessage('Too late', 'More than 256 blocks passed, so the randomness for this cast is gone, and the fish with it.');
+    else showMessage('It got away!', 'Nothing stayed on the hook this time. A lure with catch brings more bites.');
+    return;
+  }
+  if (out.kind === 'bottle') {
+    hooked = { speciesId: -1, weight: 0, isSpecial: false, prize: out.amount };
+    reveal = () => showPrize(out.amount);
+  } else {
+    const sp = SPECIES[out.speciesId];
+    const after = getSave();
+    const quality = QUALITIES[out.quality] ?? 'B';
+    const prev = before.dex[out.speciesId];
+    const landing: Landing = {
+      save: after,
+      fish: after.fish.find((f) => f.id === out.fishId) ?? {
+        id: out.fishId,
+        speciesId: out.speciesId,
+        rarity: sp.rarity,
+        weight: out.weight,
+        quality,
+        locationId: out.locationId,
+        caughtAt: Date.now(),
+        sellPrice: fishPrice(sp, out.weight, quality),
+        tournamentScore: out.score,
+        isFavorite: false,
+        isSpecial: out.special,
+      },
+      newSpecies: !prev,
+      newBest: !!prev && out.weight > prev.best,
+      newOverallRecord: !!before.records.overall && out.weight > before.records.overall.weight,
+      levelUp: levelOf(after.xp) > levelOf(before.xp) ? levelOf(after.xp) : null,
+      unlocked: out.unlocked,
+      countedThisWeek: out.counted,
+    };
+    hooked = { speciesId: out.speciesId, weight: out.weight, isSpecial: out.special };
+    reveal = () => showCatch(landing);
+  }
+  scene.setPhase('reeling');
+  setPhase('reeling');
+  startReel(reelParams(hookedRarity(hooked), (ticket ?? { totals: currentTotals(before) }).totals.zone));
 }
 
 function finish(): void {
@@ -202,13 +315,15 @@ function startReel(p: ReelParams): void {
   };
   holdBtn.addEventListener('pointerdown', down);
   holdBtn.addEventListener('contextmenu', (e) => e.preventDefault());
-  reelEl.replaceChildren(
+  const parts = [
     promptEl,
     h('div', { class: 'reel-label' }, h('span', { text: 'Line tension' }), h('span', { class: 'muted', text: hooked!.prize ? 'Something odd on the line…' : PULL[hookedRarity(hooked!)] })),
+    CHAIN ? h('div', { class: 'reel-note', text: 'Already yours: the contract decided this catch. The fight is for the joy of it.' }) : null,
     gaugeEl,
     h('div', { class: 'haul', attrs: { 'aria-hidden': 'true' } }, h('span', { class: 'haul-you', text: 'You' }), h('div', { class: 'haul-line' }, fishEl)),
     holdBtn,
-  );
+  ];
+  reelEl.replaceChildren(...parts.filter((x): x is HTMLElement => !!x));
   paintReel();
   let last = performance.now();
   const frame = (now: number): void => {
@@ -245,6 +360,18 @@ function paintReel(): void {
 }
 
 function endReel(r: ReelState): void {
+  if (CHAIN) {
+    // the outcome is already onchain: however the fight went, the catch is the player's
+    const show = reveal;
+    reveal = null;
+    scene.setPhase('caught');
+    finish();
+    if (show) {
+      phase = 'result';
+      show();
+    }
+    return;
+  }
   const t = ticket;
   const hk = hooked;
   if (!t || !hk) return finish();
@@ -257,7 +384,7 @@ function endReel(r: ReelState): void {
   }
   if (hk.prize) {
     const amount = hk.prize;
-    const ok = apply((s) => landPrize(s, hk));
+    const ok = act((s) => landPrize(s, hk), (x) => x) !== undefined;
     scene.setPhase('caught');
     finish();
     if (ok) {
@@ -403,11 +530,8 @@ function showCatch(l: Landing): void {
               class: 'btn',
               text: `Sell · ${pearl(f.sellPrice)}`,
               onclick: () => {
-                act(
-                  (s) => sellFish(s, [f.id]),
-                  (x) => x.save,
-                );
                 hideOverlay();
+                void ops.sellFish([f.id]);
               },
             })
           : null,
@@ -446,7 +570,7 @@ function renderControlsView(): HTMLElement[] {
   const busy = pondBusy();
   const out: HTMLElement[] = [];
 
-  const reason = castBlocker(s, now);
+  const reason = CHAIN && !state.wallet ? 'Connect with Fluent to fish' : castBlocker(s, now);
   const cost = LOCATIONS[s.location].energyCost;
   out.push(
     h(
@@ -456,7 +580,7 @@ function renderControlsView(): HTMLElement[] {
       h(
         'div',
         { class: 'cast-info' },
-        h('div', { class: reason && !busy ? 'warn' : 'muted', text: busy ? 'Press Hook! when the float dips, then hold to reel (Space works too)' : reason ?? `Costs ${cost} energy · you have ${energyNow(s, now)}` }),
+        h('div', { class: reason && !busy ? 'warn' : 'muted', text: busy ? (CHAIN ? 'Press Hook! when the float dips: that sends the reel transaction' : 'Press Hook! when the float dips, then hold to reel (Space works too)') : reason ?? `Costs ${cost} energy · you have ${energyNow(s, now)}` }),
       ),
     ),
   );
@@ -479,8 +603,8 @@ function renderControlsView(): HTMLElement[] {
               title: open ? loc.blurb : unlockText(loc.unlock, s),
               onclick: () => {
                 viewLoc = loc.id;
-                if (open) apply((x) => setLocation(x, loc.id));
-                else emit();
+                if (open) ops.setLocation(loc.id);
+                emit();
               },
             },
             h('span', { class: 'spot-name', text: loc.name }),
@@ -506,14 +630,14 @@ function renderControlsView(): HTMLElement[] {
       const r = rodById(id);
       return { value: id, label: r?.name ?? id, hint: r && r.wear > 0 ? `${s.rods[id].durability}/${r.wear}` : undefined };
     }),
-    onPick: (v) => void apply((x) => equipRod(x, v)),
+    onPick: (v) => void ops.equipRod(v),
   });
   const lureSel = dropdown({
     label: 'Lure',
     value: s.equipped.lure ?? '',
     disabled: busy,
     options: [{ value: '', label: 'No lure' }, ...Object.keys(s.lures).map((id) => ({ value: id, label: lureById(id)?.name ?? id, hint: `${s.lures[id].casts} casts` }))],
-    onPick: (v) => void apply((x) => equipLure(x, v || null)),
+    onPick: (v) => void ops.equipLure(v || null),
   });
   const t = currentTotals(s);
   const tile = (k: string, v: string, d: string, title: string): HTMLElement => h('div', { class: 'tk-big', title }, h('span', { class: 'k', text: k }), h('span', { class: 'v', text: v }), h('span', { class: 'd', text: d }));
@@ -536,7 +660,7 @@ function renderControlsView(): HTMLElement[] {
             rod.wear > 0 ? segBar(own.durability, rod.wear, 8, 'dur') : null,
             h('span', { class: broken ? 'warn small' : 'muted small', text: rod.wear > 0 ? `durability ${own.durability}/${rod.wear}` : 'never wears out' }),
             repair > 0
-              ? h('button', { class: 'btn btn-sm', text: `Repair · ${pearl(repair)}`, disabled: busy || s.pearl < repair, onclick: () => void apply((x) => repairRod(x, rod.id)) })
+              ? h('button', { class: 'btn btn-sm', text: `Repair · ${pearl(repair)}`, disabled: busy || s.pearl < repair, onclick: () => void ops.repairRod(rod.id) })
               : null,
           ),
         ),

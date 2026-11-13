@@ -29,7 +29,7 @@ export function requireDeployment(): Deployment {
 }
 
 /**
- * Local play (the default) runs the whole game in the browser with a localStorage save: no contracts, no
- * transactions. `VITE_GAME_MODE=onchain` switches to the contract client once the contracts are deployed.
+ * With a deployment for this chain the game runs on the contracts. Without one, or with `VITE_GAME_MODE=local`,
+ * it runs entirely in the browser on a localStorage save: the same rules, no transactions.
  */
-export const LOCAL_GAME: boolean = import.meta.env.VITE_GAME_MODE !== 'onchain' || !d;
+export const LOCAL_GAME: boolean = import.meta.env.VITE_GAME_MODE === 'local' || !d;

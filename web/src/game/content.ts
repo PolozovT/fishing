@@ -209,6 +209,9 @@ export const special = (id: string): SpecialDef | undefined => SPECIALS.find((s)
  * Frontend only for now: the balance is a local counter and no tokens are paid out. A real payout must be
  * decided by a contract or a trusted server, never by this client.
  */
+/** PEARL that one BLEND buys. On the contracts the PearlExchange rate is the truth; this mirrors it for local play. */
+export const PEARL_PER_BLEND = 100;
+
 export const BLEND_PRIZE = {
   amount: 100,
   /** Chance per bite, at any location. */

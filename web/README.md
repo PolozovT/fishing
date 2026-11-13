@@ -3,13 +3,21 @@
 Browser frontend for the contracts in `../contracts` (FishingGame, FishNFT, RodNFT, PearlToken, Marketplace).
 Stack: Vite + TypeScript + viem, no UI framework (plain DOM + canvas).
 
-## Two modes
+## Two modes, one set of rules
 
-- **Local game (default).** The whole game runs in the browser: cast, hook, reel, sell, buy tackle, collect,
-  unlock waters, weekly cup. Progress is saved in `localStorage`. No contracts, no transactions, no RPC.
-- **Onchain client.** `VITE_GAME_MODE=onchain` plus a deployment in `../deployments/<chainId>.json` switches to
-  the contract client (`src/app.ts`), which reads everything from Fluent. The contracts do not know rod types,
-  lures, quality or special fish yet, so that client has the older, smaller rule set.
+- **On the contracts.** With a deployment in `../deployments/<chainId>.json` the game plays on Fluent: every
+  action is a transaction, and the player's state is read from the chain through `GameLens` and shown with the
+  same UI. Sign-in is Fluent Connect.
+- **Local.** Without a deployment (or with `VITE_GAME_MODE=local`) the same rules run in the browser on a
+  `localStorage` save: no transactions, no RPC. Useful for trying the game and for balance work.
+
+`src/play/ops.ts` is the seam: each operation has a local implementation (a pure reducer) and a contract one
+(a transaction, then a fresh read). `src/play/chain.ts` maps chain state onto the local `Save` shape and, at
+start-up, compares the client's catalog with the contracts' and warns if a number has drifted.
+
+One difference is deliberate. Locally the reel fight decides quality and can lose the fish. On the contracts the
+fish, its weight and its quality are rolled by the contract (a client-reported result could be forged), so there
+the fight is an animation of a catch that is already final; a better rod shifts the quality roll instead.
 
 ```sh
 pnpm install
@@ -37,9 +45,9 @@ buy tackle → rarer fish, new waters.
 
 ### Trust
 
-The save is a JSON blob the player can edit. That is fine for a local game and worthless as evidence: nothing in
-it may later count as proof of a catch, a reward or NFT eligibility. When the game goes onchain, catches and
-rewards have to be decided by the contracts or a trusted server, and `play/state.ts` is the one module to replace.
+The local save is a JSON blob the player can edit: fine for a local game, worthless as evidence. On the contracts
+nothing in the browser decides a catch, a balance or an unlock; the only client-side state there is cosmetic
+(favourite stars, the last location picked).
 
 ## Wallets
 
@@ -52,7 +60,7 @@ rewards have to be decided by the contracts or a trusted server, and `play/state
   - every page origin (e.g. `http://localhost:5180`) allow-listed for Direct login;
   - for sponsored gas: the app enabled for Sponsorship and Auth tokens.
 
-  Players connect only through Fluent Connect; there is no other wallet option. In the local game signing in is optional and changes nothing yet.
+  Players connect only through Fluent Connect; there is no other wallet option. On the contracts the connected account is the player; in the local game signing in is optional.
 
 ## Scripts
 
@@ -70,23 +78,9 @@ If `contracts/out` is missing, `sync` keeps the already generated files.
 
 ## Settings (Vite environment variables)
 
-- `VITE_GAME_MODE` — `onchain` for the contract client; anything else (default) is the local game.
+- `VITE_GAME_MODE` — `local` forces the local game even when a deployment exists.
 - `VITE_CHAIN_ID` — chainId (default `20994`, Fluent Testnet; `25363` is Fluent mainnet); addresses are taken from `deployments/<chainId>.json`.
 - `VITE_RPC_URL` — node RPC (default: the network's public RPC).
-
-## What's in the UI (onchain client)
-
-- **Header**: address, ETH, PEARL, energy with a regen timer, XP, number of catches.
-- **Water** (canvas): cast, the float bobs while we wait for blocks (`block N/M`), bite, auto reel
-  (toggle) or the "Reel in!" button, a splash and a catch card with the fish SVG from `tokenURI`, "It got away!" on a miss.
-- **Spot picker** (locked spots are greyed out and show the required rod level), **rods** (level/durability), **bait** (remaining stock).
-- **Keepnet**: fish with images, weight and sell price (`quoteSell`), multi-select and selling (`sellFish`).
-- **Shop**: bait, energy refill (`refillPrice`), new rod, upgrade/repair of the selected rod
-  (`upgradeCost` / `repairCost`, repair unavailable below `minRepairLevel`). All prices are read from the contract.
-- **Market**: list a fish/rod (with `setApprovalForAll`), cancel your own listing, buy someone else's (with PEARL `approve`).
-  The listing index is built from `Listed`/`Cancelled`/`Sold` events starting at `startBlock` and checked against `listings()`.
-- **Records**: weekly record (`weeklyBest(currentWeek())`) and the top 10 heaviest fish from `Caught` events.
-- Contract errors (custom errors) are decoded using the ABIs of all contracts and shown as readable messages.
 
 ## Structure
 
@@ -104,11 +98,13 @@ src/game/              the rules, pure TypeScript, no DOM and no storage
   game.test.ts         unit tests
 src/tackle/            rod and lure catalog, sprites, the shop page
 src/play/              the local game's shell
-  state.ts             persistence boundary (localStorage today)
+  ops.ts               every operation, local or contract
+  chain.ts             contract backend: reads via GameLens, transactions, catalog check
+  state.ts             the current Save (localStorage in local mode, a view of chain state otherwise)
   fishSprite.ts        pixel fish drawn from shape parameters
   ui/*.ts              pond, keepnet, collection, trophies, ranks, header
 sim/balance.sim.ts     balance simulation
-src/app.ts, store.ts, actions.ts, tx.ts, ui/*.ts   the onchain client
+src/tx.ts, errors.ts   simulate → send through Fluent Connect → receipt, readable revert messages
 src/scene.ts           canvas water animation (both modes)
 src/fluent.tsx         Fluent Connect widget (React island)
 scripts/sync-abi.mjs   generates src/generated/* from ../contracts/out and ../deployments

@@ -3,14 +3,17 @@
  * shop (buy, equip, repair). With `shop` off (the onchain client, whose contracts know rod levels and bait only)
  * it stays a preview.
  */
-import { buyLure, buyRod, equipLure, equipRod, activeSpecialOf, repairRod, rodRepairPrice } from '../game/actions';
-import { LOCATIONS } from '../game/content';
+import { activeSpecialOf, rodRepairPrice } from '../game/actions';
+import { LOCATIONS, PEARL_PER_BLEND } from '../game/content';
 import { itemEffects, totals } from '../game/equipment';
 import { greenWidth } from '../game/minigame';
 import { isUnlocked } from '../game/progress';
 import type { Effects as Fx } from '../game/types';
 import { RARITY_CLASS, RARITY_NAMES } from '../i18n';
-import { apply, getSave, rev } from '../play/state';
+import { EXCHANGE_DEPLOYED, world } from '../play/chain';
+import { CHAIN, ops } from '../play/ops';
+import { state } from '../store';
+import { getSave, rev } from '../play/state';
 import { h, icon, mount, sigOf } from '../ui/dom';
 import { LURES, RODS, lureById, rodById, type Effects, type TackleItem } from './catalog';
 import { lureSprite, rodSprite } from './sprites';
@@ -95,20 +98,20 @@ function actions(item: TackleItem, shop: boolean): HTMLElement[] {
   const short = s.pearl < item.price;
   const shortTitle = short ? `You need ${pearl(item.price - s.pearl)} more PEARL` : undefined;
   if (item.kind === 'rod') {
-    if (!s.rods[item.id]) return [button(`Buy · ${pearl(item.price)}`, () => (apply((x) => buyRod(x, item.id)), (view.rod = item.id)), { primary: true, disabled: short, title: shortTitle })];
+    if (!s.rods[item.id]) return [button(`Buy · ${pearl(item.price)}`, () => ((view.rod = item.id), void ops.buyRod(item.id)), { primary: true, disabled: short, title: shortTitle })];
     const repair = rodRepairPrice(s, item.id);
     return [
-      repair > 0 ? button(`Repair · ${pearl(repair)}`, () => void apply((x) => repairRod(x, item.id)), { disabled: s.pearl < repair }) : null,
-      s.equipped.rod === item.id ? button('Equipped', null) : button('Equip', () => (apply((x) => equipRod(x, item.id)), (view.rod = item.id)), { primary: true }),
+      repair > 0 ? button(`Repair · ${pearl(repair)}`, () => void ops.repairRod(item.id), { disabled: s.pearl < repair }) : null,
+      s.equipped.rod === item.id ? button('Equipped', null) : button('Equip', () => ((view.rod = item.id), void ops.equipRod(item.id)), { primary: true }),
     ].filter((x): x is HTMLElement => !!x);
   }
   const own = s.lures[item.id];
-  if (!own) return [button(`Buy · ${pearl(item.price)}`, () => (apply((x) => equipLure(buyLure(x, item.id), item.id)), (view.lure = item.id)), { primary: true, disabled: short, title: shortTitle })];
+  if (!own) return [button(`Buy · ${pearl(item.price)}`, () => ((view.lure = item.id), void ops.buyLure(item.id)), { primary: true, disabled: short, title: shortTitle })];
   return [
-    button(`+${item.wear} casts · ${pearl(item.price)}`, () => void apply((x) => buyLure(x, item.id)), { disabled: short, title: shortTitle ?? 'Adds casts to the lure you already carry' }),
+    button(`+${item.wear} casts · ${pearl(item.price)}`, () => void ops.buyLure(item.id), { disabled: short, title: shortTitle ?? 'Adds casts to the lure you already carry' }),
     s.equipped.lure === item.id
-      ? button('Take off', () => (apply((x) => equipLure(x, null)), (view.lure = null)))
-      : button('Equip', () => (apply((x) => equipLure(x, item.id)), (view.lure = item.id)), { primary: true }),
+      ? button('Take off', () => ((view.lure = null), void ops.equipLure(null)))
+      : button('Equip', () => ((view.lure = item.id), void ops.equipLure(item.id)), { primary: true }),
   ];
 }
 
@@ -225,8 +228,89 @@ function loadoutCard(rod: TackleItem, lure: TackleItem | null, spot: number, sho
   );
 }
 
+/** What the player typed into the exchange box; kept across re-renders. */
+let blendInput = '';
+let buyingPearl = false;
+
+/** "Buy PEARL for BLEND": one way, fixed rate. On the contracts it is the PearlExchange; locally, the bottle's BLEND. */
+function exchangeCard(rerender: () => void): HTMLElement | null {
+  if (CHAIN && !EXCHANGE_DEPLOYED) return null;
+  const s = getSave();
+  const balance = CHAIN ? (world.blend?.balance ?? 0) : s.blend;
+  const rate = CHAIN ? (world.blend?.pearlPerBlend ?? PEARL_PER_BLEND) : PEARL_PER_BLEND;
+  const paused = CHAIN && !!world.blend?.paused;
+  const signedOut = CHAIN && !state.wallet;
+  const amount = (): number => Number(blendInput.replace(',', '.')) || 0;
+  const fmt = (n: number): string => n.toLocaleString('en-US', { maximumFractionDigits: 4 });
+  const out = h('span', { class: 'pearl xc-out' });
+  const buy = h('button', { class: 'btn btn-primary btn-sm' });
+  const sync = (): void => {
+    const a = amount();
+    out.textContent = a > 0 ? `= ${fmt(a * rate)} PEARL` : `1 BLEND = ${fmt(rate)} PEARL`;
+    buy.textContent = buyingPearl ? 'Buying…' : 'Buy PEARL';
+    buy.disabled = buyingPearl || paused || signedOut || a <= 0 || a > balance;
+    buy.title = signedOut ? 'Connect with Fluent first' : a > balance ? 'You do not have that much BLEND' : '';
+  };
+  const input = h('input', {
+    class: 'num xc-input',
+    attrs: { type: 'text', inputmode: 'decimal', placeholder: '0', value: blendInput, 'aria-label': 'BLEND to spend' },
+    oninput: (e) => {
+      blendInput = (e.target as HTMLInputElement).value;
+      sync();
+    },
+  });
+  buy.addEventListener('click', () => {
+    buyingPearl = true;
+    sync();
+    void ops.buyPearl(blendInput).then((ok) => {
+      buyingPearl = false;
+      if (ok) blendInput = '';
+      rerender();
+    });
+  });
+  sync();
+  return h(
+    'section',
+    { class: 'card xc', attrs: { 'aria-label': 'Buy PEARL for BLEND' } },
+    h(
+      'div',
+      { class: 'xc-text' },
+      h('h3', { text: 'Buy PEARL for BLEND' }),
+      h('p', {
+        class: 'muted small',
+        text: paused
+          ? 'The exchange is paused right now.'
+          : `Short on PEARL for a rod or a lure? Trade BLEND for it: 1 BLEND = ${fmt(rate)} PEARL, one way. ${CHAIN ? 'The BLEND leaves your wallet for the game treasury.' : 'Local game: this spends the BLEND from your bottle.'}`,
+      }),
+    ),
+    h(
+      'div',
+      { class: 'xc-form' },
+      h('span', { class: 'muted small' }, 'You have ', h('span', { class: 'blend', text: `${fmt(balance)} BLEND` })),
+      h(
+        'div',
+        { class: 'xc-row' },
+        input,
+        h('span', { class: 'blend xc-unit', text: 'BLEND' }),
+        h('button', {
+          class: 'btn btn-ghost btn-sm',
+          text: 'Max',
+          disabled: balance <= 0,
+          onclick: () => {
+            blendInput = String(balance);
+            input.value = blendInput;
+            sync();
+          },
+        }),
+        out,
+        buy,
+      ),
+    ),
+  );
+}
+
 export function initTackle(host: HTMLElement, shop = false): () => void {
-  const render = (): HTMLElement[] => {
+  const render = (): (HTMLElement | null)[] => {
     const s = getSave();
     const rod = rodById(view.rod ?? (shop ? s.equipped.rod : 'carbon')) ?? RODS[0];
     const lureId = view.lure === undefined ? (shop ? s.equipped.lure : 'spoon') : view.lure;
@@ -253,13 +337,14 @@ export function initTackle(host: HTMLElement, shop = false): () => void {
         ),
       ),
       loadoutCard(rod, lure, spot, shop, rerender),
+      shop ? exchangeCard(rerender) : null,
       h('h3', { class: 'tk-section', text: 'Rods' }),
       h('div', { class: 'tk-grid' }, RODS.map((r) => card(r, rod.id === r.id, pickRod(r.id), shop, spot))),
       h('h3', { class: 'tk-section', text: 'Lures' }),
       h('div', { class: 'tk-grid' }, LURES.map((l) => card(l, lure?.id === l.id, pickLure(l.id), shop, spot))),
     ];
   };
-  const rerender = mount(host, () => sigOf(rev(), view, shop), render);
+  const rerender = mount(host, () => sigOf(rev(), view, shop, world.blend?.balance, world.blend?.paused, state.wallet?.address, buyingPearl), render);
   host.addEventListener('keydown', (e) => {
     const t = e.target as HTMLElement;
     if ((e.key === 'Enter' || e.key === ' ') && t.classList.contains('tk-card')) {

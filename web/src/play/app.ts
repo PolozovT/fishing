@@ -1,5 +1,6 @@
 /** Entry of the local game: layout, routing and render wiring. No contracts and no RPC are involved. */
 import { fluentWallet } from '../clients';
+import { CHAIN_ID, chain, deployment } from '../config';
 import { FLUENT_CONFIGURED, disconnectFluent, mountFluent, openFluentAccount, openFluentConnect, type FluentAccountState } from '../fluent';
 import { emit, state, subscribe } from '../store';
 import { initTackle } from '../tackle/page';
@@ -11,6 +12,10 @@ import { initKeepnet } from './ui/keepnet';
 import { initPond, tickPond } from './ui/pond';
 import { initRanks, tickRanks } from './ui/ranks';
 import { initTrophies } from './ui/trophies';
+import { catalogMismatches } from './chain';
+import { CHAIN, refresh, refreshStandings } from './ops';
+import { replaceSave } from './state';
+import { freshSave } from '../game/save';
 
 const app = document.getElementById('app')!;
 
@@ -64,7 +69,11 @@ app.append(
   headerEl,
   pondEl,
   tackleEl,
-  h('footer', { class: 'footer' }, 'Local game · progress is saved in this browser · no contracts or transactions yet'),
+  h(
+    'footer',
+    { class: 'footer' },
+    CHAIN ? `${chain.name} (${CHAIN_ID}) · game ${deployment?.game} · every catch is decided and stored onchain` : 'Local game · progress is saved in this browser · no contracts or transactions',
+  ),
 );
 selectTab(tab);
 
@@ -80,11 +89,16 @@ window.addEventListener('hashchange', () => {
   window.scrollTo(0, 0);
 });
 
-// The Fluent Connect sign-in stays available, but the local game does not depend on it.
+// The local game does not depend on the sign-in. On the contracts the connected account is the player.
 function onFluentChange(s: FluentAccountState): void {
   state.fluentStatus = s.status;
+  const before = state.wallet?.address;
   if (s.status === 'connected' && s.address) state.wallet = fluentWallet(s.address, s.kind);
   else if (s.status === 'disconnected') state.wallet = null;
+  if (CHAIN && state.wallet?.address !== before) {
+    if (state.wallet) void refresh().then(refreshStandings);
+    else replaceSave(freshSave(Date.now())); // signed out: back to an empty view
+  }
   emit();
 }
 if (FLUENT_CONFIGURED) {
@@ -102,6 +116,7 @@ const renders = [
     openAccount: openFluentAccount,
     disconnect: () => {
       state.wallet = null;
+      if (CHAIN) replaceSave(freshSave(Date.now()));
       emit();
       void disconnectFluent().catch((e) => console.warn('fluent disconnect', e));
     },
@@ -120,3 +135,23 @@ setInterval(() => {
   tickRanks();
   tickPond();
 }, 1000);
+
+if (CHAIN) {
+  void refreshStandings();
+  // other tabs, a keeper finishing a cast, or a marketplace trade can change the player's state
+  setInterval(() => {
+    if (document.visibilityState !== 'visible') return;
+    void refresh();
+    void refreshStandings();
+  }, 20_000);
+  void catalogMismatches()
+    .then((diff) => {
+      if (diff.length === 0) return;
+      console.warn('[catalog] the client and the contracts disagree:', diff);
+      toast(`The game data in this client differs from the contracts in ${diff.length} place(s). Numbers on screen may be off; see the console.`, 'err', 12_000);
+    })
+    .catch((e) => {
+      console.warn('catalog check failed', e);
+      toast(`Cannot read the game contracts on ${chain.name}. Check the network and reload.`, 'err', 12_000);
+    });
+}

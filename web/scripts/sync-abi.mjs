@@ -15,9 +15,10 @@ const genDir = join(web, 'src', 'generated');
 const CONTRACTS = {
   FishingGame: 'fishingGameAbi',
   FishNFT: 'fishNftAbi',
-  RodNFT: 'rodNftAbi',
+  GameLens: 'gameLensAbi',
   PearlToken: 'pearlTokenAbi',
   Marketplace: 'marketplaceAbi',
+  PearlExchange: 'pearlExchangeAbi',
 };
 
 mkdirSync(genDir, { recursive: true });
@@ -51,9 +52,10 @@ if (existsSync(depDir)) {
       startBlock: Number(d.startBlock ?? 0),
       game: d.game,
       fish: d.fish,
-      rod: d.rod,
+      lens: d.lens,
       pearl: d.pearl,
       market: d.market,
+      ...(d.blend && d.exchange ? { blend: d.blend, exchange: d.exchange } : {}),
     };
   }
 }
@@ -61,7 +63,7 @@ if (!existsSync(depDir) && existsSync(depDst)) {
   console.warn('[sync] ../deployments not found, keeping existing deployments.ts');
 } else {
   const type =
-    'export interface Deployment {\n  chainId: number;\n  startBlock: number;\n  game: `0x${string}`;\n  fish: `0x${string}`;\n  rod: `0x${string}`;\n  pearl: `0x${string}`;\n  market: `0x${string}`;\n}\n';
+    'export interface Deployment {\n  chainId: number;\n  startBlock: number;\n  game: `0x${string}`;\n  fish: `0x${string}`;\n  lens: `0x${string}`;\n  pearl: `0x${string}`;\n  market: `0x${string}`;\n  /** Set once the BLEND → PEARL exchange is deployed. */\n  blend?: `0x${string}`;\n  exchange?: `0x${string}`;\n}\n';
   writeFileSync(
     depDst,
     `${header}${type}\nexport const deployments: Record<string, Deployment> = ${JSON.stringify(deployments, null, 2)};\n`,

@@ -8,7 +8,7 @@ import {
   type Hex,
 } from 'viem';
 import { FluentReviewRejectedError } from '@fluent.xyz/connect';
-import { fishingGameAbi, fishNftAbi, marketplaceAbi, pearlTokenAbi, rodNftAbi } from './abi';
+import { fishingGameAbi, fishNftAbi, marketplaceAbi, pearlExchangeAbi, pearlTokenAbi } from './abi';
 import { ERRORS } from './i18n';
 
 // Union of every custom error across the game contracts: a revert bubbling up from a nested call
@@ -16,7 +16,7 @@ import { ERRORS } from './i18n';
 const allErrors: Abi = (() => {
   const seen = new Set<string>();
   const out: Abi[number][] = [];
-  for (const abi of [fishingGameAbi, fishNftAbi, rodNftAbi, pearlTokenAbi, marketplaceAbi] as readonly Abi[]) {
+  for (const abi of [fishingGameAbi, fishNftAbi, pearlTokenAbi, marketplaceAbi, pearlExchangeAbi] as readonly Abi[]) {
     for (const item of abi) {
       if (item.type !== 'error' || seen.has(item.name)) continue;
       seen.add(item.name);

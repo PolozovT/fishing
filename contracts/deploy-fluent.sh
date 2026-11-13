@@ -25,4 +25,4 @@ forge script script/Deploy.s.sol --rpc-url "$RPC" --broadcast --slow "${SIGNER[@
   echo "If only verification failed, the contracts are already deployed; addresses are in ../deployments/20994.json" >&2
   exit 1
 }
-echo "Done: ../deployments/20994.json. Next: cd ../web && pnpm dev:fluent"
+echo "Done: ../deployments/20994.json. Next: cd ../web && pnpm dev"

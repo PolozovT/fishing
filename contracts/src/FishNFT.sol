@@ -2,18 +2,19 @@
 pragma solidity ^0.8.28;
 
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {ERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
-/// @title Caught fish. Every fish is unique: species + exact weight + where/when/who caught it.
+/// @title Caught fish. Every fish is unique: species + exact weight + quality + where/when/who caught it.
 /// @notice Holds the species catalog too, so metadata (fully onchain SVG) needs no external calls.
-contract FishNFT is ERC721, Ownable {
+contract FishNFT is ERC721Enumerable, Ownable {
     using Strings for uint256;
 
     struct Species {
         string name;
-        uint8 rarity; // 0 common, 1 uncommon, 2 rare, 3 epic, 4 legendary
+        uint8 rarity; // 0 common, 1 uncommon, 2 rare, 3 epic, 4 legendary, 5 mythic
         uint32 minWeight; // grams
         uint32 maxWeight; // grams
         uint96 basePrice; // PEARL wei for a fish of average weight
@@ -24,15 +25,17 @@ contract FishNFT is ERC721, Ownable {
         uint16 speciesId;
         uint32 weight; // grams
         uint8 spotId;
+        uint8 quality; // 0 D, 1 C, 2 B, 3 A, 4 S
         uint40 caughtAt;
         address angler; // original catcher, survives transfers
     }
 
     address public game;
     uint256 public nextId = 1;
-    uint256 public totalSupply;
     Species[] internal _species;
     mapping(uint256 => Fish) internal _fish;
+    /// @notice How many fish of a species an address holds right now (the game checks this for special fish).
+    mapping(address => mapping(uint16 => uint256)) public heldOf;
 
     error NotGame();
     error BadSpecies();
@@ -51,14 +54,14 @@ contract FishNFT is ERC721, Ownable {
     }
 
     function addSpecies(Species calldata s) external onlyOwner returns (uint256 id) {
-        if (s.minWeight == 0 || s.maxWeight < s.minWeight || s.rarity > 4) revert BadSpecies();
+        if (s.minWeight == 0 || s.maxWeight < s.minWeight || s.rarity > 5) revert BadSpecies();
         id = _species.length;
         _species.push(s);
         emit SpeciesAdded(id, s.name, s.rarity);
     }
 
     function updateSpecies(uint256 id, Species calldata s) external onlyOwner {
-        if (id >= _species.length || s.minWeight == 0 || s.maxWeight < s.minWeight || s.rarity > 4) {
+        if (id >= _species.length || s.minWeight == 0 || s.maxWeight < s.minWeight || s.rarity > 5) {
             revert BadSpecies();
         }
         _species[id] = s;
@@ -80,14 +83,30 @@ contract FishNFT is ERC721, Ownable {
     function mint(address to, Fish calldata f) external onlyGame returns (uint256 id) {
         id = nextId++;
         _fish[id] = f;
-        totalSupply++;
         _mint(to, id);
     }
 
     function burn(uint256 id) external onlyGame {
         _burn(id);
         delete _fish[id];
-        totalSupply--;
+    }
+
+    /// @notice Every fish an address holds, with its data. For clients: one call instead of a log scan.
+    function fishOf(address owner_) external view returns (uint256[] memory ids, Fish[] memory list) {
+        uint256 n = balanceOf(owner_);
+        ids = new uint256[](n);
+        list = new Fish[](n);
+        for (uint256 i; i < n; i++) {
+            ids[i] = tokenOfOwnerByIndex(owner_, i);
+            list[i] = _fish[ids[i]];
+        }
+    }
+
+    function _update(address to, uint256 tokenId, address auth) internal override returns (address from) {
+        uint16 sp = _fish[tokenId].speciesId; // set before mint, deleted after burn
+        from = super._update(to, tokenId, auth);
+        if (from != address(0)) heldOf[from][sp] -= 1;
+        if (to != address(0)) heldOf[to][sp] += 1;
     }
 
     // ---------------------------------------------------------------- metadata
@@ -96,11 +115,13 @@ contract FishNFT is ERC721, Ownable {
         _requireOwned(id);
         Fish memory f = _fish[id];
         Species memory s = _species[f.speciesId];
-        string[5] memory rarities = ["Common", "Uncommon", "Rare", "Epic", "Legendary"];
+        string[6] memory rarities = ["Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic"];
+        string[5] memory qualities = ["D", "C", "B", "A", "S"];
         string memory json = string.concat(
             '{"name":"', s.name, " #", id.toString(), '","description":"A ', _kg(f.weight), " kg ", s.name,
             ' caught onchain.","attributes":[{"trait_type":"Species","value":"', s.name,
-            '"},{"trait_type":"Rarity","value":"', rarities[s.rarity], '"},{"trait_type":"Weight (g)","value":',
+            '"},{"trait_type":"Rarity","value":"', rarities[s.rarity], '"},{"trait_type":"Quality","value":"',
+            qualities[f.quality], '"},{"trait_type":"Weight (g)","value":',
             uint256(f.weight).toString(), '},{"trait_type":"Spot","value":', uint256(f.spotId).toString(),
             '},{"display_type":"date","trait_type":"Caught","value":', uint256(f.caughtAt).toString(),
             '}],"image":"data:image/svg+xml;base64,', Base64.encode(bytes(_svg(f, s))), '"}'
@@ -114,7 +135,7 @@ contract FishNFT is ERC721, Ownable {
         uint256 span = s.maxWeight - s.minWeight;
         uint256 rx = 35 + (span == 0 ? 15 : (uint256(f.weight - s.minWeight) * 30) / span);
         uint256 ry = (rx * 45) / 100;
-        string[5] memory glow = ["#0b2239", "#0d3b2e", "#0d2a4f", "#2a0d4f", "#4f3a0d"];
+        string[6] memory glow = ["#0b2239", "#0d3b2e", "#0d2a4f", "#2a0d4f", "#4f3a0d", "#4f0d2a"];
         return string.concat(
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="',
             glow[s.rarity], '"/><ellipse cx="95" cy="100" rx="', rx.toString(), '" ry="', ry.toString(),

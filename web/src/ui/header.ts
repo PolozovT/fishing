@@ -1,112 +1,11 @@
-import { formatEther } from 'viem';
 import { FLUENT_CONFIGURED } from '../fluent';
-import { cfg, chainNow, state } from '../store';
-import { fmtCountdown, fmtToken, h, icon, mount, segBar, shortAddr, sigOf } from './dom';
+import { state } from '../store';
+import { h, icon } from './dom';
 
 export interface HeaderHandlers {
   connectFluent(): void;
   openAccount(): void;
   disconnect(): void;
-}
-
-let regenEl: HTMLElement | null = null;
-
-export function initHeader(host: HTMLElement, on: HeaderHandlers): () => void {
-  return mount(
-    host,
-    () =>
-      sigOf(
-        state.wallet?.address,
-        state.wallet?.kind,
-        state.connecting,
-        state.eth,
-        state.pearl,
-        state.energy,
-        state.xp,
-        state.catches,
-        state.config.maxEnergy,
-        state.fluentStatus,
-        location.hash,
-      ),
-    () => render(on),
-  );
-}
-
-function render(on: HeaderHandlers): HTMLElement[] {
-  const brand = h(
-    'div',
-    { class: 'brand', attrs: { 'aria-label': 'Onchain Fishing' } },
-    h('span', { class: 'logo' }, icon('bobber')),
-    h('span', { class: 'wordmark' }, h('span', { class: 'wm-top', text: 'Onchain' }), h('span', { class: 'wm-main', text: 'Fishing' })),
-  );
-  const page = location.hash === '#/tackle' ? 'tackle' : 'pond';
-  const nav = h(
-    'nav',
-    { class: 'topnav', attrs: { 'aria-label': 'Pages' } },
-    h('a', { class: page === 'pond' ? 'active' : '', text: 'Pond', attrs: { href: '#/', ...(page === 'pond' ? { 'aria-current': 'page' } : {}) } }),
-    h('a', { class: page === 'tackle' ? 'active' : '', text: 'Tackle', attrs: { href: '#/tackle', ...(page === 'tackle' ? { 'aria-current': 'page' } : {}) } }),
-  );
-  const w = state.wallet;
-  if (!w) {
-    regenEl = null;
-    return [
-      brand,
-      nav,
-      h(
-        'div',
-        { class: 'connect' },
-        fluentButton(on),
-      ),
-    ];
-  }
-  const max = cfg('maxEnergy') || 1;
-  regenEl = h('span', { class: 'regen' });
-  tickHeader();
-  return [
-    brand,
-    nav,
-    h(
-      'div',
-      { class: 'stats' },
-      h(
-        'div',
-        { class: 'stat who' },
-        h('span', { class: 'badge badge-fluent', text: w.kind === 'eoa' ? 'fluent · wallet' : 'fluent id' }),
-        h('span', {
-          class: 'addr',
-          text: shortAddr(w.address),
-          title: `${w.address} — open account`,
-          onclick: on.openAccount,
-        }),
-      ),
-      h('div', { class: 'stat' }, h('span', { class: 'k', text: 'ETH' }), h('span', { class: 'v', text: Number(formatEther(state.eth)).toFixed(3) })),
-      h('div', { class: 'stat' }, h('span', { class: 'k', text: 'PEARL' }), h('span', { class: 'v pearl', text: fmtToken(state.pearl) })),
-      h(
-        'div',
-        { class: 'stat energy' },
-        h('span', { class: 'k', text: `Energy ${state.energy}/${max}` }),
-        segBar(state.energy, max, 10, 'en'),
-        regenEl,
-      ),
-      h('div', { class: 'stat' }, h('span', { class: 'k', text: 'XP' }), h('span', { class: 'v', text: String(state.xp) })),
-      h('div', { class: 'stat hide-sm' }, h('span', { class: 'k', text: 'Catches' }), h('span', { class: 'v', text: String(state.catches) })),
-      h('button', { class: 'btn btn-ghost btn-sm', text: 'Log out', onclick: on.disconnect }),
-    ),
-  ];
-}
-
-/** Called every second: energy regen countdown. */
-export function tickHeader(): void {
-  if (!regenEl) return;
-  const max = cfg('maxEnergy');
-  const regen = cfg('energyRegenSeconds');
-  if (state.energy >= max || state.energyUpdatedAt === 0 || regen === 0) {
-    regenEl.textContent = 'full';
-    return;
-  }
-  const elapsed = Math.max(0, chainNow() - state.energyUpdatedAt);
-  const left = regen - (elapsed % regen);
-  regenEl.textContent = `+1 in ${fmtCountdown(left)}`;
 }
 
 /** The Fluent Connect entry point: the widget handles Fluent ID login and External wallets. */

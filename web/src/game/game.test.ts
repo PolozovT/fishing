@@ -3,6 +3,7 @@ import { LURES, RODS, lureById, rodById } from '../tackle/catalog';
 import {
   GameError,
   buyLure,
+  buyPearl,
   buyRod,
   claimAchievement,
   energyNow,
@@ -18,7 +19,7 @@ import {
   toggleFavorite,
   type CastTicket,
 } from './actions';
-import { BLEND_PRIZE, LOCATIONS, SPECIALS, SPECIES, TUNING } from './content';
+import { BLEND_PRIZE, LOCATIONS, PEARL_PER_BLEND, SPECIALS, SPECIES, TUNING } from './content';
 import { avgWeight, fishPrice, levelOf, xpForLevel } from './economy';
 import { totals } from './equipment';
 import { rollSpecial, rollWeight, speciesOdds } from './generate';
@@ -321,6 +322,19 @@ describe('BLEND prize', () => {
     expect(() => landPrize(s, hooked)).toThrow(/already claimed/);
     expect(() => landFish(freshSave(NOW), ticket, hooked, 'B', NOW)).toThrow(GameError);
     expect(() => landPrize(freshSave(NOW), { speciesId: 0, weight: 100, isSpecial: false })).toThrow(GameError);
+  });
+  it('buys PEARL at the fixed rate, exactly once, and only with BLEND in hand', () => {
+    const s = { ...freshSave(NOW), blend: 100, pearl: 7 };
+    const r = buyPearl(s, 4.5);
+    expect(r.pearl).toBe(4.5 * PEARL_PER_BLEND);
+    expect(r.save.blend).toBe(95.5);
+    expect(r.save.pearl).toBe(7 + 450);
+    expect(buyRod(r.save, 'carbon').pearl).toBe(7);
+    expect(() => buyPearl(s, 100.01)).toThrow(/Not enough BLEND/);
+    expect(() => buyPearl(s, 0)).toThrow(GameError);
+    expect(() => buyPearl(s, -5)).toThrow(GameError);
+    expect(() => buyPearl(s, Number.NaN)).toThrow(GameError);
+    expect(s.blend).toBe(100);
   });
   it('older saves without the BLEND fields load with a zero balance', () => {
     const old = freshSave(NOW) as unknown as Record<string, unknown>;

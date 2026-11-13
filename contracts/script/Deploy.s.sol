@@ -18,8 +18,8 @@ contract Deploy is Script {
         vm.serializeUint(k, "startBlock", block.number);
         vm.serializeAddress(k, "pearl", address(d.pearl));
         vm.serializeAddress(k, "fish", address(d.fish));
-        vm.serializeAddress(k, "rod", address(d.rod));
         vm.serializeAddress(k, "market", address(d.market));
+        vm.serializeAddress(k, "lens", address(d.lens));
         string memory json = vm.serializeAddress(k, "game", address(d.game));
         string memory path = string.concat(vm.projectRoot(), "/../deployments/", vm.toString(block.chainid), ".json");
         vm.writeJson(json, path);

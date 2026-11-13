@@ -1,33 +1,26 @@
 /**
- * The catalog `contracts/script/GameSetup.sol` seeds at deploy time, for showing the UI before the contracts
- * are on the network. Once `deployments/<chainId>.json` exists the client reads the real catalog from the chain
- * instead. Keep in step with GameSetup.sol.
+ * The first 20 species and 5 spots, as the first version of the contracts seeded them (prices in the old 1×
+ * scale). game/content.ts builds the current catalog on top of this; GameSetup.sol mirrors that one.
  */
-import type { Bait, GameConfig, Species, Spot } from './store';
+export interface Species {
+  id: number;
+  name: string;
+  rarity: number;
+  minWeight: number;
+  maxWeight: number;
+  basePrice: bigint;
+  color: number;
+}
+export interface Spot {
+  id: number;
+  name: string;
+  minRodLevel: number;
+  energyCost: number;
+  active: boolean;
+  speciesIds: number[];
+}
 
 const E = 10n ** 18n;
-
-export const OFFLINE_CONFIG: GameConfig = {
-  maxEnergy: 20,
-  energyRegenSeconds: 15 * 60,
-  revealDelay: 2,
-  maxRodLevel: 5,
-  baseCatchBps: 5_500,
-  catchBpsPerLevel: 700,
-  maxCatchBps: 9_500,
-  rarityBoostPerLevel: 35,
-  starterDurability: 60,
-  durabilityPerLevel: 30,
-  energyRefillPrice: 20n * E,
-  rodPrice: 25n * E,
-  repairPricePerPoint: E / 10n,
-  emissionSoftCap: 0n,
-  refillPriceGrowthBps: 20_000,
-  minRepairLevel: 1,
-  starterRodFee: 0n,
-};
-
-export const OFFLINE_FEE_BPS = 500;
 
 const SPECIES: [string, number, number, number, bigint, number][] = [
   ['Roach', 0, 50, 450, (E * 9n) / 10n, 0x9fb3c8],
@@ -71,12 +64,3 @@ export const OFFLINE_SPOTS: Spot[] = (
     ['Taimen Rapids', 5, 4, [9, 7, 13, 18, 4]],
   ] as [string, number, number, number[]][]
 ).map(([name, minRodLevel, energyCost, speciesIds], id) => ({ id, name, minRodLevel, energyCost, active: true, speciesIds }));
-
-export const OFFLINE_BAITS: Bait[] = (
-  [
-    ['None', 0n, 0, 0],
-    ['Worm', E / 2n, 1_500, 0],
-    ['Shiny Lure', 3n * E, 500, 60],
-    ['Golden Fly', 12n * E, 2_000, 150],
-  ] as [string, bigint, number, number][]
-).map(([name, price, catchBonusBps, rarityBonus], id) => ({ id, name, price, catchBonusBps, rarityBonus }));
