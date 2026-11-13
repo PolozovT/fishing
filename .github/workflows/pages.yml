@@ -37,9 +37,10 @@ jobs:
       - name: Build
         working-directory: web
         env:
-          # Public client ids of the Fluent Connect app (they end up in the bundle either way).
-          VITE_FLUENT_APP_ID: ${{ vars.VITE_FLUENT_APP_ID }}
-          VITE_FLUENT_PRIVY_CLIENT_ID: ${{ vars.VITE_FLUENT_PRIVY_CLIENT_ID }}
+          # Kept as secrets so they are masked in these public logs. They are still client ids: the built
+          # site contains them, as any browser app must.
+          VITE_FLUENT_APP_ID: ${{ secrets.VITE_FLUENT_APP_ID }}
+          VITE_FLUENT_PRIVY_CLIENT_ID: ${{ secrets.VITE_FLUENT_PRIVY_CLIENT_ID }}
         run: pnpm build
       - uses: actions/upload-pages-artifact@v3
         with:
