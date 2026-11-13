@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  // Relative asset paths: the same build works at a domain root and under a sub-path (GitHub Pages).
+  base: './',
   server: {
     port: 5173,
     strictPort: true,
