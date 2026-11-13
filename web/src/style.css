@@ -1239,3 +1239,366 @@ div.item {
     padding: 7px 6px;
   }
 }
+
+/* ------------------------------------------------------------ top nav */
+.topnav {
+  display: flex;
+  gap: 4px;
+  margin-left: 8px;
+}
+.topnav a {
+  font: 400 12px/1 var(--font-px);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 9px 12px 8px;
+}
+.topnav a:hover {
+  color: var(--text);
+  background: var(--panel-2);
+}
+.topnav a.active {
+  color: var(--gold-hi);
+  background: var(--bg-deep);
+  box-shadow: inset 0 -2px 0 var(--gold);
+}
+
+/* ------------------------------------------------------------ tackle page */
+.tackle {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 20px;
+}
+.tk-intro {
+  margin-bottom: 18px;
+}
+.tk-title {
+  margin: 0 0 6px;
+  font: 700 24px/1.1 var(--font-px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text);
+  text-shadow: 2px 2px 0 #4a3a25;
+}
+.tk-intro p {
+  margin: 0;
+  max-width: 760px;
+}
+.tk-badge {
+  margin-left: 6px;
+  color: var(--warn);
+  box-shadow: inset 0 0 0 1px #6b4a2a;
+  background: #221a12;
+  vertical-align: 1px;
+}
+.tk-section {
+  margin: 26px 0 12px;
+}
+.tk-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 18px;
+}
+
+.tk-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  background: var(--panel);
+  box-shadow: var(--px-border);
+  cursor: pointer;
+  position: relative;
+}
+.tk-card:hover {
+  background: var(--panel-2);
+}
+.tk-card.sel {
+  box-shadow: var(--px-border-gold);
+  background: var(--panel-2);
+}
+.tk-card.sel::after {
+  content: 'In loadout';
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font: 400 9px/1 var(--font-px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--gold);
+  padding: 4px 5px 3px;
+}
+.tk-card-top {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.tk-well {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 108px;
+  height: 108px;
+  background: radial-gradient(circle at 50% 60%, #1c2a33 0%, var(--bg-deep) 70%);
+  box-shadow: inset 0 0 0 2px var(--line-soft);
+}
+.tk-card.r2 .tk-well {
+  box-shadow: inset 0 0 0 2px #2c3e52;
+}
+.tk-card.r3 .tk-well {
+  box-shadow: inset 0 0 0 2px #45365a;
+}
+.tk-well.sm {
+  width: 72px;
+  height: 72px;
+}
+.tk-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.tk-name {
+  margin: 0;
+  font: 400 15px/1.15 var(--font-px);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.tk-blurb {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.tk-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.tk-stat {
+  display: grid;
+  grid-template-columns: 58px 1fr 52px;
+  align-items: center;
+  gap: 8px;
+}
+.tk-stat-k {
+  font: 400 10px/1 var(--font-px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.tk-stat-v {
+  font: 400 12px/1 var(--font-px);
+  text-align: right;
+  color: var(--text-2);
+}
+.tk-stat-v.dim {
+  color: var(--dim);
+}
+.segbar.tk-catch .seg.on {
+  background: var(--ok);
+  box-shadow: inset 0 -2px 0 #577446;
+}
+.segbar.tk-rarity .seg.on {
+  background: var(--r3);
+  box-shadow: inset 0 -2px 0 #6b5585;
+}
+.segbar.tk-weight .seg.on {
+  background: var(--r2);
+  box-shadow: inset 0 -2px 0 #4a6a8a;
+}
+
+.tk-spot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  padding: 8px 10px;
+  background: var(--bg-deep);
+  box-shadow: inset 0 0 0 1px var(--line-soft);
+  font-size: 13px;
+}
+.tk-spot-k {
+  color: var(--muted);
+}
+.tk-spot-v {
+  color: var(--gold-hi);
+  font-weight: 600;
+}
+.tk-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: 100%;
+}
+.tk-chip {
+  font: 400 9px/1 var(--font-px);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  background: var(--panel-3);
+  padding: 4px 5px 3px;
+}
+
+.tk-perks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 13px;
+}
+.tk-perks li {
+  padding-left: 16px;
+  position: relative;
+}
+.tk-perks li::before {
+  position: absolute;
+  left: 0;
+  font: 700 12px/1.35 var(--font-px);
+}
+.tk-perks .pro {
+  color: var(--text-2);
+}
+.tk-perks .pro::before {
+  content: '+';
+  color: var(--ok);
+}
+.tk-perks .con {
+  color: var(--muted);
+}
+.tk-perks .con::before {
+  content: '−';
+  color: var(--danger-hi);
+}
+.tk-foot {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-soft);
+}
+.tk-wear {
+  font: 400 10px/1 var(--font-px);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.tk-price {
+  margin-left: auto;
+  font: 400 13px/1 var(--font-px);
+}
+
+/* loadout */
+.tk-loadout {
+  padding: 14px 16px 12px;
+}
+.tk-lo-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px 24px;
+  align-items: start;
+}
+.tk-lo-gear {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tk-plus {
+  font: 700 18px/1 var(--font-px);
+  color: var(--dim);
+}
+.tk-lo-names {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: 6px;
+  font-size: 14px;
+}
+.tk-lo-names .btn {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+.tk-lo-spots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tk-spotbtn {
+  border: 0;
+  background: var(--panel-2);
+  box-shadow: var(--px-border);
+  color: var(--muted);
+  font: 400 10px/1 var(--font-px);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 9px 10px 8px;
+  cursor: pointer;
+}
+.tk-spotbtn:hover {
+  color: var(--text);
+}
+.tk-spotbtn.active {
+  color: var(--gold-hi);
+  box-shadow: var(--px-border-gold);
+}
+.tk-lo-out {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.tk-big {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--bg-deep);
+  box-shadow: inset 0 0 0 1px var(--line-soft);
+}
+.tk-big .k {
+  font: 400 10px/1 var(--font-px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.tk-big .v {
+  font: 700 22px/1.1 var(--font-px);
+  color: var(--gold-hi);
+}
+.tk-big .d {
+  font-size: 12px;
+  color: var(--muted);
+}
+.tk-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--dim);
+}
+
+@media (max-width: 720px) {
+  .topnav {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+  }
+  .tk-lo-grid {
+    grid-template-columns: 1fr;
+  }
+  .tk-lo-out {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tk-grid {
+    grid-template-columns: 1fr;
+  }
+  .tackle {
+    padding: 16px;
+  }
+}

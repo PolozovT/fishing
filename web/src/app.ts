@@ -11,6 +11,7 @@ import { initMarket } from './ui/market';
 import { initRecords } from './ui/records';
 import { initShop } from './ui/shop';
 import { toast } from './ui/toast';
+import { initTackle } from './tackle/page';
 
 const app = document.getElementById('app')!;
 
@@ -62,15 +63,19 @@ function selectTab(k: Tab): void {
   if (k === 'market' || k === 'records') void loadWorld().catch(() => undefined);
 }
 
+const tackleEl = h('main', { class: 'tackle hidden' });
+const pondEl = h(
+  'main',
+  { class: 'layout' },
+  h('div', { class: 'col-left' }, sceneEl, controlsEl),
+  h('div', { class: 'col-right card' }, h('nav', { class: 'tabs', attrs: { role: 'tablist' } }, tabBtns), ...Object.values(panels)),
+);
+
 app.append(
   headerEl,
   banner,
-  h(
-    'main',
-    { class: 'layout' },
-    h('div', { class: 'col-left' }, sceneEl, controlsEl),
-    h('div', { class: 'col-right card' }, h('nav', { class: 'tabs', attrs: { role: 'tablist' } }, tabBtns), ...Object.values(panels)),
-  ),
+  pondEl,
+  tackleEl,
   h(
     'footer',
     { class: 'footer' },
@@ -78,6 +83,20 @@ app.append(
   ),
 );
 selectTab(tab);
+initTackle(tackleEl);
+
+/** Two pages, picked by the hash: the pond (default) and #/tackle. */
+function route(): void {
+  const tackle = location.hash === '#/tackle';
+  pondEl.classList.toggle('hidden', tackle);
+  tackleEl.classList.toggle('hidden', !tackle);
+  document.title = tackle ? 'Tackle · Onchain Fishing' : 'Onchain Fishing';
+  emit();
+}
+window.addEventListener('hashchange', () => {
+  route();
+  window.scrollTo(0, 0);
+});
 
 // ------------------------------------------------------------------ wallet
 
@@ -135,6 +154,7 @@ const renders = [
   initRecords(panels.records),
 ];
 subscribe(() => renders.forEach((r) => r()));
+route();
 setInterval(() => {
   tickHeader();
   tickStatus();

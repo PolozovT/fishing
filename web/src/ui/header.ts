@@ -26,6 +26,7 @@ export function initHeader(host: HTMLElement, on: HeaderHandlers): () => void {
         state.catches,
         state.config.maxEnergy,
         state.fluentStatus,
+        location.hash,
       ),
     () => render(on),
   );
@@ -38,11 +39,19 @@ function render(on: HeaderHandlers): HTMLElement[] {
     h('span', { class: 'logo' }, icon('bobber')),
     h('span', { class: 'wordmark' }, h('span', { class: 'wm-top', text: 'Onchain' }), h('span', { class: 'wm-main', text: 'Fishing' })),
   );
+  const page = location.hash === '#/tackle' ? 'tackle' : 'pond';
+  const nav = h(
+    'nav',
+    { class: 'topnav', attrs: { 'aria-label': 'Pages' } },
+    h('a', { class: page === 'pond' ? 'active' : '', text: 'Pond', attrs: { href: '#/', ...(page === 'pond' ? { 'aria-current': 'page' } : {}) } }),
+    h('a', { class: page === 'tackle' ? 'active' : '', text: 'Tackle', attrs: { href: '#/tackle', ...(page === 'tackle' ? { 'aria-current': 'page' } : {}) } }),
+  );
   const w = state.wallet;
   if (!w) {
     regenEl = null;
     return [
       brand,
+      nav,
       h(
         'div',
         { class: 'connect' },
@@ -55,6 +64,7 @@ function render(on: HeaderHandlers): HTMLElement[] {
   tickHeader();
   return [
     brand,
+    nav,
     h(
       'div',
       { class: 'stats' },
