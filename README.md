@@ -16,13 +16,13 @@ Hypothesis results are in **[REPORT.md](REPORT.md)**; economy charts are in [sim
 
 ## Quick start
 
-The game runs on **Fluent Testnet**: deploy the contracts there (see *Deploying to Fluent Testnet* below), then start the client. You need [Foundry](https://getfoundry.sh), Node 20+ and pnpm.
+The browser client is playable on its own: a local game with a `localStorage` save (rods, lures, fish quality, collection, special fish, weekly cup), no contracts needed. See [web/README.md](web/README.md). You need Node 20+ and pnpm.
 
 ```bash
 cd web && pnpm install && pnpm dev
 ```
 
-Open http://localhost:5180 and press **Connect with Fluent**. The Fluent Connect ids go in `web/.env.local` (see `web/.env.example`).
+Open http://localhost:5180 and cast. The contracts below are the onchain version of the core loop; the client switches to them with `VITE_GAME_MODE=onchain` after a deployment to **Fluent Testnet**.
 
 ## Tests and simulation
 

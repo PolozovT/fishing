@@ -8,7 +8,9 @@
     "dev": "node scripts/sync-abi.mjs && vite --port 5180 --strictPort",
     "build": "node scripts/sync-abi.mjs && tsc --noEmit && vite build",
     "preview": "vite preview --port 4173",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "sim": "vitest run --config vitest.sim.config.ts"
   },
   "dependencies": {
     "@fluent.xyz/connect": "0.8.0",
@@ -24,6 +26,7 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "typescript": "6.0.3",
-    "vite": "8.3.2"
+    "vite": "8.3.2",
+    "vitest": "5.1.0"
   }
 }

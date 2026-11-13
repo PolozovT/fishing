@@ -27,3 +27,9 @@ export function requireDeployment(): Deployment {
   if (!d) throw new Error(`No contract addresses for chainId ${CHAIN_ID} (deployments/${CHAIN_ID}.json)`);
   return d;
 }
+
+/**
+ * Local play (the default) runs the whole game in the browser with a localStorage save: no contracts, no
+ * transactions. `VITE_GAME_MODE=onchain` switches to the contract client once the contracts are deployed.
+ */
+export const LOCAL_GAME: boolean = import.meta.env.VITE_GAME_MODE !== 'onchain' || !d;

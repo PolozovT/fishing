@@ -1,7 +1,7 @@
 // UI labels and messages. Species, spot and bait names come straight from the contracts (already English).
 
-export const RARITY_NAMES = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
-export const RARITY_CLASS = ['r0', 'r1', 'r2', 'r3', 'r4'];
+export const RARITY_NAMES = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic'];
+export const RARITY_CLASS = ['r0', 'r1', 'r2', 'r3', 'r4', 'r5'];
 
 export const ERRORS: Record<string, string> = {
   // FishingGame

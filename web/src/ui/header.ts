@@ -110,7 +110,7 @@ export function tickHeader(): void {
 }
 
 /** The Fluent Connect entry point: the widget handles Fluent ID login and External wallets. */
-function fluentButton(on: HeaderHandlers): HTMLElement {
+export function fluentButton(on: HeaderHandlers): HTMLElement {
   if (!FLUENT_CONFIGURED) {
     return h('span', {
       class: 'warn',

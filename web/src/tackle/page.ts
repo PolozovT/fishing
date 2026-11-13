@@ -1,16 +1,25 @@
 /**
- * The Tackle page: rods and reusable lures with different strengths, and a loadout estimate for a spot.
- * A design preview — the contracts know rod levels and consumable bait only, so nothing here can be bought
- * or affects a catch yet.
+ * The Tackle page: rods and reusable lures, with a loadout estimate per location. In the local game it is the
+ * shop (buy, equip, repair). With `shop` off (the onchain client, whose contracts know rod levels and bait only)
+ * it stays a preview.
  */
+import { buyLure, buyRod, equipLure, equipRod, activeSpecialOf, repairRod, rodRepairPrice } from '../game/actions';
+import { LOCATIONS } from '../game/content';
+import { itemEffects, totals } from '../game/equipment';
+import { greenWidth } from '../game/minigame';
+import { isUnlocked } from '../game/progress';
+import type { Effects as Fx } from '../game/types';
 import { RARITY_CLASS, RARITY_NAMES } from '../i18n';
-import { h } from '../ui/dom';
-import { LURES, RODS, SPOT_NAMES, BASE_CATCH, MAX_CATCH, loadout, type Effects, type TackleItem } from './catalog';
+import { apply, getSave, rev } from '../play/state';
+import { h, icon, mount, sigOf } from '../ui/dom';
+import { LURES, RODS, lureById, rodById, type Effects, type TackleItem } from './catalog';
 import { lureSprite, rodSprite } from './sprites';
 
-const sel = { rod: 'carbon', lure: 'spoon' as string | null, spot: 0 };
+/** What the loadout card previews: starts as the equipped tackle at the current location. */
+const view: { rod: string | null; lure: string | null | undefined; spot: number | null } = { rod: null, lure: undefined, spot: null };
 
 const sign = (n: number): string => (n > 0 ? `+${n}` : String(n));
+const pearl = (n: number): string => n.toLocaleString('en-US');
 
 /** One stat row: label, a 10-segment bar scaled to `max`, and the value. */
 function statRow(label: string, value: number, max: number, suffix: string, cls: string): HTMLElement {
@@ -31,8 +40,8 @@ function statRow(label: string, value: number, max: number, suffix: string, cls:
 
 function effectRows(e: Effects): HTMLElement[] {
   return [
-    statRow('Catch', e.catch ?? 0, 10, '%', 'tk-catch'),
-    statRow('Rarity', e.rarity ?? 0, 150, '%', 'tk-rarity'),
+    statRow('Catch', e.catch ?? 0, 10, '', 'tk-catch'),
+    statRow('Rarity', e.rarity ?? 0, 150, '', 'tk-rarity'),
     statRow('Weight', e.weight ?? 0, 20, '%', 'tk-weight'),
   ];
 }
@@ -40,7 +49,7 @@ function effectRows(e: Effects): HTMLElement[] {
 function spotLine(item: TackleItem): HTMLElement | null {
   const s = item.spot;
   if (!s) return null;
-  const parts = [s.catch ? `${sign(s.catch)}% catch` : '', s.rarity ? `${sign(s.rarity)}% rarity` : '', s.weight ? `${sign(s.weight)}% weight` : '']
+  const parts = [s.catch ? `${sign(s.catch)} catch` : '', s.rarity ? `${sign(s.rarity)} rarity` : '', s.weight ? `${sign(s.weight)}% weight` : '']
     .filter(Boolean)
     .join(', ');
   return h(
@@ -51,19 +60,72 @@ function spotLine(item: TackleItem): HTMLElement | null {
     h(
       'span',
       { class: 'tk-chips' },
-      s.spots.map((i) => h('span', { class: 'tk-chip', text: SPOT_NAMES[i] })),
+      s.spots.map((i) => h('span', { class: 'tk-chip', text: LOCATIONS[i].name })),
     ),
   );
 }
 
-function card(item: TackleItem, selected: boolean, onPick: () => void): HTMLElement {
+/** "vs your Willow Rod here: +9 catch, +20 rarity" */
+function versus(item: TackleItem, current: TackleItem | undefined, spot: number): HTMLElement | null {
+  if (!current || current.id === item.id) return null;
+  const a = itemEffects(item, LOCATIONS[spot]);
+  const b = itemEffects(current, LOCATIONS[spot]);
+  const d: Fx = { catch: a.catch - b.catch, rarity: a.rarity - b.rarity, weight: a.weight - b.weight };
+  const parts = [d.catch ? `${sign(d.catch)} catch` : '', d.rarity ? `${sign(d.rarity)} rarity` : '', d.weight ? `${sign(d.weight)}% weight` : ''].filter(Boolean);
+  const better = d.catch + d.rarity / 10 + d.weight;
+  return h('div', { class: `tk-vs ${better > 0 ? 'up' : better < 0 ? 'down' : ''}`, text: `vs your ${current.name} at ${LOCATIONS[spot].name}: ${parts.length ? parts.join(', ') : 'the same'}` });
+}
+
+function button(text: string, onclick: (() => void) | null, opts: { primary?: boolean; title?: string; disabled?: boolean } = {}): HTMLElement {
+  return h('button', {
+    class: `btn btn-sm${opts.primary ? ' btn-primary' : ''}`,
+    text,
+    title: opts.title,
+    disabled: opts.disabled ?? !onclick,
+    onclick: (e) => {
+      e.stopPropagation();
+      onclick?.();
+    },
+  });
+}
+
+function actions(item: TackleItem, shop: boolean): HTMLElement[] {
+  if (!shop) return [button('Soon', null, { title: 'Not onchain yet: rod types and lures need a contract update' })];
+  const s = getSave();
+  const short = s.pearl < item.price;
+  const shortTitle = short ? `You need ${pearl(item.price - s.pearl)} more PEARL` : undefined;
+  if (item.kind === 'rod') {
+    if (!s.rods[item.id]) return [button(`Buy · ${pearl(item.price)}`, () => (apply((x) => buyRod(x, item.id)), (view.rod = item.id)), { primary: true, disabled: short, title: shortTitle })];
+    const repair = rodRepairPrice(s, item.id);
+    return [
+      repair > 0 ? button(`Repair · ${pearl(repair)}`, () => void apply((x) => repairRod(x, item.id)), { disabled: s.pearl < repair }) : null,
+      s.equipped.rod === item.id ? button('Equipped', null) : button('Equip', () => (apply((x) => equipRod(x, item.id)), (view.rod = item.id)), { primary: true }),
+    ].filter((x): x is HTMLElement => !!x);
+  }
+  const own = s.lures[item.id];
+  if (!own) return [button(`Buy · ${pearl(item.price)}`, () => (apply((x) => equipLure(buyLure(x, item.id), item.id)), (view.lure = item.id)), { primary: true, disabled: short, title: shortTitle })];
+  return [
+    button(`+${item.wear} casts · ${pearl(item.price)}`, () => void apply((x) => buyLure(x, item.id)), { disabled: short, title: shortTitle ?? 'Adds casts to the lure you already carry' }),
+    s.equipped.lure === item.id
+      ? button('Take off', () => (apply((x) => equipLure(x, null)), (view.lure = null)))
+      : button('Equip', () => (apply((x) => equipLure(x, item.id)), (view.lure = item.id)), { primary: true }),
+  ];
+}
+
+function card(item: TackleItem, selected: boolean, onPick: () => void, shop: boolean, spot: number): HTMLElement {
+  const s = getSave();
   const sprite = item.kind === 'rod' ? rodSprite(item.id, item.name) : lureSprite(item.id, item.name);
-  const wear = item.kind === 'rod' ? `${item.wear} durability` : `${item.wear} casts`;
+  const owned = item.kind === 'rod' ? s.rods[item.id] : s.lures[item.id];
+  const equipped = shop && (item.kind === 'rod' ? s.equipped.rod === item.id : s.equipped.lure === item.id);
+  let wear: string;
+  if (item.kind === 'rod') wear = item.wear === 0 ? 'Never wears out' : shop && s.rods[item.id] ? `${s.rods[item.id].durability}/${item.wear} durability` : `${item.wear} durability`;
+  else wear = shop && s.lures[item.id] ? `${s.lures[item.id].casts} casts left` : `${item.wear} casts`;
+  const current = item.kind === 'rod' ? rodById(s.equipped.rod) : lureById(s.equipped.lure);
   return h(
     'article',
     {
-      class: `tk-card ${RARITY_CLASS[item.tier]}${selected ? ' sel' : ''}`,
-      attrs: { tabindex: '0', role: 'button', 'aria-pressed': String(selected), 'aria-label': `${item.name}: use in the loadout` },
+      class: `tk-card ${RARITY_CLASS[item.tier]}${selected ? ' sel' : ''}${shop && owned ? ' owned' : ''}`,
+      attrs: { tabindex: '0', role: 'button', 'aria-pressed': String(selected), 'aria-label': `${item.name}: preview in the loadout` },
       onclick: onPick,
     },
     h(
@@ -73,7 +135,7 @@ function card(item: TackleItem, selected: boolean, onPick: () => void): HTMLElem
       h(
         'div',
         { class: 'tk-head' },
-        h('span', { class: `rarity ${RARITY_CLASS[item.tier]}`, text: RARITY_NAMES[item.tier] }),
+        h('span', { class: 'tk-tags' }, h('span', { class: `rarity ${RARITY_CLASS[item.tier]}`, text: RARITY_NAMES[item.tier] }), equipped ? h('span', { class: 'badge badge-on', text: 'Equipped' }) : shop && owned ? h('span', { class: 'badge', text: 'Owned' }) : null),
         h('h4', { class: 'tk-name', text: item.name }),
         h('p', { class: 'tk-blurb', text: item.blurb }),
       ),
@@ -86,30 +148,33 @@ function card(item: TackleItem, selected: boolean, onPick: () => void): HTMLElem
       item.pros.map((p) => h('li', { class: 'pro', text: p })),
       item.cons.map((c) => h('li', { class: 'con', text: c })),
     ),
+    shop ? versus(item, current, spot) : null,
     h(
       'div',
       { class: 'tk-foot' },
       h('span', { class: 'tk-wear', text: wear }),
-      h('span', { class: 'tk-price' }, item.price ? h('span', { class: 'pearl', text: `${item.price} PEARL` }) : h('span', { class: 'muted', text: 'Starter' })),
-      h('button', {
-        class: 'btn btn-sm',
-        disabled: true,
-        text: 'Soon',
-        title: 'Not onchain yet: rod types and lures need a contract update',
-      }),
+      h('span', { class: 'tk-price' }, item.price ? h('span', { class: 'pearl', text: `${pearl(item.price)} PEARL` }) : h('span', { class: 'muted', text: 'Starter' })),
+      h('span', { class: 'tk-acts' }, actions(item, shop)),
     ),
   );
 }
 
-function loadoutCard(rerender: () => void): HTMLElement {
-  const rod = RODS.find((r) => r.id === sel.rod) ?? RODS[0];
-  const lure = LURES.find((l) => l.id === sel.lure) ?? null;
-  const l = loadout(rod, lure, sel.spot);
-  const pct = (n: number) => `${n}%`;
+function loadoutCard(rod: TackleItem, lure: TackleItem | null, spot: number, shop: boolean, rerender: () => void): HTMLElement {
+  const s = getSave();
+  const loc = LOCATIONS[spot];
+  const special = shop ? activeSpecialOf(s) : null;
+  const t = totals(rod, lure, loc, special);
+  const eqRod = rodById(s.equipped.rod) ?? RODS[0];
+  const eqLure = lureById(s.equipped.lure) ?? null;
+  const base = totals(eqRod, eqLure, loc, special);
+  const previewing = shop && (rod.id !== eqRod.id || (lure?.id ?? null) !== (eqLure?.id ?? null));
+  const delta = (now: number, was: number, unit = ''): HTMLElement | null =>
+    previewing && now !== was ? h('span', { class: `delta ${now > was ? 'up' : 'down'}`, text: ` ${sign(Math.round((now - was) * 10) / 10)}${unit}` }) : null;
+  const tile = (k: string, v: string, d: HTMLElement | null, hint: string): HTMLElement => h('div', { class: 'tk-big' }, h('span', { class: 'k', text: k }), h('span', { class: 'v' }, v, d), h('span', { class: 'd', text: hint }));
   return h(
     'section',
     { class: 'card tk-loadout', attrs: { 'aria-label': 'Loadout estimate' } },
-    h('h3', { text: 'Loadout' }),
+    h('div', { class: 'dex-head' }, h('h3', { text: 'Loadout' }), previewing ? h('span', { class: 'badge', text: 'Preview · compared with your equipped tackle' }) : null),
     h(
       'div',
       { class: 'tk-lo-grid' },
@@ -124,51 +189,58 @@ function loadoutCard(rerender: () => void): HTMLElement {
           { class: 'tk-lo-names' },
           h('strong', { text: rod.name }),
           h('span', { class: 'muted', text: lure ? lure.name : 'No lure' }),
-          lure ? h('button', { class: 'btn btn-ghost btn-sm', text: 'Remove lure', onclick: () => ((sel.lure = null), rerender()) }) : null,
+          special ? h('span', { class: 'muted small', text: `+ ${special.name}: ${special.bonus.label}` }) : null,
+          previewing ? h('button', { class: 'btn btn-ghost btn-sm', text: 'Back to equipped', onclick: () => ((view.rod = null), (view.lure = undefined), rerender()) }) : null,
         ),
       ),
       h(
         'div',
-        { class: 'tk-lo-spots', attrs: { role: 'radiogroup', 'aria-label': 'Spot' } },
-        SPOT_NAMES.map((name, i) =>
-          h('button', {
-            class: `tk-spotbtn${sel.spot === i ? ' active' : ''}`,
-            text: name,
-            attrs: { role: 'radio', 'aria-checked': String(sel.spot === i) },
-            onclick: () => ((sel.spot = i), rerender()),
-          }),
+        { class: 'tk-lo-spots', attrs: { role: 'radiogroup', 'aria-label': 'Location' } },
+        LOCATIONS.map((l) =>
+          h(
+            'button',
+            {
+              class: `tk-spotbtn${spot === l.id ? ' active' : ''}`,
+              attrs: { role: 'radio', 'aria-checked': String(spot === l.id) },
+              onclick: () => ((view.spot = l.id), rerender()),
+            },
+            shop && !isUnlocked(s, l) ? icon('lock', 'Locked') : null,
+            l.name,
+          ),
         ),
       ),
       h(
         'div',
         { class: 'tk-lo-out' },
-        h('div', { class: 'tk-big' }, h('span', { class: 'k', text: 'Catch chance' }), h('span', { class: 'v', text: pct(l.catch) }), h('span', { class: 'd', text: `base ${BASE_CATCH}%, max ${MAX_CATCH}%` })),
-        h('div', { class: 'tk-big' }, h('span', { class: 'k', text: 'Rare odds' }), h('span', { class: 'v', text: l.rarity ? `+${l.rarity}%` : '—' }), h('span', { class: 'd', text: 'per rarity tier' })),
-        h('div', { class: 'tk-big' }, h('span', { class: 'k', text: 'Fish weight' }), h('span', { class: 'v', text: l.weight ? `+${l.weight}%` : '—' }), h('span', { class: 'd', text: 'and sell price' })),
-        h(
-          'div',
-          { class: 'tk-big' },
-          h('span', { class: 'k', text: 'Wear' }),
-          h('span', { class: 'v', text: `${l.rodWear}` }),
-          h('span', { class: 'd', text: lure ? `rod durability · lure ${l.lureCasts} casts` : 'rod durability' }),
-        ),
+        tile('Bite chance', `${t.biteChance}%`, delta(t.biteChance, base.biteChance), 'lure catch: more bites, sooner'),
+        tile('Green zone', `${Math.round(greenWidth(t.zone) * 100)}%`, delta(Math.round(greenWidth(t.zone) * 100), Math.round(greenWidth(base.zone) * 100)), 'rod catch: wider safe tension band'),
+        tile('Rare odds', t.total.rarity ? `+${t.total.rarity}` : '—', delta(t.total.rarity, base.total.rarity), 'weighting toward rarer fish'),
+        tile('Fish weight', t.total.weight ? `+${t.total.weight}%` : '—', delta(t.total.weight, base.total.weight, '%'), 'heavier: more PEARL, more points'),
       ),
     ),
-    h('p', { class: 'tk-note', text: 'Estimate for a level 1 rod. Upgrades and bait still stack on top in the game.' }),
+    h('p', {
+      class: 'tk-note',
+      text: 'Rarity is a relative weighting, not percentage points: +100 makes a Rare fish three times as likely against a Common one. Bonuses add up: rod + lure + location bonus + active special fish.',
+    }),
   );
 }
 
-export function initTackle(host: HTMLElement): () => void {
-  const render = (): void => {
+export function initTackle(host: HTMLElement, shop = false): () => void {
+  const render = (): HTMLElement[] => {
+    const s = getSave();
+    const rod = rodById(view.rod ?? (shop ? s.equipped.rod : 'carbon')) ?? RODS[0];
+    const lureId = view.lure === undefined ? (shop ? s.equipped.lure : 'spoon') : view.lure;
+    const lure = lureById(lureId) ?? null;
+    const spot = view.spot ?? (shop ? s.location : 0);
     const pickRod = (id: string) => () => {
-      sel.rod = id;
-      render();
+      view.rod = id;
+      rerender();
     };
     const pickLure = (id: string) => () => {
-      sel.lure = sel.lure === id ? null : id;
-      render();
+      view.lure = lure?.id === id ? null : id;
+      rerender();
     };
-    host.replaceChildren(
+    return [
       h(
         'div',
         { class: 'tk-intro' },
@@ -176,17 +248,18 @@ export function initTackle(host: HTMLElement): () => void {
         h(
           'p',
           { class: 'muted' },
-          'Rods and lures with different strengths. Lures are reusable: put one on, and it wears out over its casts like a rod. ',
-          h('span', { class: 'badge tk-badge', text: 'Preview · not onchain yet' }),
+          'Rods and lures with different strengths. A rod makes the fight easier, a lure brings more bites; both can pull rarer and heavier fish. Lures are reusable and wear out over their casts. ',
+          shop ? h('span', { class: 'badge tk-badge', text: `You have ${pearl(s.pearl)} PEARL` }) : h('span', { class: 'badge tk-badge', text: 'Preview · not onchain yet' }),
         ),
       ),
-      loadoutCard(render),
+      loadoutCard(rod, lure, spot, shop, rerender),
       h('h3', { class: 'tk-section', text: 'Rods' }),
-      h('div', { class: 'tk-grid' }, RODS.map((r) => card(r, sel.rod === r.id, pickRod(r.id)))),
+      h('div', { class: 'tk-grid' }, RODS.map((r) => card(r, rod.id === r.id, pickRod(r.id), shop, spot))),
       h('h3', { class: 'tk-section', text: 'Lures' }),
-      h('div', { class: 'tk-grid' }, LURES.map((l) => card(l, sel.lure === l.id, pickLure(l.id)))),
-    );
+      h('div', { class: 'tk-grid' }, LURES.map((l) => card(l, lure?.id === l.id, pickLure(l.id), shop, spot))),
+    ];
   };
+  const rerender = mount(host, () => sigOf(rev(), view, shop), render);
   host.addEventListener('keydown', (e) => {
     const t = e.target as HTMLElement;
     if ((e.key === 'Enter' || e.key === ' ') && t.classList.contains('tk-card')) {
@@ -194,6 +267,6 @@ export function initTackle(host: HTMLElement): () => void {
       t.click();
     }
   });
-  render();
-  return render;
+  rerender();
+  return rerender;
 }
