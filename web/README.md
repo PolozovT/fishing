@@ -3,37 +3,16 @@
 Browser frontend for the contracts in `../contracts` (FishingGame, FishNFT, RodNFT, PearlToken, Marketplace).
 Stack: Vite + TypeScript + viem, no UI framework (plain DOM + canvas).
 
-## Fluent Testnet
+## Quick start
 
-After deploying (`contracts/deploy-fluent.sh`, see the root README), start the client like this:
+The client runs against **Fluent Testnet** (chainId 20994) and reads the contract addresses from
+`../deployments/20994.json`, which `contracts/deploy-fluent.sh` writes (see the root README). Until the
+contracts are deployed there, the page says so instead of loading the game.
 
-```bash
-pnpm dev:fluent
+```sh
+pnpm install
+pnpm dev          # http://localhost:5180 (runs pnpm sync before starting)
 ```
-
-The client reads addresses from `deployments/20994.json`. Players connect with Fluent Connect (see Wallets below); there is no burner wallet in this mode.
-
-## Quick start (local, anvil)
-
-1. Start anvil with one-second blocks and deploy the contracts:
-
-   ```sh
-   anvil --block-time 1
-   cd ../contracts
-   forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --broadcast --private-key <anvil-key>
-   ```
-
-   The deploy script writes the addresses to `../deployments/31337.json`.
-
-2. Install dependencies and start the frontend:
-
-   ```sh
-   cd web
-   pnpm install
-   pnpm dev          # http://localhost:5173 (runs pnpm sync before starting)
-   ```
-
-3. Open http://localhost:5173 and click **"Local burner (anvil)"**.
 
 ## Wallets
 
@@ -46,18 +25,14 @@ The client reads addresses from `deployments/20994.json`. Players connect with F
   - every page origin (e.g. `http://localhost:5180`) allow-listed for Direct login;
   - for sponsored gas: the app enabled for Sponsorship and Auth tokens.
 
-  The widget works on Fluent Testnet/Mainnet only, so game actions through it need the contracts deployed there
-  (`pnpm dev:fluent`).
-- **Local burner** — chainId 31337 (anvil) only. A random private key is generated and stored in this browser's
-  `localStorage`, and 10 ETH is credited via `anvil_setBalance`. **Do not use this mode
-  with real funds.** To start over with a new address, delete the `onchain-fishing:burner-key` key from localStorage.
+  Players connect only through Fluent Connect; there is no other wallet option.
 
 ## Scripts
 
 | Command          | What it does                                                                                 |
 | ---------------- | -------------------------------------------------------------------------------------------- |
 | `pnpm sync`      | Copies ABIs from `../contracts/out/<Name>.sol/<Name>.json` and addresses from `../deployments/*.json` into `src/generated/` |
-| `pnpm dev`       | `sync` + Vite dev server on port 5173                                                         |
+| `pnpm dev`       | `sync` + Vite dev server on port 5180                                                         |
 | `pnpm build`     | `sync` + type check (`tsc`) + production build into `dist/`                                   |
 | `pnpm typecheck` | type check only                                                                               |
 
@@ -66,8 +41,8 @@ If `contracts/out` is missing, `sync` keeps the already generated files.
 
 ## Settings (Vite environment variables)
 
-- `VITE_RPC_URL` — node RPC (default `http://127.0.0.1:8545`).
-- `VITE_CHAIN_ID` — chainId (default `31337`); addresses are taken from `deployments/<chainId>.json`.
+- `VITE_CHAIN_ID` — chainId (default `20994`, Fluent Testnet; `25363` is Fluent mainnet); addresses are taken from `deployments/<chainId>.json`.
+- `VITE_RPC_URL` — node RPC (default: the network's public RPC).
 
 ## What's in the UI
 
@@ -90,7 +65,7 @@ scripts/sync-abi.mjs   generates src/generated/* from ../contracts/out and ../de
 src/generated/         ABIs (as const) and addresses — generated, do not edit by hand
 src/abi/index.ts       ABI re-exports
 src/config.ts          network, RPC, addresses
-src/clients.ts         publicClient, burner wallet, Fluent wallet record
+src/clients.ts         publicClient and the connected-account record
 src/fluent.tsx         Fluent Connect widget (React island) and the Batch-operation sender
 src/store.ts           state and loading data from the chain (logs, view functions)
 src/actions.ts         game and market transactions

@@ -190,10 +190,6 @@ body {
   color: var(--danger-hi);
   box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px #5a2f2a;
 }
-.btn-burner {
-  color: #e2c47a;
-  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px #5c4f33;
-}
 
 /* ------------------------------------------------------------ badges */
 .badge {
@@ -205,11 +201,6 @@ body {
   background: var(--panel-3);
   color: var(--text-2);
   box-shadow: inset 0 0 0 1px var(--line);
-}
-.badge-burner {
-  color: #e2c47a;
-  background: #221e15;
-  box-shadow: inset 0 0 0 1px #5c4f33;
 }
 .badge-fluent {
   color: #b9c7e8;

@@ -1,13 +1,11 @@
 import { formatEther } from 'viem';
 import { FLUENT_CONFIGURED } from '../fluent';
-import { IS_LOCAL } from '../config';
 import { cfg, chainNow, state } from '../store';
 import { fmtCountdown, fmtToken, h, icon, mount, segBar, shortAddr, sigOf } from './dom';
 
 export interface HeaderHandlers {
   connectFluent(): void;
   openAccount(): void;
-  connectBurner(): void;
   disconnect(): void;
 }
 
@@ -19,7 +17,7 @@ export function initHeader(host: HTMLElement, on: HeaderHandlers): () => void {
     () =>
       sigOf(
         state.wallet?.address,
-        state.wallet?.mode,
+        state.wallet?.kind,
         state.connecting,
         state.eth,
         state.pearl,
@@ -49,15 +47,6 @@ function render(on: HeaderHandlers): HTMLElement[] {
         'div',
         { class: 'connect' },
         fluentButton(on),
-        IS_LOCAL
-          ? h('button', {
-              class: 'btn btn-burner',
-              disabled: state.connecting,
-              text: 'Local burner (anvil)',
-              title: 'Random key stored in localStorage, ETH funded via anvil_setBalance. Local development only!',
-              onclick: on.connectBurner,
-            })
-          : null,
       ),
     ];
   }
@@ -72,14 +61,12 @@ function render(on: HeaderHandlers): HTMLElement[] {
       h(
         'div',
         { class: 'stat who' },
-        w.mode === 'burner'
-          ? h('span', { class: 'badge badge-burner', text: 'burner · local only', title: 'The key is stored in this browser\'s localStorage. Do not use it for real funds.' })
-          : h('span', { class: 'badge badge-fluent', text: w.kind === 'eoa' ? 'fluent · wallet' : 'fluent id' }),
+        h('span', { class: 'badge badge-fluent', text: w.kind === 'eoa' ? 'fluent · wallet' : 'fluent id' }),
         h('span', {
           class: 'addr',
           text: shortAddr(w.address),
-          title: w.mode === 'fluent' ? `${w.address} — open account` : `${w.address} — click to copy`,
-          onclick: () => (w.mode === 'fluent' ? on.openAccount() : void navigator.clipboard?.writeText(w.address)),
+          title: `${w.address} — open account`,
+          onclick: on.openAccount,
         }),
       ),
       h('div', { class: 'stat' }, h('span', { class: 'k', text: 'ETH' }), h('span', { class: 'v', text: Number(formatEther(state.eth)).toFixed(3) })),

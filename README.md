@@ -14,29 +14,15 @@ Hypothesis results are in **[REPORT.md](REPORT.md)**; economy charts are in [sim
 | `web/` | browser client (Vite + TypeScript + viem), see [web/README.md](web/README.md) |
 | `deployments/` | contract addresses per chainId (written by the deploy script) |
 
-## Quick start (local)
+## Quick start
 
-You need [Foundry](https://getfoundry.sh), Node 20+ and pnpm.
-
-1. A local chain with one block per second (without it `reel` would wait forever):
+The game runs on **Fluent Testnet**: deploy the contracts there (see *Deploying to Fluent Testnet* below), then start the client. You need [Foundry](https://getfoundry.sh), Node 20+ and pnpm.
 
 ```bash
-anvil --block-time 1
+cd web && pnpm install && pnpm dev
 ```
 
-2. Deploy from another terminal. `0xf39F…` is anvil's public test account:
-
-```bash
-cd contracts && forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --broadcast --unlocked --sender 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
-```
-
-3. Client:
-
-```bash
-cd web && pnpm install && pnpm sync && pnpm dev
-```
-
-Open http://localhost:5173 and choose the local burner wallet: it creates a throwaway key and funds it on anvil.
+Open http://localhost:5180 and press **Connect with Fluent**. The Fluent Connect ids go in `web/.env.local` (see `web/.env.example`).
 
 ## Tests and simulation
 
@@ -78,10 +64,10 @@ To deploy from your own wallet (a key in the Foundry keystore) instead:
 contracts/deploy-fluent.sh --account <key-name>
 ```
 
-3. Client for Fluent (players connect with Fluent Connect — set the widget ids in `web/.env.local`, see `web/.env.example`):
+3. Client (players connect with Fluent Connect — set the widget ids in `web/.env.local`, see `web/.env.example`):
 
 ```bash
-cd web && pnpm dev:fluent
+cd web && pnpm dev
 ```
 
 > ⚠️ Randomness comes from `blockhash`. It works on Fluent (verified on testnet: the value matches the real block hash), but blocks are produced by a sequencer, which could in theory influence outcomes. Anything with real value needs VRF (see REPORT.md). The code is not audited.

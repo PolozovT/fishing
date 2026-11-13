@@ -57,8 +57,8 @@ if (existsSync(depDir)) {
     };
   }
 }
-if (Object.keys(deployments).length === 0 && existsSync(depDst)) {
-  console.warn('[sync] no deployments found, keeping existing deployments.ts');
+if (!existsSync(depDir) && existsSync(depDst)) {
+  console.warn('[sync] ../deployments not found, keeping existing deployments.ts');
 } else {
   const type =
     'export interface Deployment {\n  chainId: number;\n  startBlock: number;\n  game: `0x${string}`;\n  fish: `0x${string}`;\n  rod: `0x${string}`;\n  pearl: `0x${string}`;\n  market: `0x${string}`;\n}\n';
