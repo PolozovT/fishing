@@ -70,14 +70,12 @@ body {
   image-rendering: pixelated;
   pointer-events: none;
 }
-img,
-canvas,
-svg.pxi {
+/* Global resets skip the Fluent Connect widget (.fluent-root): unlayered rules would beat its Tailwind layers.
+   :where() keeps the specificity at zero so component classes like .btn still win. */
+:where(img, canvas, svg.pxi):not(:where(.fluent-root *)) {
   image-rendering: pixelated;
 }
-button,
-input,
-select {
+:where(button, input, select):not(:where(.fluent-root *)) {
   font: inherit;
   color: inherit;
 }
@@ -85,13 +83,13 @@ select {
   background: var(--gold);
   color: var(--ink);
 }
-:focus-visible {
+:where(:focus-visible):not(:where(.fluent-root *)) {
   outline: 2px solid var(--gold-hi);
   outline-offset: 2px;
 }
 
 /* section headings: "HOW A RUN WORKS ————" */
-h3 {
+:where(h3):not(:where(.fluent-root *)) {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -101,7 +99,7 @@ h3 {
   letter-spacing: 0.14em;
   color: var(--text-2);
 }
-h3::after {
+:where(h3):not(:where(.fluent-root *))::after {
   content: '';
   flex: 1;
   height: 1px;
