@@ -1816,25 +1816,58 @@ div.item {
 .haul-line {
   position: relative;
   flex: 1;
-  height: 16px;
-  margin-right: 12px;
-  background: linear-gradient(var(--line), var(--line)) left center / 100% 2px no-repeat;
+  height: 26px;
+  margin-right: 50px;
+  /* the water line the fish is dragged along */
+  background: linear-gradient(var(--line-soft), var(--line-soft)) left center / 100% 2px no-repeat;
+}
+.haul-taut {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  background: var(--text-2);
+}
+.haul-taut.slack {
+  background: var(--dim);
 }
 .haul-fish {
   position: absolute;
   top: 50%;
-  transform: translate(-50%, -50%) scaleX(-1);
+  display: flex;
+  align-items: center;
+  gap: 0;
+  /* anchored at the hook: the taut line ends exactly where the hook starts */
+  transform: translate(0, -50%);
   line-height: 0;
 }
 .haul-fish .pxi rect {
   fill: var(--text);
+}
+/* 8×5 art pixels at 3×. Its shank is the second art row, so it is lowered to sit exactly on the line */
+.haul-fish .pxi-hook {
+  width: 24px;
+  height: 15px;
+  position: relative;
+  top: 3px;
+  /* the bend disappears into the fish's mouth */
+  margin-right: -5px;
+}
+.haul-fish .pxi-hook rect {
+  fill: var(--gold-hi);
+}
+/* the icon's nose is on its left: head toward the angler, hook in the mouth, tail trailing */
+.haul-fish .pxi-fish {
+  width: 30px;
+  height: 18px;
 }
 .haul-fish.pulling {
   animation: thrash 0.16s steps(2, jump-none) infinite;
 }
 @keyframes thrash {
   50% {
-    transform: translate(-50%, -80%) scaleX(-1);
+    transform: translate(0, -80%);
   }
 }
 .reel-hold {

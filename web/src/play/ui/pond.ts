@@ -287,6 +287,7 @@ let promptEl: HTMLElement;
 let needleEl: HTMLElement;
 let gaugeEl: HTMLElement;
 let fishEl: HTMLElement;
+let tautEl: HTMLElement;
 let holdBtn: HTMLButtonElement;
 
 const hookedRarity = (hk: Hooked) => (hk.prize ? BLEND_PRIZE.fightRarity : SPECIES[hk.speciesId].rarity);
@@ -307,7 +308,9 @@ function startReel(p: ReelParams): void {
     h('div', { class: 'gauge-seg red', style: `width:${pc(1 - p.green[1])}` }, h('span', { text: 'Snap!' })),
     needleEl,
   );
-  fishEl = h('div', { class: 'haul-fish' }, icon('fish'));
+  // the fish is dragged in by the hook in its mouth, on a taut line from the angler
+  fishEl = h('div', { class: 'haul-fish' }, icon('hook'), icon('fish'));
+  tautEl = h('div', { class: 'haul-taut' });
   holdBtn = h('button', { class: 'btn btn-primary reel-hold', text: 'Hold to reel' });
   const down = (e: Event): void => {
     e.preventDefault();
@@ -320,7 +323,7 @@ function startReel(p: ReelParams): void {
     h('div', { class: 'reel-label' }, h('span', { text: 'Line tension' }), h('span', { class: 'muted', text: hooked!.prize ? 'Something odd on the line…' : PULL[hookedRarity(hooked!)] })),
     CHAIN ? h('div', { class: 'reel-note', text: 'Already yours: the contract decided this catch. The fight is for the joy of it.' }) : null,
     gaugeEl,
-    h('div', { class: 'haul', attrs: { 'aria-hidden': 'true' } }, h('span', { class: 'haul-you', text: 'You' }), h('div', { class: 'haul-line' }, fishEl)),
+    h('div', { class: 'haul', attrs: { 'aria-hidden': 'true' } }, h('span', { class: 'haul-you', text: 'You' }), h('div', { class: 'haul-line' }, tautEl, fishEl)),
     holdBtn,
   ];
   reelEl.replaceChildren(...parts.filter((x): x is HTMLElement => !!x));
@@ -350,7 +353,10 @@ function promptFor(r: ReelState, p: ReelParams): { text: string; cls: string } {
 function paintReel(): void {
   if (!reel || !reelP) return;
   needleEl.style.left = `${reel.tension * 100}%`;
-  fishEl.style.left = `${Math.min(1, reel.dist / START_DIST) * 100}%`;
+  const at = `${Math.min(1, reel.dist / START_DIST) * 100}%`;
+  fishEl.style.left = at;
+  tautEl.style.width = at;
+  tautEl.classList.toggle('slack', bandOf(reel.tension, reelP) === 'slack');
   const pr = promptFor(reel, reelP);
   if (promptEl.textContent !== pr.text) promptEl.textContent = pr.text;
   promptEl.className = `reel-prompt ${pr.cls}`;
@@ -524,7 +530,6 @@ function showCatch(l: Landing): void {
       h(
         'div',
         { class: 'reveal-actions' },
-        h('button', { class: 'btn btn-primary', text: 'Keep', onclick: hideOverlay }),
         canQuickSell
           ? h('button', {
               class: 'btn',
@@ -535,6 +540,7 @@ function showCatch(l: Landing): void {
               },
             })
           : null,
+        h('button', { class: 'btn btn-primary', text: 'Keep', onclick: hideOverlay }),
       ),
     ),
   );
