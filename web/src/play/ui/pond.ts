@@ -19,7 +19,25 @@ import {
 } from '../../game/actions';
 import { BLEND_PRIZE, LOCATIONS, QUALITIES, SPECIES, special } from '../../game/content';
 import { fishPrice, levelOf } from '../../game/economy';
-import { START_DIST, accuracy, bandOf, greenWidth, qualityOf, reelParams, reelStart, reelStep, type ReelParams, type ReelState } from '../../game/minigame';
+import type { CastOutcome } from '../../game/chainOutcome';
+import {
+  CLEAN_HOOK_HEAD_START,
+  START_DIST,
+  accuracy,
+  bandOf,
+  biteDelay,
+  difficultyOf,
+  greenWidth,
+  hookWindow,
+  isCleanHook,
+  qualityOf,
+  reelParams,
+  reelStart,
+  reelStep,
+  type Difficulty,
+  type ReelParams,
+  type ReelState,
+} from '../../game/minigame';
 import { canEnter, isUnlocked, unlockText } from '../../game/progress';
 import { RARITY_CLASS } from '../../i18n';
 import { WaterScene } from '../../scene';
@@ -30,7 +48,7 @@ import { fmtWeight, h, icon, mount, segBar, sigOf } from '../../ui/dom';
 import { dropdown } from '../../ui/dropdown';
 import { toast } from '../../ui/toast';
 import { fishArt } from '../fishSprite';
-import { outcomeOf, tx, waitPastBlock, world } from '../chain';
+import { blocksUntilExpiry, outcomeOf, previewCast, tx, waitPastBlock, world } from '../chain';
 import { CHAIN, ops, refresh, refreshStandings } from '../ops';
 import { act, commit, getSave, rev } from '../state';
 import { pearl, qualityTag, rarityTag } from './fmt';
@@ -42,6 +60,7 @@ let scene: WaterScene;
 let statusEl: HTMLElement;
 let overlayEl: HTMLElement;
 let hookBtn: HTMLButtonElement;
+let landBtn: HTMLButtonElement;
 let reelEl: HTMLElement;
 let phase: Phase = 'idle';
 let ticket: CastTicket | null = null;
@@ -50,15 +69,14 @@ let timer: ReturnType<typeof setTimeout> | undefined;
 /** Location whose details are shown under the picker (may be a locked one). */
 let viewLoc: number | null = null;
 
-const HOOK_WINDOW_MS = 1700;
-
 export function initPond(sceneHost: HTMLElement, controlsHost: HTMLElement): () => void {
   const canvas = h('canvas', { class: 'water', attrs: { 'aria-label': 'Water' } });
   statusEl = h('div', { class: 'scene-status' });
   overlayEl = h('div', { class: 'scene-overlay hidden' });
   hookBtn = h('button', { class: 'btn btn-reel hidden', text: 'Hook!', onclick: () => doHook() });
+  landBtn = h('button', { class: 'btn btn-reel hidden', text: 'Land it', title: 'Send the settlement transaction again', onclick: () => void settleOnChain() });
   reelEl = h('div', { class: 'reel hidden' });
-  sceneHost.append(canvas, statusEl, hookBtn, reelEl, overlayEl);
+  sceneHost.append(canvas, statusEl, hookBtn, landBtn, reelEl, overlayEl);
   scene = new WaterScene(canvas);
 
   sceneHost.addEventListener('pointerdown', (e) => {
@@ -87,6 +105,7 @@ function setPhase(p: Phase): void {
   phase = p;
   hookBtn.classList.toggle('hidden', p !== 'bite');
   hookBtn.disabled = false;
+  landBtn.classList.toggle('hidden', !(p === 'landing' && landRetry));
   reelEl.classList.toggle('hidden', p !== 'reeling');
   statusEl.textContent = statusText();
   emit();
@@ -101,7 +120,7 @@ function statusText(): string {
     case 'bite':
       return 'Bite! Hook it!';
     case 'landing':
-      return 'Setting the hook…';
+      return landRetry ? 'At the pier: land it to claim it' : reveal || !predicted ? 'Setting the hook…' : 'Landing your catch…';
     case 'reeling':
       return 'Fish on! Reel it in';
     default:
@@ -110,6 +129,27 @@ function statusText(): string {
 }
 
 // ------------------------------------------------------------------ cast → bite → hook
+
+/** What the player did in the current fight. Shown on the catch card; in local play it also decides the result. */
+interface Fight {
+  d: Difficulty;
+  /** Seconds from the float dipping to the hook. */
+  reaction: number;
+  clean: boolean;
+  /** 0 for the first try at this fish. */
+  attempt: number;
+  accuracy: number;
+}
+let fight: Fight | null = null;
+let biteAt = 0;
+/** Tries at the fish on the line. On the contracts a lost fight is a retry, never a lost fish. */
+let attempt = 0;
+
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+const hookedRarity = (hk: Hooked) => (hk.prize ? BLEND_PRIZE.fightRarity : SPECIES[hk.speciesId].rarity);
+const difficultyNow = (): Difficulty => difficultyOf(hookedRarity(hooked!), LOCATIONS[ticket!.locationId].tier);
+/** A lure with catch makes fish find it sooner. */
+const quickness = (t: CastTicket): number => 1 - Math.min(0.4, Math.max(0, t.totals.lure.catch) * 0.03);
 
 function doCast(): void {
   if (pondBusy()) return;
@@ -127,9 +167,7 @@ function doCast(): void {
   timer = setTimeout(() => {
     scene.setPhase('waiting');
     setPhase('waiting');
-    // a lure with catch makes fish find it sooner
-    const quick = 1 - Math.min(0.4, Math.max(0, r.ticket.totals.lure.catch) * 0.03);
-    timer = setTimeout(onWaitOver, (2200 + Math.random() * 4500) * quick);
+    timer = setTimeout(onWaitOver, biteDelay(LOCATIONS[r.ticket.locationId].tier, quickness(r.ticket), Math.random) * 1000);
   }, 900);
 }
 
@@ -142,34 +180,70 @@ function onWaitOver(): void {
     return;
   }
   hooked = hookFish(getSave(), ticket, Math.random);
+  attempt = 0;
+  beginBite();
+}
+
+/** The float dips: the player has a short window to set the hook. Rarer fish and rougher water leave less time. */
+function beginBite(): void {
+  if (!ticket || !hooked) return;
   scene.setPhase('bite');
   setPhase('bite');
-  timer = setTimeout(() => {
-    if (phase !== 'bite') return;
-    commit(recordEscape(getSave()));
-    scene.setPhase('missed');
-    finish();
-    showMessage('Too slow!', 'The fish spat the hook. Hit "Hook!" as soon as the float dips.');
-  }, HOOK_WINDOW_MS);
+  biteAt = performance.now();
+  // On the contracts the fish cannot be lost to slow hands, so after three misses it simply stays on.
+  if (CHAIN && attempt >= 3) return;
+  timer = setTimeout(onHookMissed, hookWindow(difficultyNow()) * 1000);
+}
+
+function onHookMissed(): void {
+  if (phase !== 'bite') return;
+  if (CHAIN) {
+    attempt++;
+    scene.setPhase('waiting');
+    setPhase('waiting');
+    showMessage('Too slow!', 'It dropped the lure, but it is still circling. Watch the float and hit Hook! the moment it dips.');
+    retryOrSettle();
+    return;
+  }
+  commit(recordEscape(getSave()));
+  scene.setPhase('missed');
+  finish();
+  showMessage('Too slow!', 'The fish spat the hook. Hit "Hook!" as soon as the float dips.');
 }
 
 function doHook(): void {
-  if (CHAIN) return void hookOnChain();
+  if (CHAIN && !predicted) return void legacyHookOnChain();
   if (phase !== 'bite' || !ticket || !hooked) return;
   clearTimeout(timer);
+  const d = difficultyNow();
+  const reaction = (performance.now() - biteAt) / 1000;
+  const clean = isCleanHook(reaction, d);
+  fight = { d, reaction, clean, attempt, accuracy: 0 };
   scene.setPhase('reeling');
   setPhase('reeling');
-  startReel(reelParams(hookedRarity(hooked), ticket.totals.zone));
+  // a retried fish is tired: each try widens the green band and softens its jerks
+  startReel(reelParams(d, ticket.totals.zone, CHAIN ? attempt : 0), clean ? CLEAN_HOOK_HEAD_START : 0);
 }
 
 // ------------------------------------------------------------------ the same flow on the contracts
+//
+// cast() transaction → wait for the randomness block → the outcome is now fixed and public, so the client works
+// it out (game/chainOutcome.ts) and plays bite, hook and fight on it → reel() transaction settles.
+// The contract decides the catch; the fight decides only how soon the player gets to settle it.
 
-/** What to show once the fight animation ends. The catch itself was decided by the reel transaction. */
+/** The pending cast as the client predicts it; null while unknown (then the fallback path settles first). */
+let predicted: CastOutcome | null = null;
+/** A pending cast known to hold nothing (no bite, or its block expired). The next cast() settles it for free. */
+let deadNonce: bigint | null = null;
+/** The settlement transaction did not go through: the fish waits at the pier for another try. */
+let landRetry = false;
+/** Fallback path only: what to show once the replayed fight ends. */
 let reveal: (() => void) | null = null;
 
 async function castOnChain(): Promise<void> {
   hideOverlay();
   const s = getSave();
+  const me = state.wallet?.address;
   const locationId = s.location;
   const totalsNow = currentTotals(s, locationId);
   scene.setPalette(LOCATIONS[locationId].palette);
@@ -181,31 +255,168 @@ async function castOnChain(): Promise<void> {
     finish();
     return;
   }
+  // cast() settles a finished earlier cast first; normally that one was an empty hook the player already saw
+  const earlier = me ? outcomeOf(receipt, me) : null;
+  if (earlier?.kind === 'caught') toast(`Your previous cast landed a ${SPECIES[earlier.speciesId]?.name ?? 'fish'}: it is in the keepnet`, 'ok');
+  else if (earlier?.kind === 'bottle') toast(`Your previous cast landed a bottle: +${earlier.amount} BLEND`, 'ok');
   ticket = { locationId, totals: totalsNow };
   await refresh();
   if (world.cast) void watchChainCast(world.cast.targetBlock);
   else finish();
 }
 
-/** Waits for the randomness block, then lets the player hook. */
+/** Waits for the randomness block, works out what the cast holds, and stages the bite. */
 async function watchChainCast(target: bigint): Promise<void> {
+  predicted = null;
+  hooked = null;
   scene.setPhase('waiting');
   setPhase('waiting');
+  const since = performance.now();
   await waitPastBlock(target, () => phase === 'waiting');
   if (phase !== 'waiting') return;
-  scene.setPhase('bite');
-  setPhase('bite');
+  let out: CastOutcome | null = null;
+  try {
+    out = await previewCast();
+  } catch (e) {
+    console.warn('[preview] could not predict the cast, settling first instead', e);
+  }
+  if (phase !== 'waiting' || !ticket) return;
+  if (!out) {
+    scene.setPhase('bite');
+    setPhase('bite');
+    return;
+  }
+  // the block arrives in a couple of seconds; fish do not always bite that fast
+  const wait = biteDelay(LOCATIONS[ticket.locationId].tier, quickness(ticket), Math.random) * 1000 - (performance.now() - since);
+  if (wait > 0) await sleep(wait);
+  if (phase !== 'waiting' || !ticket) return;
+  if (out.kind === 'missed' || out.kind === 'expired') {
+    deadNonce = world.cast?.nonce ?? null;
+    scene.setPhase('idle');
+    finish();
+    if (out.kind === 'expired') showMessage('Too late', 'More than 256 blocks passed, so the randomness for this cast is gone, and the fish with it.');
+    else showMessage('Nothing is biting', 'The float never moved. A lure with catch brings more bites. No transaction needed: just cast again.');
+    return;
+  }
+  predicted = out;
+  attempt = 0;
+  hooked = out.kind === 'bottle' ? { speciesId: -1, weight: 0, isSpecial: false, prize: out.amount } : { speciesId: out.speciesId, weight: out.weight, isSpecial: out.special };
+  beginBite();
 }
 
 /** A cast left in the water by an earlier visit (or another tab) is picked up again. */
 function resumeChainCast(): void {
-  if (!CHAIN || phase !== 'idle' || !world.cast || !state.wallet) return;
+  if (!CHAIN || phase !== 'idle' || !world.cast || !state.wallet || world.cast.nonce === deadNonce) return;
   const s = getSave();
   ticket = { locationId: world.cast.locationId, totals: currentTotals(s, world.cast.locationId) };
   void watchChainCast(world.cast.targetBlock);
 }
 
-async function hookOnChain(): Promise<void> {
+/** After a missed hook or a lost fight: bite again shortly, unless the cast is about to expire. */
+function retryOrSettle(): void {
+  const again = (): void => {
+    if (phase === 'waiting' && predicted) beginBite();
+  };
+  timer = setTimeout(again, 2900 + Math.random() * 1400);
+  void blocksUntilExpiry()
+    .then((left) => {
+      if (left < 45 && phase === 'waiting' && predicted) {
+        clearTimeout(timer);
+        showMessage('No time left', 'This cast is about to expire, so the fish is hauled straight in.');
+        void settleOnChain();
+      }
+    })
+    .catch(() => undefined);
+}
+
+/** The settlement: one reel() transaction. Whatever the contract says is the result. */
+async function settleOnChain(): Promise<void> {
+  const me = state.wallet?.address;
+  if (!me || (phase === 'landing' && !landRetry)) return;
+  landRetry = false;
+  setPhase('landing');
+  const before = getSave();
+  const receipt = await tx('Land the catch', { functionName: 'reel', args: [] }, true);
+  if (!receipt) {
+    // rejected or failed: the catch is still there to be claimed until its block is 256 blocks old
+    await refresh();
+    if (world.cast) {
+      landRetry = true;
+      setPhase('landing');
+    } else {
+      scene.setPhase('idle');
+      finish();
+    }
+    return;
+  }
+  const out = outcomeOf(receipt, me);
+  await refresh();
+  void refreshStandings();
+  const guess = predicted;
+  predicted = null;
+  const same = guess && out && guess.kind === out.kind && (guess.kind !== 'caught' || (out.kind === 'caught' && guess.speciesId === out.speciesId && guess.weight === out.weight && guess.quality === out.quality));
+  if (guess && !same) console.warn('[preview] predicted', guess, 'but the contract settled', out, '— the contract is right');
+  if (!out || out.kind === 'missed' || out.kind === 'expired') {
+    scene.setPhase('missed');
+    finish();
+    if (out?.kind === 'expired') showMessage('Too late', 'More than 256 blocks passed, so the randomness for this cast is gone, and the fish with it.');
+    else showMessage('It got away!', 'Nothing stayed on the hook this time.');
+    return;
+  }
+  const note = fightNote();
+  scene.setPhase('caught');
+  finish();
+  phase = 'result';
+  if (out.kind === 'bottle') showPrize(out.amount);
+  else showCatch(landingFrom(out, before), note);
+}
+
+type CaughtOutcome = Extract<NonNullable<ReturnType<typeof outcomeOf>>, { kind: 'caught' }>;
+
+/** The catch card's data for a fish the contract just minted. `before` is the save from before the settlement. */
+function landingFrom(out: CaughtOutcome, before: ReturnType<typeof getSave>): Landing {
+  const sp = SPECIES[out.speciesId];
+  const after = getSave();
+  const quality = QUALITIES[out.quality] ?? 'B';
+  const prev = before.dex[out.speciesId];
+  return {
+    save: after,
+    fish: after.fish.find((f) => f.id === out.fishId) ?? {
+      id: out.fishId,
+      speciesId: out.speciesId,
+      rarity: sp.rarity,
+      weight: out.weight,
+      quality,
+      locationId: out.locationId,
+      caughtAt: Date.now(),
+      sellPrice: fishPrice(sp, out.weight, quality),
+      tournamentScore: out.score,
+      isFavorite: false,
+      isSpecial: out.special,
+    },
+    newSpecies: !prev,
+    newBest: !!prev && out.weight > prev.best,
+    newOverallRecord: !!before.records.overall && out.weight > before.records.overall.weight,
+    levelUp: levelOf(after.xp) > levelOf(before.xp) ? levelOf(after.xp) : null,
+    unlocked: out.unlocked,
+    countedThisWeek: out.counted,
+  };
+}
+
+/** One line about how the player fought, for the catch card. */
+function fightNote(): string | null {
+  const f = fight;
+  if (!f) return null;
+  const parts = [`hook ${f.reaction.toFixed(2)} s${f.clean ? ' (clean)' : ''}`, `${Math.round(f.accuracy * 100)}% in the green`];
+  if (f.attempt > 0) parts.push(`try ${f.attempt + 1}`);
+  return `Your fight: ${parts.join(' · ')}`;
+}
+
+/**
+ * Fallback when the outcome could not be predicted (RPC trouble): settle first, then play the fight as a replay
+ * of a catch that is already final.
+ */
+async function legacyHookOnChain(): Promise<void> {
   if (phase !== 'bite') return;
   const me = state.wallet?.address;
   if (!me) return;
@@ -236,38 +447,14 @@ async function hookOnChain(): Promise<void> {
     hooked = { speciesId: -1, weight: 0, isSpecial: false, prize: out.amount };
     reveal = () => showPrize(out.amount);
   } else {
-    const sp = SPECIES[out.speciesId];
-    const after = getSave();
-    const quality = QUALITIES[out.quality] ?? 'B';
-    const prev = before.dex[out.speciesId];
-    const landing: Landing = {
-      save: after,
-      fish: after.fish.find((f) => f.id === out.fishId) ?? {
-        id: out.fishId,
-        speciesId: out.speciesId,
-        rarity: sp.rarity,
-        weight: out.weight,
-        quality,
-        locationId: out.locationId,
-        caughtAt: Date.now(),
-        sellPrice: fishPrice(sp, out.weight, quality),
-        tournamentScore: out.score,
-        isFavorite: false,
-        isSpecial: out.special,
-      },
-      newSpecies: !prev,
-      newBest: !!prev && out.weight > prev.best,
-      newOverallRecord: !!before.records.overall && out.weight > before.records.overall.weight,
-      levelUp: levelOf(after.xp) > levelOf(before.xp) ? levelOf(after.xp) : null,
-      unlocked: out.unlocked,
-      countedThisWeek: out.counted,
-    };
+    const landing = landingFrom(out, before);
     hooked = { speciesId: out.speciesId, weight: out.weight, isSpecial: out.special };
     reveal = () => showCatch(landing);
   }
   scene.setPhase('reeling');
   setPhase('reeling');
-  startReel(reelParams(hookedRarity(hooked), (ticket ?? { totals: currentTotals(before) }).totals.zone));
+  fight = null;
+  startReel(reelParams(difficultyOf(hookedRarity(hooked), LOCATIONS[ticket?.locationId ?? before.location].tier), (ticket ?? { totals: currentTotals(before) }).totals.zone), 0);
 }
 
 function finish(): void {
@@ -290,13 +477,11 @@ let fishEl: HTMLElement;
 let tautEl: HTMLElement;
 let holdBtn: HTMLButtonElement;
 
-const hookedRarity = (hk: Hooked) => (hk.prize ? BLEND_PRIZE.fightRarity : SPECIES[hk.speciesId].rarity);
-
 const PULL = ['A light tug', 'A steady pull', 'A strong fish', 'A heavy fish!', 'A monster!', 'Something unreal…'];
 
-function startReel(p: ReelParams): void {
+function startReel(p: ReelParams, headStart: number): void {
   reelP = p;
-  reel = reelStart(Math.random);
+  reel = reelStart(Math.random, headStart);
   promptEl = h('div', { class: 'reel-prompt', attrs: { role: 'status', 'aria-live': 'assertive' } });
   needleEl = h('div', { class: 'gauge-needle' });
   const pc = (v: number): string => `${v * 100}%`;
@@ -320,8 +505,17 @@ function startReel(p: ReelParams): void {
   holdBtn.addEventListener('contextmenu', (e) => e.preventDefault());
   const parts = [
     promptEl,
-    h('div', { class: 'reel-label' }, h('span', { text: 'Line tension' }), h('span', { class: 'muted', text: hooked!.prize ? 'Something odd on the line…' : PULL[hookedRarity(hooked!)] })),
-    CHAIN ? h('div', { class: 'reel-note', text: 'Already yours: the contract decided this catch. The fight is for the joy of it.' }) : null,
+    h('div', { class: 'reel-label' }, h('span', { text: 'Line tension' }), h('span', { class: 'muted', text: `${hooked!.prize ? 'Something odd on the line…' : PULL[fight?.d ?? hookedRarity(hooked!)]}${headStart > 0 ? ' · clean hook: head start' : ''}` })),
+    CHAIN
+      ? h('div', {
+          class: 'reel-note',
+          text: reveal
+            ? 'Already yours: the contract decided this catch. The fight is for the joy of it.'
+            : fight && fight.attempt > 0
+              ? `Try ${fight.attempt + 1}: it is tiring, the green zone is wider now.`
+              : 'The contract has fixed what is on the hook. Land it to claim it: a lost fight means another try, not a lost fish.',
+        })
+      : null,
     gaugeEl,
     h('div', { class: 'haul', attrs: { 'aria-hidden': 'true' } }, h('span', { class: 'haul-you', text: 'You' }), h('div', { class: 'haul-line' }, tautEl, fishEl)),
     holdBtn,
@@ -345,7 +539,8 @@ function startReel(p: ReelParams): void {
 function promptFor(r: ReelState, p: ReelParams): { text: string; cls: string } {
   const band = bandOf(r.tension, p);
   if (band === 'red') return { text: 'Let go! The line is about to snap', cls: 'bad' };
-  if (r.pulling) return band === 'slack' ? { text: 'The fish is pulling: reel gently', cls: 'warn' } : { text: 'The fish is pulling: let go', cls: 'warn' };
+  if (r.mood === 'pull') return band === 'slack' ? { text: 'It jerks: take up the slack gently', cls: 'warn' } : { text: 'It jerks: let go!', cls: 'warn' };
+  if (r.mood === 'warn') return { text: 'Careful: it is about to jerk', cls: 'warn' };
   if (band === 'slack') return { text: 'Hold to reel in', cls: '' };
   return { text: 'Good! Keep the needle in the green', cls: 'good' };
 }
@@ -360,22 +555,38 @@ function paintReel(): void {
   const pr = promptFor(reel, reelP);
   if (promptEl.textContent !== pr.text) promptEl.textContent = pr.text;
   promptEl.className = `reel-prompt ${pr.cls}`;
-  gaugeEl.classList.toggle('pulling', reel.pulling);
-  fishEl.classList.toggle('pulling', reel.pulling);
+  gaugeEl.classList.toggle('pulling', reel.mood === 'pull');
+  gaugeEl.classList.toggle('warning', reel.mood === 'warn');
+  fishEl.classList.toggle('pulling', reel.mood === 'pull');
   holdBtn.classList.toggle('down', holding);
 }
 
 function endReel(r: ReelState): void {
+  if (fight) fight.accuracy = accuracy(r);
   if (CHAIN) {
-    // the outcome is already onchain: however the fight went, the catch is the player's
-    const show = reveal;
-    reveal = null;
-    scene.setPhase('caught');
-    finish();
-    if (show) {
+    if (reveal) {
+      // fallback path: the catch was settled before the fight, so the fight was only a replay
+      const show = reveal;
+      reveal = null;
+      scene.setPhase('caught');
+      finish();
       phase = 'result';
       show();
+      return;
     }
+    if (r.result === 'landed') return void settleOnChain();
+    attempt++;
+    if (attempt >= 3) {
+      showMessage('Worn out at last', 'Three rounds were enough: it has no fight left. Hauling it in.');
+      return void settleOnChain();
+    }
+    scene.setPhase('waiting');
+    setPhase('waiting');
+    showMessage(
+      r.lost === 'snapped' ? 'Too much tension!' : 'It ran with your line!',
+      r.lost === 'snapped' ? 'You had to give line to save it. The hook held: it will bite again, and it is tiring.' : 'The line went slack and it took off. The hook held: it will bite again, and it is tiring.',
+    );
+    retryOrSettle();
     return;
   }
   const t = ticket;
@@ -385,7 +596,7 @@ function endReel(r: ReelState): void {
     commit(recordEscape(getSave()));
     scene.setPhase('missed');
     finish();
-    showMessage(r.lost === 'snapped' ? 'The line snapped!' : 'It got away!', r.lost === 'snapped' ? 'Too much tension. Let go when the needle enters the red or the fish pulls.' : 'The line was slack for too long. Hold to reel and keep the needle in the green.');
+    showMessage(r.lost === 'snapped' ? 'The line snapped!' : 'It got away!', r.lost === 'snapped' ? 'Too much tension. Let go when the needle enters the red, and the moment the fish warns of a jerk.' : 'The line was slack for too long. Hold to reel and keep the needle in the green.');
     return;
   }
   if (hk.prize) {
@@ -410,10 +621,11 @@ function endReel(r: ReelState): void {
     return;
   }
   commit(landing.save);
+  const note = fightNote();
   scene.setPhase('caught');
   finish();
   phase = 'result';
-  showCatch(landing);
+  showCatch(landing, note);
 }
 
 function onKey(e: KeyboardEvent): void {
@@ -503,7 +715,7 @@ function showPrize(amount: number): void {
   overlayEl.classList.remove('hidden');
 }
 
-function showCatch(l: Landing): void {
+function showCatch(l: Landing, fightLine: string | null = null): void {
   clearTimeout(overlayTimer);
   const f = l.fish;
   const sp = SPECIES[f.speciesId];
@@ -526,6 +738,7 @@ function showCatch(l: Landing): void {
       h('div', { class: 'reveal-tags' }, rarityTag(f.rarity), qualityTag(f.quality)),
       h('div', { class: 'reveal-stats' }, h('span', { text: fmtWeight(f.weight) }), h('span', { class: 'pearl', text: `${pearl(f.sellPrice)} PEARL` })),
       h('div', { class: 'muted small', text: l.countedThisWeek ? `+${f.tournamentScore} pts · counts in this week's top 10` : `${f.tournamentScore} pts · below your weekly top 10` }),
+      fightLine ? h('div', { class: 'muted small', text: fightLine }) : null,
       notes,
       h(
         'div',
@@ -586,7 +799,7 @@ function renderControlsView(): HTMLElement[] {
       h(
         'div',
         { class: 'cast-info' },
-        h('div', { class: reason && !busy ? 'warn' : 'muted', text: busy ? (CHAIN ? 'Press Hook! when the float dips: that sends the reel transaction' : 'Press Hook! when the float dips, then hold to reel (Space works too)') : reason ?? `Costs ${cost} energy · you have ${energyNow(s, now)}` }),
+        h('div', { class: reason && !busy ? 'warn' : 'muted', text: busy ? 'Press Hook! the moment the float dips, then hold to reel (Space works too)' : reason ?? `Costs ${cost} energy · you have ${energyNow(s, now)}` }),
       ),
     ),
   );

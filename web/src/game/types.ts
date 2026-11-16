@@ -34,6 +34,8 @@ export interface LocationDef {
   name: string;
   water: Water;
   energyCost: number;
+  /** How rough the water is, 0–2: added to a fish's rarity to get how hard it fights and how fast it must be hooked. */
+  tier: number;
   /** Index into the scene palettes. */
   palette: number;
   /** [speciesId, pool weight] */

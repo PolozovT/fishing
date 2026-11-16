@@ -2412,3 +2412,14 @@ div.item {
   color: var(--gold-hi);
   text-decoration-color: currentColor;
 }
+
+/* a jerk is coming: the gauge frame turns gold for the length of the warning */
+.gauge.warning {
+  box-shadow: 0 0 0 2px var(--gold-hi);
+  animation: blink 0.2s steps(2, jump-none) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gauge.warning {
+    animation: none;
+  }
+}

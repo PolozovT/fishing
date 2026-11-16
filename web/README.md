@@ -15,9 +15,12 @@ Stack: Vite + TypeScript + viem, no UI framework (plain DOM + canvas).
 (a transaction, then a fresh read). `src/play/chain.ts` maps chain state onto the local `Save` shape and, at
 start-up, compares the client's catalog with the contracts' and warns if a number has drifted.
 
-One difference is deliberate. Locally the reel fight decides quality and can lose the fish. On the contracts the
-fish, its weight and its quality are rolled by the contract (a client-reported result could be forged), so there
-the fight is an animation of a catch that is already final; a better rod shifts the quality roll instead.
+One difference is deliberate. Locally the hook and the reel fight decide whether the fish is landed and how good
+it is. On the contracts the fish, its weight and its quality are rolled by the contract (a client-reported result
+could be forged). The client works the pending outcome out as soon as its block exists
+(`src/game/chainOutcome.ts`, checked against vectors produced by the contract), plays a real bite, hook and fight
+on it, and settles afterwards; a lost fight there is a retry, not a lost fish. The reasoning, the trust model and
+the randomness review are in [../ARCHITECTURE.md](../ARCHITECTURE.md).
 
 ```sh
 pnpm install
@@ -90,7 +93,8 @@ src/game/              the rules, pure TypeScript, no DOM and no storage
   equipment.ts         rod + lure + location + special bonuses, capped
   generate.ts          species odds (normalised), weight roll, special roll
   economy.ts           prices, XP, levels, repair and refill costs
-  minigame.ts          the reel fight as a step function, quality grades
+  minigame.ts          hook window, bite delay and the reel fight as pure functions; model players
+  chainOutcome.ts      what a pending cast will be, computed as the contract computes it
   tournament.ts        score, week boundaries, top ten, demo standings
   progress.ts          unlocks (permanent vs ownership), encyclopedia, achievements
   actions.ts           every state change as (save, input) → new save

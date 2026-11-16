@@ -23,7 +23,7 @@ import { BLEND_PRIZE, LOCATIONS, PEARL_PER_BLEND, SPECIALS, SPECIES, TUNING } fr
 import { avgWeight, fishPrice, levelOf, xpForLevel } from './economy';
 import { totals } from './equipment';
 import { rollSpecial, rollWeight, speciesOdds } from './generate';
-import { qualityOf, reelParams, reelStart, reelStep } from './minigame';
+import { CLEAN_HOOK_HEAD_START, SKILLS, START_DIST, biteDelay, difficultyOf, hookWindow, isCleanHook, qualityOf, reelParams, reelStart, reelStep, simulateFight, type Difficulty } from './minigame';
 import { achievements, canEnter, grantUnlocks, isUnlocked, unlockMet } from './progress';
 import { SAVE_VERSION, freshSave, loadSave } from './save';
 import { WEEK_MS, addEntry, demoStandings, standings, tournamentScore, weekId, weekStart, weekTotal } from './tournament';
@@ -493,6 +493,70 @@ describe('reel mini-game', () => {
     const a = reelParams(0, 0.2).green;
     const b = reelParams(0, 0.3).green;
     expect(b[1] - b[0]).toBeGreaterThan(a[1] - a[0]);
+  });
+  it('a line that is let go at the warning never snaps, however hard the fish jerks', () => {
+    // the promise behind "no unavoidable losses": release when warned and the worst jerk cannot break the line
+    for (let d = 0; d <= 5; d++) {
+      const p = reelParams(d as Difficulty, 0.2);
+      const rng = seeded(100 + d);
+      for (let run = 0; run < 40; run++) {
+        let s = reelStart(rng);
+        for (let i = 0; i < 60 * 60 && s.result === 'fighting'; i++) {
+          // hold to the middle of the green in calm water, let go for the whole warning and jerk
+          const hold = s.mood === 'calm' && s.tension < (p.green[0] + p.green[1]) / 2;
+          s = reelStep(s, hold, 1 / 60, p, rng);
+          expect(s.lost).not.toBe('snapped');
+        }
+      }
+    }
+  });
+  it('harder fish leave less time to hook and fight longer', () => {
+    for (let d = 1; d <= 5; d++) {
+      expect(hookWindow(d as Difficulty)).toBeLessThan(hookWindow((d - 1) as Difficulty));
+      expect(reelParams(d as Difficulty, 0.2).reel).toBeLessThan(reelParams((d - 1) as Difficulty, 0.2).reel);
+      expect(reelParams(d as Difficulty, 0.2).tell).toBeLessThan(reelParams((d - 1) as Difficulty, 0.2).tell);
+    }
+    expect(hookWindow(0)).toBeGreaterThanOrEqual(1.5);
+    expect(hookWindow(5)).toBeGreaterThanOrEqual(0.8);
+  });
+  it('difficulty is rarity plus rough water, capped', () => {
+    expect(difficultyOf(0, 0)).toBe(0);
+    expect(difficultyOf(2, 2)).toBe(4);
+    expect(difficultyOf(5, 2)).toBe(5);
+    for (const loc of LOCATIONS) expect([0, 1, 2]).toContain(loc.tier);
+  });
+  it('a clean hook is a quick one and gives a head start', () => {
+    expect(isCleanHook(0.3, 0)).toBe(true);
+    expect(isCleanHook(1.4, 0)).toBe(false);
+    expect(reelStart(seeded(1), CLEAN_HOOK_HEAD_START).dist).toBeCloseTo(START_DIST - CLEAN_HOOK_HEAD_START);
+    expect(reelStart(seeded(1)).dist).toBe(START_DIST);
+  });
+  it('bite delay stays in its range and lures shorten it', () => {
+    const rng = seeded(9);
+    for (let i = 0; i < 200; i++) {
+      const easy = biteDelay(0, 1, rng);
+      const rough = biteDelay(2, 1, rng);
+      expect(easy).toBeGreaterThanOrEqual(2);
+      expect(easy).toBeLessThanOrEqual(5);
+      expect(rough).toBeGreaterThanOrEqual(3);
+      expect(rough).toBeLessThanOrEqual(7);
+    }
+    expect(biteDelay(0, 0.6, () => 0.5)).toBeLessThan(biteDelay(0, 1, () => 0.5));
+  });
+  it('retrying the same fish makes the fight easier', () => {
+    const first = reelParams(4, 0.2, 0);
+    const third = reelParams(4, 0.2, 2);
+    expect(third.green[1] - third.green[0]).toBeGreaterThan(first.green[1] - first.green[0]);
+    expect(third.surge).toBeLessThan(first.surge);
+  });
+  it('skill shows: the practised model lands more hard fish than the novice one', () => {
+    const run = (skill: (typeof SKILLS)[keyof typeof SKILLS]): number => {
+      const rng = seeded(77);
+      let landed = 0;
+      for (let i = 0; i < 300; i++) if (simulateFight(reelParams(4, 0.2), rng, skill).landed) landed++;
+      return landed / 300;
+    };
+    expect(run(SKILLS.experienced)).toBeGreaterThan(run(SKILLS.novice) + 0.2);
   });
   it('grades quality by accuracy', () => {
     expect(qualityOf(0.95)).toBe('S');

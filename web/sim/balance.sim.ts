@@ -10,7 +10,7 @@ import { LOCATIONS, QUALITIES, SPECIALS, SPECIES, TUNING } from '../src/game/con
 import { fishPrice, levelOf } from '../src/game/economy';
 import { totals } from '../src/game/equipment';
 import { speciesOdds } from '../src/game/generate';
-import { reelParams, simulateFight } from '../src/game/minigame';
+import { SKILLS, difficultyOf, reelParams, simulateFight, type Difficulty } from '../src/game/minigame';
 import { canEnter } from '../src/game/progress';
 import { freshSave } from '../src/game/save';
 import { demoStandings, tournamentScore, weekId, weekStart, weekTotal, WEEK_MS } from '../src/game/tournament';
@@ -40,31 +40,32 @@ interface FightStats {
 }
 const fightCache = new Map<string, FightStats>();
 /** Landing rate and quality mix of the bot for a rarity and zone width (2,000 fights, cached). */
-function fightStats(rarity: Rarity, zone: number, lag: number, noise: number): FightStats {
-  const key = `${rarity}:${zone.toFixed(3)}:${lag}:${noise}`;
+type SkillName = keyof typeof SKILLS;
+/** Landing rate and quality mix of a model player for a difficulty and zone width (2,000 fights, cached). */
+function fightStats(d: Difficulty, zone: number, skill: SkillName): FightStats {
+  const key = `${d}:${zone.toFixed(3)}:${skill}`;
   const hit = fightCache.get(key);
   if (hit) return hit;
-  const rng = mulberry32(rarity * 1000 + Math.round(zone * 1000) + Math.round(lag * 100));
+  const rng = mulberry32(d * 1000 + Math.round(zone * 1000) + skill.length);
   const q: Record<Quality, number> = { D: 0, C: 0, B: 0, A: 0, S: 0 };
   let land = 0;
   let seconds = 0;
   const n = 2000;
   for (let i = 0; i < n; i++) {
-    const f = simulateFight(reelParams(rarity, zone), rng, lag, noise);
-    seconds += f.seconds;
+    const f = simulateFight(reelParams(d, zone), rng, SKILLS[skill]);
+    if (f.landed) seconds += f.seconds;
     if (f.landed) {
       land++;
       q[f.quality]++;
     }
   }
   for (const k of QUALITIES) q[k] /= Math.max(1, land);
-  const out = { land: land / n, q, seconds: seconds / n };
+  const out = { land: land / n, q, seconds: seconds / Math.max(1, land) };
   fightCache.set(key, out);
   return out;
 }
-const SKILL = { decent: [0.18, 0.04], novice: [0.3, 0.08] } as const;
-function sampleFight(rarity: Rarity, zone: number, rng: () => number, skill: keyof typeof SKILL = 'decent'): Quality | null {
-  const st = fightStats(rarity, zone, SKILL[skill][0], SKILL[skill][1]);
+function sampleFight(rarity: Rarity, tier: number, zone: number, rng: () => number, skill: SkillName = 'experienced'): Quality | null {
+  const st = fightStats(difficultyOf(rarity, tier), zone, skill);
   if (rng() >= st.land) return null;
   let x = rng();
   for (const k of QUALITIES) {
@@ -97,7 +98,7 @@ function runCombo(rod: TackleItem, lure: TackleItem | null, locId: number, seed:
     if (!rollBite(ticket, rng)) continue;
     const h = hookFish(s, ticket, rng);
     const sp = SPECIES[h.speciesId];
-    const q = sampleFight(sp.rarity, ticket.totals.zone, rng);
+    const q = sampleFight(sp.rarity, loc.tier, ticket.totals.zone, rng);
     if (!q) continue;
     landed++;
     rarity[sp.rarity]++;
@@ -111,7 +112,7 @@ function runCombo(rod: TackleItem, lure: TackleItem | null, locId: number, seed:
 }
 
 /** A whole career: a bot that fishes the best open water, sells everything but specials, and buys upgrades. */
-function career(seed: number, skill: keyof typeof SKILL, maxCasts: number) {
+function career(seed: number, skill: SkillName, maxCasts: number) {
   const rng = mulberry32(seed);
   let s: Save = { ...freshSave(0), blendWins: 99 };
   const now = 1000;
@@ -145,7 +146,7 @@ function career(seed: number, skill: keyof typeof SKILL, maxCasts: number) {
     s = c.save;
     if (rollBite(c.ticket, rng)) {
       const h = hookFish(s, c.ticket, rng);
-      const q = sampleFight(SPECIES[h.speciesId].rarity, c.ticket.totals.zone, rng, skill);
+      const q = sampleFight(SPECIES[h.speciesId].rarity, LOCATIONS[c.ticket.locationId].tier, c.ticket.totals.zone, rng, skill);
       if (q) {
         const l = landFish(s, c.ticket, h, q, now + s.stats.casts);
         s = l.save;
@@ -179,27 +180,45 @@ What the first runs showed, and what was changed because of it. The tables below
 - **Pearl Master was the best rod everywhere.** It is now a generalist (catch 4, rarity 50, weight 6): close to the top in every water but beaten by the specialist at home. Carbon Spinner wins the pond and river, Taiga Fly Rod the rapids, Deep Troller deep water, Ironwood the lake and swamp. Six different best loadouts across eight locations.
 - **Rod upkeep punished expensive rods.** Repair at 20% of the price per full bar made the Fly Rod lose money against the free starter. Repair is now 6% of the price.
 - **Copper Spinner was the best lure everywhere** (rarity 30 for 1.5 PEARL a cast). Its base rarity is 15 now, with the extra moved into its Forest River bonus.
-- **The reel.** The first version (a catch zone chasing a darting fish) tested fine with a bot but players could not read it, so it became a line-tension gauge: hold to reel, keep the needle in the green, let go when the fish pulls. A pull never raises tension faster than letting go lowers it, so a snapped line is always the player's own doing. The bot below lands everything; for it the rod's wider green band shows up as quality (Legendary on the starter rod is mostly B and C, on the best rod mostly S and A). Real players will lose fish to snaps the bot never makes, so treat the landing rates as an upper bound.
+- **The reel fight.** A bot could not lose the first two versions, so skill meant nothing. The current fight has jerks: a short warning, then a burst that raises tension by itself. A line that is let go at the warning never snaps (tested for every difficulty), so every loss is a missed reaction, not bad luck. How hard a fish fights is its rarity plus how rough the water is. The players below are models (reaction lag, aim error, chance of missing a warning), not measurements: read the rates as estimates to check by hand. Against the targets, calm water is a little easier than asked for the novice (97–99% vs 85–95%), rough water is in range for the novice except Taimen Rapids (too hard) and easier than asked for the experienced player. On the contracts a lost fight is a retry, not a lost fish, so these rates there mean time, not value.
 - **Progression has no dead ends.** All 40 simulated careers of both skill levels opened all eight locations. Pity (120 / 160 / 220 dry catches) caps the worst case for each special fish.
 - **Tournament.** Ten counted catches blunt raw volume: with mid and late tackle, 20× the casts give 3–5× the score. A beginner on the pond gains more from volume (12×), because their top ten starts out all Common. After 200 casts a new player on the starter rod is 9th of 13 against the demo field. Where you can fish matters more than what you hold: at Taimen Rapids the best tackle scores about 30% more than the starter rod. An equipment-restricted Starter Cup would only need a second scoring list filtered by rod tier; the score function takes no equipment input.
 
 Known soft spots: Abyss Spoon never pays for itself in PEARL (it is the tournament and collection lure by design), and Golden Lake pays better per energy than Deep Lake although it can open earlier, as a reward for finding the Koi.`;
 
 it('balance simulation', () => {
-  const out: string[] = ['# Balance simulation', '', FINDINGS, '', `Generated by \`pnpm sim\` from the real game rules (src/game). ${N.toLocaleString('en-US')} casts per row unless noted. The reel is played by a bot: "decent" reacts in 0.18 s, "novice" in 0.30 s with twice the aim error.`, ''];
+  const out: string[] = ['# Balance simulation', '', FINDINGS, '', `Generated by \`pnpm sim\` from the real game rules (src/game). ${N.toLocaleString('en-US')} casts per row unless noted. The reel is played by two model players: "experienced" reacts in 0.18 s and misses 4% of the warnings, "novice" reacts in 0.32 s with twice the aim error and misses 20%.`, ''];
 
   // 1. the reel
-  out.push('## Reel mini-game: landing rate and quality', '', 'Starter rod, the widest zone a rod reaches, and the cap; decent bot.', '');
-  const zones = [TUNING.baseZone, Math.max(...RODS.flatMap((r) => LOCATIONS.map((l) => totals(r, null, l).zone))), TUNING.maxZone];
+  out.push('## Reel fight: landing rate, quality and length', '', 'By difficulty level (fish rarity + water roughness, 0–5), starter rod. Quality is S/A/B/C/D share of landed fish.', '');
+  const widest = Math.max(...RODS.flatMap((r) => LOCATIONS.map((l) => totals(r, null, l).zone)));
+  const qmix = (f: FightStats): string => ['S', 'A', 'B', 'C', 'D'].map((k) => Math.round(f.q[k as Quality] * 100)).join('/');
   out.push(
     table(
-      ['Rarity', ...zones.flatMap((z) => [`land @${pct(z, 0)}`, `S/A/B/C/D @${pct(z, 0)}`]), 'novice land, starter', 'avg seconds'],
-      RARITY.map((name, r) => {
-        const cells = zones.flatMap((z) => {
-          const f = fightStats(r as Rarity, z, 0.18, 0.04);
-          return [pct(f.land, 0), ['S', 'A', 'B', 'C', 'D'].map((k) => Math.round(f.q[k as Quality] * 100)).join('/')];
-        });
-        return [name, ...cells, pct(fightStats(r as Rarity, TUNING.baseZone, 0.3, 0.08).land, 0), fightStats(r as Rarity, TUNING.baseZone, 0.18, 0.04).seconds.toFixed(1)];
+      ['Difficulty', 'Experienced lands', 'Novice lands', 'Experienced quality', 'Seconds', `Novice with the best rod zone (${pct(widest, 0)})`],
+      [0, 1, 2, 3, 4, 5].map((d) => {
+        const e = fightStats(d as Difficulty, TUNING.baseZone, 'experienced');
+        const nv = fightStats(d as Difficulty, TUNING.baseZone, 'novice');
+        return [d, pct(e.land, 0), pct(nv.land, 0), qmix(e), e.seconds.toFixed(1), pct(fightStats(d as Difficulty, widest, 'novice').land, 0)];
+      }),
+    ),
+    '',
+  );
+  out.push('By location (species mix with no rarity bonus), starter rod, against the targets set for manual testing.', '');
+  out.push(
+    table(
+      ['Location', 'Water', 'Experienced lands', 'Novice lands', 'Seconds', 'Target (novice / experienced / seconds)'],
+      LOCATIONS.map((loc) => {
+        let e = 0;
+        let nv = 0;
+        let sec = 0;
+        for (const o of speciesOdds(loc, 0)) {
+          const d = difficultyOf(SPECIES[o.speciesId].rarity, loc.tier);
+          e += o.p * fightStats(d, TUNING.baseZone, 'experienced').land;
+          nv += o.p * fightStats(d, TUNING.baseZone, 'novice').land;
+          sec += o.p * fightStats(d, TUNING.baseZone, 'experienced').seconds;
+        }
+        return [loc.name, ['calm', 'choppy', 'rough'][loc.tier], pct(e, 0), pct(nv, 0), sec.toFixed(1), loc.tier >= 2 ? '45–65% / 75–90% / 8–15 s' : loc.tier === 0 ? '85–95% / 95–99% / 5–8 s' : 'in between'];
       }),
     ),
     '',
@@ -277,9 +296,9 @@ it('balance simulation', () => {
   out.push('## Progression: casts until each milestone', '', 'Median of 40 simulated careers (20,000 casts each). The bot sells every ordinary fish and buys tackle in a fixed order.', '');
   const keys = ['buy:spoon', 'level 3', 'buy:carbon', 'unlock:Deep Lake', 'special:Golden Koi', 'level 8', 'buy:flyrod', 'buy:troller', 'special:Ancient Catfish', 'level 12', 'buy:pearlmaster', 'special:Ghost Fish'];
   const med = (xs: number[]): number => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
-  const runs = { decent: [] as ReturnType<typeof career>[], novice: [] as ReturnType<typeof career>[] };
+  const runs = { experienced: [] as ReturnType<typeof career>[], novice: [] as ReturnType<typeof career>[] };
   for (let i = 0; i < 40; i++) {
-    runs.decent.push(career(5000 + i, 'decent', 20_000));
+    runs.experienced.push(career(5000 + i, 'experienced', 20_000));
     runs.novice.push(career(7000 + i, 'novice', 20_000));
   }
   const cell = (rs: ReturnType<typeof career>[], k: string): string => {
@@ -287,9 +306,9 @@ it('balance simulation', () => {
     if (got.length < rs.length / 2) return `never in ${rs.length - got.length}/${rs.length}`;
     return `${med(got)} (worst ${Math.max(...got)})`;
   };
-  out.push(table(['Milestone', 'Decent player', 'Novice'], keys.map((k) => [k, cell(runs.decent, k), cell(runs.novice, k)])), '');
-  out.push(`PEARL earned in the first 1,000 casts (median): decent ${med(runs.decent.map((r) => r.earnedAt1000))}, novice ${med(runs.novice.map((r) => r.earnedAt1000))}.`, '');
-  out.push(`All 8 locations open after 20,000 casts: decent ${runs.decent.filter((r) => r.save.permanentUnlocks.length === 8).length}/40, novice ${runs.novice.filter((r) => r.save.permanentUnlocks.length === 8).length}/40.`, '');
+  out.push(table(['Milestone', 'Experienced player', 'Novice'], keys.map((k) => [k, cell(runs.experienced, k), cell(runs.novice, k)])), '');
+  out.push(`PEARL earned in the first 1,000 casts (median): experienced ${med(runs.experienced.map((r) => r.earnedAt1000))}, novice ${med(runs.novice.map((r) => r.earnedAt1000))}.`, '');
+  out.push(`All 8 locations open after 20,000 casts: experienced ${runs.experienced.filter((r) => r.save.permanentUnlocks.length === 8).length}/40, novice ${runs.novice.filter((r) => r.save.permanentUnlocks.length === 8).length}/40.`, '');
 
   // 6. tournament
   out.push('## Weekly championship: who can place', '', 'Total of the ten best catches after a week of N casts, median of 200 weeks, against the demo table at the end of the week.', '');
@@ -307,7 +326,7 @@ it('balance simulation', () => {
       for (let i = 0; i < casts; i++) {
         if (!rollBite(ticket, rng)) continue;
         const h = hookFish(s, ticket, rng);
-        const q = sampleFight(SPECIES[h.speciesId].rarity, ticket.totals.zone, rng);
+        const q = sampleFight(SPECIES[h.speciesId].rarity, LOCATIONS[loc].tier, ticket.totals.zone, rng);
         if (q) scores.push(tournamentScore(SPECIES[h.speciesId], h.weight, q));
       }
       totalsList.push(weekTotal(scores.sort((a, b) => b - a).slice(0, 10).map((score) => ({ score, speciesId: 0, weight: 0, quality: 'B' as Quality, at: 0 }))));

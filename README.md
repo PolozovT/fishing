@@ -8,7 +8,7 @@ Hypothesis results for the first version are in **[REPORT.md](REPORT.md)**; the 
 
 | Folder | Contents |
 |---|---|
-| `contracts/` | Foundry project: `FishingGame`, `GameLens`, `FishNFT`, `PearlToken`, `PearlExchange`, `Marketplace` + 51 tests |
+| `contracts/` | Foundry project: `FishingGame`, `GameLens`, `FishNFT`, `PearlToken`, `PearlExchange`, `Marketplace` + 56 tests |
 | `contracts/script/GameSetup.sol` | catalog: species, locations, rods, lures, special fish, achievements, config |
 | `sim/` | model of the first version's formulas and an agent-based economy simulation (Python) |
 | `web/` | browser client (Vite + TypeScript + viem), see [web/README.md](web/README.md) |
@@ -87,6 +87,6 @@ cd web && pnpm dev
 5. PEARL is burned on rods (`buyRod`), lures (`buyLure`), repairs and energy refills (each further refill on the same day costs ×2).
 6. Progress is onchain: XP and level, the species encyclopedia, permanent location unlocks, personal records, the ten best catches of each week, and achievements that pay PEARL once.
 
-What the contract decides, the client cannot: the reel fight in the browser is an animation of a result that is already final. The BLEND bottle (a rare non-fish catch) is recorded by the game contract; no token is transferred.
+What the contract decides, the client cannot. Once a cast's block exists its outcome is fixed and public, so the client computes it, plays the bite, the hook and the fight on it, and settles afterwards: skill there changes how soon you land the fish, never which fish it is. See [ARCHITECTURE.md](ARCHITECTURE.md). The BLEND bottle (a rare non-fish catch) is recorded by the game contract; no token is transferred.
 
 Energy: max 20, regenerates 1 every 2 minutes. If a cast is not reeled in within 256 blocks, the fish gets away.

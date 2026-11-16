@@ -195,6 +195,121 @@ contract FishingGameTest is BaseTest {
         assertApproxEqAbs(bites, (n * 65) / 100, 40);
     }
 
+    // ------------------------------------------------------------------ settlement cannot be gamed
+
+    function test_aCastSettlesExactlyOnce() public {
+        vm.prank(alice);
+        game.cast(0);
+        uint64 target = game.castOf(alice).targetBlock;
+        vm.roll(target + 1);
+        vm.setBlockhash(target, keccak256("once"));
+        vm.prank(alice);
+        game.reel();
+        uint256 fishAfter = fish.nextId();
+        uint256 xpAfter = game.playerOf(alice).xp;
+        vm.prank(alice);
+        vm.expectRevert(FishingGame.NoActiveCast.selector);
+        game.reel();
+        vm.prank(bob);
+        vm.expectRevert(FishingGame.NoActiveCast.selector);
+        game.reelFor(alice);
+        assertEq(fish.nextId(), fishAfter, "no second fish");
+        assertEq(game.playerOf(alice).xp, xpAfter, "no second reward");
+    }
+
+    /// @dev The outcome is a function of the committed block only: who settles, and when, changes nothing.
+    function testFuzz_outcomeDoesNotDependOnWhoSettlesOrWhen(bytes32 entropy, uint8 delay) public {
+        uint256 snap = vm.snapshotState();
+        (uint16 spA, uint32 wA, uint8 qA, uint256 blendA) = _settle(entropy, 1, alice);
+        vm.revertToState(snap);
+        (uint16 spB, uint32 wB, uint8 qB, uint256 blendB) = _settle(entropy, 1 + uint256(delay) % 200, bob);
+        assertEq(spA, spB);
+        assertEq(wA, wB);
+        assertEq(qA, qB);
+        assertEq(blendA, blendB);
+    }
+
+    function _settle(bytes32 entropy, uint256 blocksLater, address settler)
+        internal
+        returns (uint16 species, uint32 weight, uint8 quality, uint256 blend)
+    {
+        vm.prank(alice);
+        game.cast(0);
+        uint64 target = game.castOf(alice).targetBlock;
+        vm.roll(target + blocksLater);
+        vm.setBlockhash(target, entropy);
+        uint256 next = fish.nextId();
+        vm.prank(settler);
+        game.reelFor(alice);
+        blend = game.blendWon(alice);
+        if (fish.nextId() > next) {
+            FishNFT.Fish memory f = fish.fish(next);
+            assertEq(fish.ownerOf(next), alice, "the catch always goes to the player who cast");
+            return (f.speciesId, f.weight, f.quality, blend);
+        }
+    }
+
+    /// @dev There is nothing a client can claim: reel takes no arguments, so the only inputs are the committed
+    ///      block and the tackle fixed at cast time. Swapping tackle after the cast must not change the result.
+    function test_changingTackleAfterTheCastChangesNothing() public {
+        _fund(alice, 30_000 * E);
+        vm.prank(alice);
+        game.buyRod(5); // Pearl Master is bought and equipped
+        vm.prank(alice);
+        game.equipRod(0); // ...but the cast goes out on the starter rod
+        uint256 snap = vm.snapshotState();
+        (uint16 spA, uint32 wA, uint8 qA,) = _settleAfterSwap(false);
+        vm.revertToState(snap);
+        (uint16 spB, uint32 wB, uint8 qB,) = _settleAfterSwap(true);
+        assertEq(spA, spB);
+        assertEq(wA, wB);
+        assertEq(qA, qB, "a better rod equipped after the cast must not lift the quality roll");
+    }
+
+    function _settleAfterSwap(bool swap) internal returns (uint16 species, uint32 weight, uint8 quality, uint256 x) {
+        vm.prank(alice);
+        game.cast(0);
+        uint64 target = game.castOf(alice).targetBlock;
+        if (swap) {
+            vm.prank(alice);
+            game.equipRod(5);
+        }
+        vm.roll(target + 1);
+        vm.setBlockhash(target, keccak256("swap"));
+        uint256 next = fish.nextId();
+        vm.prank(alice);
+        game.reel();
+        if (fish.nextId() > next) {
+            FishNFT.Fish memory f = fish.fish(next);
+            return (f.speciesId, f.weight, f.quality, 0);
+        }
+        x = 0;
+    }
+
+    /// @dev Seeing a poor outcome and letting it expire buys nothing: energy, rod wear and the lure cast are
+    ///      already spent, no counter moves, and the next cast gets fresh randomness.
+    function test_lettingACastExpireGainsNothing() public {
+        _fund(alice, 1_000 * E);
+        vm.startPrank(alice);
+        game.buyRod(1);
+        game.buyLure(0);
+        game.cast(0);
+        vm.stopPrank();
+        FishingGame.Player memory before = game.playerOf(alice);
+        uint16 durability = game.rodDurability(alice, 1);
+        uint32 casts = game.lureCasts(alice, 0);
+        vm.roll(block.number + 300); // the player sits on the result until it expires
+        vm.prank(alice);
+        game.reel();
+        FishingGame.Player memory afterIt = game.playerOf(alice);
+        assertEq(fish.balanceOf(alice), 0);
+        assertEq(afterIt.xp, before.xp);
+        assertEq(afterIt.energy, before.energy, "energy is not refunded");
+        assertEq(game.rodDurability(alice, 1), durability, "rod wear is not refunded");
+        assertEq(game.lureCasts(alice, 0), casts, "the lure cast is not refunded");
+        assertEq(game.dryCatches(alice, 0), 0, "pity does not advance on a skipped cast");
+    }
+
     // ------------------------------------------------------------------ what a catch records
 
     function test_catchUpdatesProgress() public {

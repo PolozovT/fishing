@@ -12,7 +12,11 @@ remappings = [
   "forge-std/=lib/forge-std/src/",
 ]
 
-fs_permissions = [{ access = "read-write", path = "../deployments" }]
+fs_permissions = [
+  { access = "read-write", path = "../deployments" },
+  # test/Vectors.t.sol writes the outcome vectors the web client checks its preview against
+  { access = "read-write", path = "../web/src/game/fixtures" },
+]
 
 [fuzz]
 runs = 512

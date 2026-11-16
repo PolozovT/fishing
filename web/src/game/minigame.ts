@@ -1,10 +1,37 @@
 /**
- * The reel fight, as a pure simulation. One gauge: line tension. Holding reels in and raises tension, letting go
- * lowers it. While tension sits in the green band the fish comes closer; too slack and it swims away; at the top
- * of the gauge the line snaps. Now and then the fish pulls hard, tension climbs by itself and the player has to
- * let go. Quality is the share of the fight spent in the green.
+ * The hook and the reel fight, as pure simulations. No DOM, no timers, no randomness of their own: the caller
+ * supplies the clock (dt) and the RNG, so the same code runs the game, the tests and the balance simulation.
+ *
+ * The fight has one gauge: line tension. Holding reels in and raises tension, letting go lowers it. While tension
+ * sits in the green band the fish comes closer; too slack and it swims away; at the top of the gauge the line
+ * snaps. Every so often the fish jerks: a short warning, then a burst that drives tension up by itself, so the
+ * player has to let go in time. Quality is the share of the fight spent in the green.
  */
 import type { Quality, Rarity, Rng } from './types';
+
+// ------------------------------------------------------------------ difficulty
+
+/** How hard a fish fights: its rarity plus how rough the water is, 0 (a pond roach) … 5 (a legend in white water). */
+export type Difficulty = 0 | 1 | 2 | 3 | 4 | 5;
+
+export const difficultyOf = (rarity: Rarity, waterTier: number): Difficulty => Math.max(0, Math.min(5, rarity + waterTier)) as Difficulty;
+
+/** Seconds the player has to hook after the float dips. */
+const HOOK_WINDOW = [1.6, 1.5, 1.35, 1.2, 1.0, 0.85];
+export const hookWindow = (d: Difficulty): number => HOOK_WINDOW[d];
+
+/** Seconds of waiting before the float dips: [min, max]. A lure's catch shortens it (`quick` 0.6 … 1). */
+export function biteDelay(waterTier: number, quick: number, rng: Rng): number {
+  const [lo, hi] = waterTier >= 2 ? [3, 7] : [2, 5];
+  return (lo + rng() * (hi - lo)) * quick;
+}
+
+/** A hook set in the first part of the window is "clean": the fight starts with the fish a little closer. */
+export const CLEAN_HOOK_SHARE = 0.45;
+export const CLEAN_HOOK_HEAD_START = 0.1;
+export const isCleanHook = (reaction: number, d: Difficulty): boolean => reaction <= hookWindow(d) * CLEAN_HOOK_SHARE;
+
+// ------------------------------------------------------------------ the fight
 
 export interface ReelParams {
   /** Green band of the tension gauge: [from, to], 0..1. */
@@ -12,24 +39,28 @@ export interface ReelParams {
   /** Tension per second while holding / while released. */
   rise: number;
   fall: number;
-  /** Extra tension per second while the fish pulls. */
+  /** Extra tension per second during a jerk. */
   surge: number;
-  /** Distance reeled in per second in the green (the fight starts at distance START_DIST). */
+  /** Distance reeled in per second in the green (the fight starts at START_DIST). */
   reel: number;
   /** Distance the fish gains per second while the line is slack. */
   drift: number;
-  /** Seconds of calm between pulls, and how long a pull lasts: [min, max]. */
+  /** Seconds of calm between jerks, the warning before one, and how long a jerk lasts: [min, max]. */
   calm: [number, number];
+  tell: number;
   pull: [number, number];
 }
+
+export type Mood = 'calm' | 'warn' | 'pull';
 
 export interface ReelState {
   tension: number;
   /** 0 = at the pier (landed), 1 = gone. */
   dist: number;
-  /** The fish is pulling right now. */
-  pulling: boolean;
-  /** Time of the next change between calm and pulling. */
+  mood: Mood;
+  /** Strength of the current (or coming) jerk, as a multiple of the fish's usual one: some jerks are vicious. */
+  power: number;
+  /** Time of the next mood change. */
   next: number;
   t: number;
   /** Seconds spent in the green. */
@@ -40,39 +71,59 @@ export interface ReelState {
 }
 
 export const START_DIST = 0.7;
-const GREEN_CENTRE = 0.58;
+const GREEN_CENTRE = 0.56;
 /** The rod's zone stat (0.20 starter … 0.30 cap) is the width of the green band, times this. */
-const GREEN_PER_ZONE = 1.1;
+const GREEN_PER_ZONE = 1.25;
 
 export const greenWidth = (zone: number): number => zone * GREEN_PER_ZONE;
 
-const REEL = [0.16, 0.15, 0.135, 0.12, 0.105, 0.095];
-const SURGE = [0.28, 0.34, 0.4, 0.46, 0.52, 0.56];
+const REEL = [0.14, 0.128, 0.118, 0.108, 0.1, 0.094];
+/** Each jerk is this many times the fish's base strength, picked at random. */
+const JERK_MIN = 0.6;
+const JERK_MAX = 1.6;
+const SURGE = [0.5, 0.56, 0.62, 0.67, 0.71, 0.75];
+const DRIFT = [0.05, 0.065, 0.08, 0.095, 0.11, 0.125];
+const TELL = [0.5, 0.46, 0.42, 0.38, 0.34, 0.3];
 const CALM: [number, number][] = [
-  [2.2, 3.6],
-  [1.9, 3.2],
-  [1.6, 2.8],
-  [1.3, 2.4],
-  [1.1, 2.0],
-  [0.9, 1.7],
-];
-const PULL: [number, number][] = [
-  [0.6, 1.0],
-  [0.7, 1.1],
-  [0.8, 1.3],
-  [0.9, 1.5],
-  [1.0, 1.7],
+  [2.6, 4.0],
+  [2.2, 3.5],
+  [1.9, 3.0],
+  [1.6, 2.6],
+  [1.3, 2.2],
   [1.1, 1.9],
 ];
+const PULL: [number, number][] = [
+  [0.35, 0.6],
+  [0.42, 0.75],
+  [0.5, 0.9],
+  [0.58, 1.05],
+  [0.66, 1.2],
+  [0.74, 1.35],
+];
 
-/** Rarer fish pull harder, more often, and come in slower. The rod's catch bonus arrives as a wider green band. */
-export function reelParams(rarity: Rarity, zone: number): ReelParams {
-  const w = greenWidth(zone);
-  return { green: [GREEN_CENTRE - w / 2, GREEN_CENTRE + w / 2], rise: 0.5, fall: 0.6, surge: SURGE[rarity], reel: REEL[rarity], drift: 0.06, calm: CALM[rarity], pull: PULL[rarity] };
+/**
+ * Fight parameters. Harder fish jerk harder, more often and with less warning, and come in slower.
+ * `zone` is the rod's stat: a better rod widens the green band. `ease` (0, 1, 2 …) widens it further and softens
+ * the jerks: used when a player retries the same fish, so nobody is stuck on one fight.
+ */
+export function reelParams(d: Difficulty, zone: number, ease = 0): ReelParams {
+  const w = Math.min(0.62, greenWidth(zone) * (1 + 0.3 * ease));
+  return {
+    green: [GREEN_CENTRE - w / 2, GREEN_CENTRE + w / 2],
+    rise: 0.5,
+    fall: 0.8,
+    surge: SURGE[d] / (1 + 0.25 * ease),
+    reel: REEL[d],
+    drift: DRIFT[d],
+    calm: CALM[d],
+    tell: TELL[d],
+    pull: PULL[d],
+  };
 }
 
-export function reelStart(rng: Rng): ReelState {
-  return { tension: 0.25, dist: START_DIST, pulling: false, next: 1.4 + rng() * 0.8, t: 0, good: 0, result: 'fighting' };
+/** `headStart` shortens the starting distance (a clean hook). */
+export function reelStart(rng: Rng, headStart = 0): ReelState {
+  return { tension: 0.25, dist: Math.max(0.3, START_DIST - headStart), mood: 'calm', power: 1, next: 1.5 + rng() * 0.8, t: 0, good: 0, result: 'fighting' };
 }
 
 export type Band = 'slack' | 'green' | 'red';
@@ -84,11 +135,19 @@ export function reelStep(s: ReelState, hold: boolean, dt: number, p: ReelParams,
   const n = { ...s };
   n.t += dt;
   if (n.t >= n.next) {
-    n.pulling = !n.pulling;
-    const [a, b] = n.pulling ? p.pull : p.calm;
-    n.next = n.t + a + rng() * (b - a);
+    if (n.mood === 'calm') {
+      n.mood = 'warn';
+      n.power = JERK_MIN + rng() * (JERK_MAX - JERK_MIN);
+      n.next = n.t + p.tell;
+    } else if (n.mood === 'warn') {
+      n.mood = 'pull';
+      n.next = n.t + p.pull[0] + rng() * (p.pull[1] - p.pull[0]);
+    } else {
+      n.mood = 'calm';
+      n.next = n.t + p.calm[0] + rng() * (p.calm[1] - p.calm[0]);
+    }
   }
-  n.tension = Math.max(0, n.tension + ((hold ? p.rise : -p.fall) + (n.pulling ? p.surge : 0)) * dt);
+  n.tension = Math.max(0, n.tension + ((hold ? p.rise : -p.fall) + (n.mood === 'pull' ? p.surge * n.power : 0)) * dt);
   if (n.tension >= 1) {
     n.tension = 1;
     n.result = 'escaped';
@@ -98,7 +157,7 @@ export function reelStep(s: ReelState, hold: boolean, dt: number, p: ReelParams,
   const band = bandOf(n.tension, p);
   if (band === 'green') n.good += dt;
   // the fish comes in while the line is tight (green or red) and gains ground while it is slack
-  n.dist += (band === 'slack' ? p.drift * (n.pulling ? 2 : 1) : -p.reel) * dt;
+  n.dist += (band === 'slack' ? p.drift * (n.mood === 'pull' ? 2 : 1) : -p.reel) * dt;
   if (n.dist <= 0) {
     n.dist = 0;
     n.result = 'landed';
@@ -114,29 +173,52 @@ export const accuracy = (s: ReelState): number => (s.t > 0 ? s.good / s.t : 0);
 
 /** Quality grade from the share of the fight spent in the green. */
 export function qualityOf(acc: number): Quality {
-  if (acc >= 0.88) return 'S';
-  if (acc >= 0.78) return 'A';
-  if (acc >= 0.66) return 'B';
-  if (acc >= 0.52) return 'C';
+  if (acc >= 0.86) return 'S';
+  if (acc >= 0.76) return 'A';
+  if (acc >= 0.64) return 'B';
+  if (acc >= 0.5) return 'C';
   return 'D';
 }
 
+// ------------------------------------------------------------------ a stand-in player, for simulations
+
+export interface Skill {
+  /** Seconds between seeing something and acting on it. */
+  lag: number;
+  /** Error reading the gauge, in gauge units. */
+  noise: number;
+  /** Chance of not noticing a warning at all (then the jerk itself is the cue, one lag later). */
+  miss: number;
+}
+export const SKILLS = {
+  experienced: { lag: 0.18, noise: 0.04, miss: 0.04 },
+  novice: { lag: 0.32, noise: 0.08, miss: 0.2 },
+} satisfies Record<string, Skill>;
+
 /**
- * A simple controller for simulations: reels while the tension it saw `lag` seconds ago (plus some reading
- * error) is below the middle of the green. `lag` 0.18 and noise 0.04 is a decent player; 0.3 and 0.08 a novice.
+ * Plays one fight the way a person roughly would: keeps tension near the middle of the green, lets go when it
+ * notices a warning or a jerk, and takes up slack carefully while the fish pulls. A model, not a measurement.
  */
-export function simulateFight(p: ReelParams, rng: Rng, lag = 0.18, noise = 0.04): { landed: boolean; quality: Quality; seconds: number } {
+export function simulateFight(p: ReelParams, rng: Rng, skill: Skill = SKILLS.experienced, headStart = 0): { landed: boolean; quality: Quality; seconds: number; lost?: 'snapped' | 'slack' } {
   const dt = 1 / 30;
-  let s = reelStart(rng);
-  const seen: number[] = [];
-  const lagSteps = Math.round(lag / dt);
+  let s = reelStart(rng, headStart);
+  const seen: { tension: number; mood: Mood }[] = [];
+  const lagSteps = Math.round(skill.lag / dt);
   const aimAt = (p.green[0] + p.green[1]) / 2;
   let err = 0;
-  for (let i = 0; i < 30 * 90 && s.result === 'fighting'; i++) {
-    seen.push(s.tension);
-    if (i % 6 === 0) err = (rng() - 0.5) * 2 * noise;
-    const tensionSeen = seen[Math.max(0, seen.length - 1 - lagSteps)] + err;
-    s = reelStep(s, tensionSeen < aimAt, dt, p, rng);
+  let missedThisWarning = false;
+  let lastMood: Mood = 'calm';
+  for (let i = 0; i < 30 * 120 && s.result === 'fighting'; i++) {
+    if (s.mood === 'warn' && lastMood !== 'warn') missedThisWarning = rng() < skill.miss;
+    lastMood = s.mood;
+    seen.push({ tension: s.tension, mood: s.mood });
+    if (i % 6 === 0) err = (rng() - 0.5) * 2 * skill.noise;
+    const was = seen[Math.max(0, seen.length - 1 - lagSteps)];
+    const tension = was.tension + err;
+    const alarmed = was.mood === 'pull' || (was.mood === 'warn' && !missedThisWarning);
+    // during a jerk: only take up slack; otherwise hold the middle of the green
+    const hold = alarmed ? tension < p.green[0] : tension < aimAt;
+    s = reelStep(s, hold, dt, p, rng);
   }
-  return { landed: s.result === 'landed', quality: qualityOf(accuracy(s)), seconds: s.t };
+  return { landed: s.result === 'landed', quality: qualityOf(accuracy(s)), seconds: s.t, lost: s.lost };
 }

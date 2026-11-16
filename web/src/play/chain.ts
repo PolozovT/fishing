@@ -7,6 +7,7 @@ import { erc20Abi, formatEther, parseEther, parseEventLogs, type Address, type T
 import { fishingGameAbi, gameLensAbi, pearlExchangeAbi } from '../abi';
 import { publicClient } from '../clients';
 import { deployment } from '../config';
+import { resolveCast, type CastOutcome, type ChainCatalog } from '../game/chainOutcome';
 import { LOCATIONS, QUALITIES, SPECIALS, SPECIES, TUNING, BLEND_PRIZE } from '../game/content';
 import { achievements } from '../game/progress';
 import { freshSave } from '../game/save';
@@ -33,7 +34,9 @@ export interface Standing {
 /** Chain facts that do not fit the Save shape. */
 export interface World {
   /** The player's unresolved cast, if any. */
-  cast: { targetBlock: bigint; locationId: number } | null;
+  cast: { targetBlock: bigint; nonce: bigint; locationId: number; rod: number; lure: number; special: number } | null;
+  /** What the pending cast's outcome depends on besides the block hash (see game/chainOutcome.ts). */
+  rolls: { blendWins: number; specialsFound: number; dry: number[] };
   week: number;
   standings: Standing[];
   /** The player's past weeks, newest first. */
@@ -43,7 +46,7 @@ export interface World {
   blend: { balance: number; allowance: bigint; pearlPerBlend: number; paused: boolean } | null;
 }
 
-export const world: World = { cast: null, week: 0, standings: [], history: [], loaded: false, blend: null };
+export const world: World = { cast: null, rolls: { blendWins: 0, specialsFound: 0, dry: [] }, week: 0, standings: [], history: [], loaded: false, blend: null };
 
 // ------------------------------------------------------------------ client-side preferences (not game state)
 
@@ -174,7 +177,8 @@ export async function loadChainSave(): Promise<Save | null> {
   const wanted = recalledLocation();
   s.location = s.permanentUnlocks.includes(wanted) ? wanted : 0;
 
-  world.cast = v.cast.targetBlock === 0n ? null : { targetBlock: v.cast.targetBlock, locationId: v.cast.locationId };
+  world.cast = v.cast.targetBlock === 0n ? null : { targetBlock: v.cast.targetBlock, nonce: v.cast.nonce, locationId: v.cast.locationId, rod: v.cast.rod, lure: v.cast.lure, special: v.cast.special };
+  world.rolls = { blendWins: p.blendWins, specialsFound: p.specialsFound, dry: [...v.dry] };
   world.week = week;
   world.loaded = true;
   return s;
@@ -254,6 +258,65 @@ export async function waitPastBlock(target: bigint, alive: () => boolean): Promi
     }
     await new Promise((r) => setTimeout(r, 700));
   }
+}
+
+// ------------------------------------------------------------------ predicting the pending cast
+
+let catalogPromise: Promise<ChainCatalog> | null = null;
+/** The contracts' own catalog and config, read once: the prediction must use exactly what the contract uses. */
+function chainCatalog(): Promise<ChainCatalog> {
+  catalogPromise ??= (async () => {
+    const [c, cfg] = await Promise.all([publicClient.readContract({ ...lens, functionName: 'catalog' }), publicClient.readContract({ ...game, functionName: 'config' })]);
+    return {
+      config: { qualityPerCatch: cfg[11], qualityPerRarity: cfg[12], blendAmount: num(cfg[13]), blendChancePpm: cfg[14], blendMaxWins: cfg[15] },
+      locations: c.locations.map((l) => ({ special: l.special, speciesIds: [...l.speciesIds], weights: [...l.weights] })),
+      species: c.species.map((s, i) => ({ rarity: s.rarity, minWeight: s.minWeight, maxWeight: s.maxWeight, hidden: c.hidden[i] })),
+      specials: c.specials.map((s) => ({ speciesId: s.speciesId, chancePpm: s.chancePpm, pity: s.pity })),
+    };
+  })().catch((e) => {
+    catalogPromise = null;
+    throw e;
+  });
+  return catalogPromise;
+}
+
+/** The contract can read a block hash only for the 256 most recent blocks. */
+const BLOCKHASH_WINDOW = 256n;
+
+/**
+ * What the player's pending cast will be when it is settled, or null if its block is not there yet.
+ * Presentation only: the settlement transaction computes the real result (see game/chainOutcome.ts).
+ * Throws on RPC trouble; the caller then falls back to settling first and showing the result after.
+ */
+export async function previewCast(): Promise<CastOutcome | null> {
+  const me = state.wallet?.address;
+  const c = world.cast;
+  if (!me || !c) return null;
+  const head = await publicClient.getBlockNumber({ cacheTime: 0 });
+  if (head <= c.targetBlock) return null;
+  // the settlement lands in a later block still, so leave a margin before calling the hash readable
+  const expired = head - c.targetBlock >= BLOCKHASH_WINDOW - 2n;
+  const [catalog, block, lo] = await Promise.all([
+    chainCatalog(),
+    expired ? Promise.resolve(null) : publicClient.getBlock({ blockNumber: c.targetBlock }),
+    publicClient.readContract({ ...game, functionName: 'loadout', args: [BigInt(c.rod), BigInt(c.lure), BigInt(c.special), BigInt(c.locationId)] }),
+  ]);
+  return resolveCast(catalog, {
+    blockHash: block?.hash ?? null,
+    player: me,
+    game: game.address,
+    nonce: c.nonce,
+    locationId: c.locationId,
+    loadout: { rodCatch: Number(lo[0]), biteBps: Number(lo[1]), rarity: Number(lo[2]), weight: Number(lo[3]), hiddenMult: Number(lo[4]) },
+    ...world.rolls,
+  });
+}
+
+/** Blocks left before the pending cast's randomness is out of the contract's reach. */
+export async function blocksUntilExpiry(): Promise<number> {
+  if (!world.cast) return 0;
+  const head = await publicClient.getBlockNumber({ cacheTime: 0 });
+  return Number(world.cast.targetBlock + BLOCKHASH_WINDOW - head);
 }
 
 // ------------------------------------------------------------------ writes
