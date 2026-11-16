@@ -92,20 +92,20 @@ Median of 40 simulated careers (20,000 casts each). The bot sells every ordinary
 
 | Milestone | Experienced player | Novice |
 |---|---|---|
-| buy:spoon | 14 (worst 27) | 18 (worst 30) |
-| level 3 | 37 (worst 48) | 40 (worst 47) |
-| buy:carbon | 43 (worst 57) | 56 (worst 76) |
-| unlock:Deep Lake | 49 (worst 126) | 61 (worst 170) |
-| special:Golden Koi | 71 (worst 187) | 162 (worst 198) |
-| level 8 | 198 (worst 225) | 252 (worst 393) |
-| buy:flyrod | 110 (worst 189) | 177 (worst 232) |
-| buy:troller | 167 (worst 250) | 424 (worst 548) |
-| special:Ancient Catfish | 230 (worst 393) | 396 (worst 548) |
-| level 12 | 462 (worst 509) | 688 (worst 911) |
-| buy:pearlmaster | 472 (worst 568) | 1035 (worst 1311) |
-| special:Ghost Fish | 442 (worst 729) | 880 (worst 1297) |
+| buy:spoon | 11 (worst 19) | 15 (worst 28) |
+| level 3 | 37 (worst 48) | 39 (worst 47) |
+| buy:carbon | 39 (worst 53) | 49 (worst 63) |
+| unlock:Deep Lake | 49 (worst 126) | 59 (worst 171) |
+| special:Golden Koi | 71 (worst 187) | 159 (worst 196) |
+| level 8 | 203 (worst 226) | 254 (worst 407) |
+| buy:flyrod | 100 (worst 157) | 160 (worst 209) |
+| buy:troller | 148 (worst 229) | 363 (worst 446) |
+| special:Ancient Catfish | 230 (worst 393) | 395 (worst 519) |
+| level 12 | 460 (worst 511) | 682 (worst 834) |
+| buy:pearlmaster | 427 (worst 538) | 963 (worst 1164) |
+| special:Ghost Fish | 442 (worst 729) | 871 (worst 1281) |
 
-PEARL earned in the first 1,000 casts (median): experienced 148731, novice 33118.
+PEARL earned in the first 1,000 casts (median): experienced 178764, novice 40004.
 
 All 8 locations open after 20,000 casts: experienced 40/40, novice 40/40.
 

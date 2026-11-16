@@ -15,10 +15,10 @@ export interface Deployment {
 export const deployments: Record<string, Deployment> = {
   "20994": {
     "chainId": 20994,
-    "startBlock": 42597081,
-    "game": "0xCAA247e5Bf3251e8246E373aAfd1d7178946E945",
+    "startBlock": 42849729,
+    "game": "0x36dFf390F0B947bEC4c45bf057e7a9b8cF69Bfe5",
     "fish": "0x76BB17044f47FD1f24F28F7c233488b080C6089F",
-    "lens": "0xA63248375f5f18feDD7D7514b995A792E75cB624",
+    "lens": "0x0b1D70DCC87F90eE4F834b8211BBdC49a847B70e",
     "pearl": "0x3FbEA20b71Db8475738764153F716a6ea9eBB6E9",
     "market": "0x6d2423685C9842f0ae8a70bb0dc3E47Dc16044a1",
     "blend": "0x83Fed707A8dDDC2535aE591CF19fB6C91D542D8E",

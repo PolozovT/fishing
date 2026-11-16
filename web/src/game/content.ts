@@ -250,6 +250,9 @@ export const TUNING = {
   maxWeightBonus: 60,
   /** Fish at or above this price ask for a confirmation before they are sold. */
   valuablePrice: 400,
+  /** A fish sold within this long of being landed pays `freshBonus` more (FishingGame.FRESH_WINDOW / FRESH_BONUS_BPS). */
+  freshWindowMs: 10 * 60_000,
+  freshBonus: 0.2,
   /** Full repair of a rod costs this share of its price. */
   repairShare: 0.06,
 };

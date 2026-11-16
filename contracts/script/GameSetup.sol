@@ -58,22 +58,27 @@ library GameSetup {
     function deploy(address owner) internal returns (Deployment memory d) {
         d.pearl = new PearlToken(owner);
         d.fish = new FishNFT(owner);
-        d.game = new FishingGame(owner, d.pearl, d.fish, defaultConfig());
         d.market = new Marketplace(owner, d.pearl, 500);
-        d.lens = new GameLens(d.game);
-
-        d.pearl.setMinter(address(d.game), true);
-        d.fish.setGame(address(d.game));
         d.market.setCollection(address(d.fish), true);
-
         _seedSpecies(d.fish);
-        _seedTackle(d.game);
-        _seedSpecials(d.game);
-        _seedLocations(d.game);
-        _seedAchievements(d.game);
-        d.game.setHidden(14, true); // Lake Spirit
-        d.game.setHidden(34, true); // Spectral Sturgeon
-        d.game.setHidden(35, true); // Albino Pike
+        (d.game, d.lens) = deployGame(owner, d.pearl, d.fish);
+    }
+
+    /// @notice A fresh, fully seeded game (and its lens) on top of existing PEARL and fish contracts.
+    ///         Player state lives in the game, so it starts empty; fish and PEARL balances are untouched.
+    ///         When replacing a game, revoke the old one's PEARL minter role afterwards.
+    function deployGame(address owner, PearlToken pearl, FishNFT fish) internal returns (FishingGame game, GameLens lens) {
+        game = new FishingGame(owner, pearl, fish, defaultConfig());
+        lens = new GameLens(game);
+        pearl.setMinter(address(game), true);
+        fish.setGame(address(game));
+        _seedTackle(game);
+        _seedSpecials(game);
+        _seedLocations(game);
+        _seedAchievements(game);
+        game.setHidden(14, true); // Lake Spirit
+        game.setHidden(34, true); // Spectral Sturgeon
+        game.setHidden(35, true); // Albino Pike
     }
 
     function _sp(FishNFT f, string memory name, uint8 rarity, uint32 minW, uint32 maxW, uint256 price, uint24 color)

@@ -277,6 +277,10 @@ export function landFish(s: Save, t: CastTicket, hooked: Hooked, quality: Qualit
 // ------------------------------------------------------------------ keepnet
 
 export const isValuable = (f: FishInstance): boolean => f.sellPrice >= TUNING.valuablePrice || f.rarity >= 3;
+/** Still inside the fresh-catch window: selling now pays the bonus. */
+export const isFresh = (f: FishInstance, now: number): boolean => now - f.caughtAt <= TUNING.freshWindowMs;
+/** What selling this fish pays at `now`: `sellPrice`, plus the fresh-catch bonus straight off the hook. */
+export const saleValue = (f: FishInstance, now: number): number => (isFresh(f, now) ? Math.round(f.sellPrice * (1 + TUNING.freshBonus)) : f.sellPrice);
 /** Bulk selling skips favourites and specials. */
 export const bulkSellable = (f: FishInstance): boolean => !f.isFavorite && !f.isSpecial;
 
@@ -284,7 +288,7 @@ export const bulkSellable = (f: FishInstance): boolean => !f.isFavorite && !f.is
  * Sells exactly the given fish. All-or-nothing: an unknown id, a duplicate, or a favourite aborts the whole sale.
  * Tournament points and encyclopedia entries stay. Specials can be sold only one at a time (`ids.length === 1`).
  */
-export function sellFish(s: Save, ids: string[]): { save: Save; earned: number } {
+export function sellFish(s: Save, ids: string[], now: number): { save: Save; earned: number } {
   if (ids.length === 0) fail('Nothing selected');
   const set = new Set(ids);
   if (set.size !== ids.length) fail('Duplicate fish in the sale');
@@ -292,7 +296,7 @@ export function sellFish(s: Save, ids: string[]): { save: Save; earned: number }
   if (sold.length !== ids.length) fail('Some of these fish are no longer in the keepnet');
   if (sold.some((f) => f.isFavorite)) fail('Favourites are protected: remove the star first');
   if (ids.length > 1 && sold.some((f) => f.isSpecial)) fail('Special fish can only be sold one at a time');
-  const earned = sold.reduce((a, f) => a + f.sellPrice, 0);
+  const earned = sold.reduce((a, f) => a + saleValue(f, now), 0);
   let n: Save = {
     ...s,
     pearl: s.pearl + earned,

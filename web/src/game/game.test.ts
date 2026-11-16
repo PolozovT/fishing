@@ -30,6 +30,8 @@ import { WEEK_MS, addEntry, demoStandings, standings, tournamentScore, weekId, w
 import type { FishInstance, Save } from './types';
 
 const NOW = Date.UTC(2026, 10, 13, 12);
+/** Past the fresh-catch window of anything caught at NOW. */
+const LATER = NOW + 3_600_000;
 const seeded = (seed: number) => {
   let a = seed >>> 0;
   return () => {
@@ -213,7 +215,7 @@ describe('special fish and location unlocks', () => {
     expect(l.fish.isSpecial).toBe(true);
     expect(l.save.activeSpecial).toBe('koi');
     // selling it keeps the unlock but drops the passive bonus
-    const sold = sellFish(l.save, [l.fish.id]).save;
+    const sold = sellFish(l.save, [l.fish.id], LATER).save;
     expect(isUnlocked(sold, LOCATIONS[5])).toBe(true);
     expect(canEnter(sold, LOCATIONS[5])).toBe(true);
     expect(sold.activeSpecial).toBeNull();
@@ -226,7 +228,7 @@ describe('special fish and location unlocks', () => {
     const loc = { ...LOCATIONS[5], ownership: { special: 'koi' } };
     const l = land(freshSave(NOW), 20);
     expect(canEnter(l.save, loc)).toBe(true);
-    const sold = sellFish(l.save, [l.fish.id]).save;
+    const sold = sellFish(l.save, [l.fish.id], LATER).save;
     expect(isUnlocked(sold, loc)).toBe(true);
     expect(canEnter(sold, loc)).toBe(false);
   });
@@ -347,32 +349,38 @@ describe('BLEND prize', () => {
 });
 
 describe('selling', () => {
+  it('pays more straight off the hook than from the keepnet later', () => {
+    const s = withFish(freshSave(NOW), fishOf({ id: 'a', sellPrice: 10 }), fishOf({ id: 'b', sellPrice: 17 }));
+    expect(sellFish(s, ['a', 'b'], NOW).earned).toBe(12 + 20);
+    expect(sellFish(s, ['a', 'b'], NOW + TUNING.freshWindowMs).earned).toBe(32); // the window is inclusive
+    expect(sellFish(s, ['a', 'b'], NOW + TUNING.freshWindowMs + 1).earned).toBe(27);
+  });
   it('removes exactly the sold fish and pays once', () => {
     const s = withFish({ ...freshSave(NOW), pearl: 5 }, fishOf({ id: 'a', sellPrice: 10 }), fishOf({ id: 'b', sellPrice: 7 }), fishOf({ id: 'c', sellPrice: 3 }));
-    const r = sellFish(s, ['a', 'c']);
+    const r = sellFish(s, ['a', 'c'], LATER);
     expect(r.earned).toBe(13);
     expect(r.save.pearl).toBe(18);
     expect(r.save.fish.map((f) => f.id)).toEqual(['b']);
-    expect(() => sellFish(r.save, ['a'])).toThrow(GameError); // cannot be sold twice
+    expect(() => sellFish(r.save, ['a'], LATER)).toThrow(GameError); // cannot be sold twice
     expect(s.pearl).toBe(5); // the input save is untouched
   });
   it('is all-or-nothing', () => {
     const s = withFish(freshSave(NOW), fishOf({ id: 'a' }));
-    expect(() => sellFish(s, ['a', 'ghost'])).toThrow(GameError);
-    expect(() => sellFish(s, ['a', 'a'])).toThrow(GameError);
-    expect(() => sellFish(s, [])).toThrow(GameError);
+    expect(() => sellFish(s, ['a', 'ghost'], LATER)).toThrow(GameError);
+    expect(() => sellFish(s, ['a', 'a'], LATER)).toThrow(GameError);
+    expect(() => sellFish(s, [], LATER)).toThrow(GameError);
     expect(s.fish).toHaveLength(1);
   });
   it('protects favourites and bulk-sold specials', () => {
     let s = withFish(freshSave(NOW), fishOf({ id: 'a' }), fishOf({ id: 'k', isSpecial: true, speciesId: 20 }));
     s = toggleFavorite(s, 'a');
-    expect(() => sellFish(s, ['a'])).toThrow(/protected/);
-    expect(() => sellFish(toggleFavorite(s, 'a'), ['a', 'k'])).toThrow(/one at a time/);
-    expect(sellFish(s, ['k']).save.fish.map((f) => f.id)).toEqual(['a']);
+    expect(() => sellFish(s, ['a'], LATER)).toThrow(/protected/);
+    expect(() => sellFish(toggleFavorite(s, 'a'), ['a', 'k'], LATER)).toThrow(/one at a time/);
+    expect(sellFish(s, ['k'], LATER).save.fish.map((f) => f.id)).toEqual(['a']);
   });
   it('keeps tournament points and the encyclopedia after a sale', () => {
     const l = land(freshSave(NOW), 5);
-    const sold = sellFish(l.save, [l.fish.id]).save;
+    const sold = sellFish(l.save, [l.fish.id], LATER).save;
     expect(sold.fish).toHaveLength(0);
     expect(weekTotal(sold.weeks[weekId(NOW)])).toBe(l.fish.tournamentScore);
     expect(sold.dex[5].count).toBe(1);

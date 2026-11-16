@@ -1,5 +1,5 @@
 /** Keepnet: the fish you hold. Sort, filter, star favourites, sell one, several, or everything eligible. */
-import { bulkSellable, isValuable } from '../../game/actions';
+import { bulkSellable, isFresh, isValuable, saleValue } from '../../game/actions';
 import { LOCATIONS, SPECIES } from '../../game/content';
 import type { FishInstance } from '../../game/types';
 import { RARITY_CLASS, RARITY_NAMES } from '../../i18n';
@@ -53,9 +53,11 @@ function render(rerender: () => void): HTMLElement[] {
   const shown = sorted(s.fish.filter((f) => (ui.rarity < 0 || f.rarity === ui.rarity) && (ui.location < 0 || f.locationId === ui.location)));
   const eligible = shown.filter(bulkSellable);
   const picked = s.fish.filter((f) => selected.has(f.id));
-  const pickedValue = picked.reduce((a, f) => a + f.sellPrice, 0);
-  const allValue = s.fish.reduce((a, f) => a + f.sellPrice, 0);
-  const eligibleValue = eligible.reduce((a, f) => a + f.sellPrice, 0);
+  const now = Date.now();
+  const worth = (f: FishInstance): number => saleValue(f, now);
+  const pickedValue = picked.reduce((a, f) => a + worth(f), 0);
+  const allValue = s.fish.reduce((a, f) => a + worth(f), 0);
+  const eligibleValue = eligible.reduce((a, f) => a + worth(f), 0);
 
   /** Sells `list`; a sale that includes valuable fish needs a second click on the same button. */
   const sell = (list: FishInstance[], key: string): void => {
@@ -132,7 +134,7 @@ function render(rerender: () => void): HTMLElement[] {
         {
           class: `item pick ${on ? 'sel' : ''} ${RARITY_CLASS[f.rarity]}${can ? '' : ' kept'}`,
           title: `${LOCATIONS[f.locationId].name} · ${ago(f.caughtAt)} · ${f.tournamentScore} pts${can ? '' : f.isSpecial ? ' · special fish: sell it from the Trophies tab' : ' · favourite: protected from selling'}`,
-          attrs: { role: 'checkbox', 'aria-checked': String(on), tabindex: '0', 'aria-label': `${sp.name}, ${fmtWeight(f.weight)}, ${pearl(f.sellPrice)} PEARL` },
+          attrs: { role: 'checkbox', 'aria-checked': String(on), tabindex: '0', 'aria-label': `${sp.name}, ${fmtWeight(f.weight)}, ${pearl(worth(f))} PEARL` },
           onclick: () => {
             if (!can) return;
             if (on) selected.delete(f.id);
@@ -144,7 +146,7 @@ function render(rerender: () => void): HTMLElement[] {
         fishArt(f.speciesId),
         h('span', { class: 'item-name', text: sp.name }),
         h('span', { class: 'item-tags' }, rarityTag(f.rarity), qualityTag(f.quality)),
-        h('span', { class: 'item-meta' }, h('span', { text: fmtWeight(f.weight) }), h('span', { class: 'pearl', text: `${pearl(f.sellPrice)} P` })),
+        h('span', { class: 'item-meta' }, h('span', { text: fmtWeight(f.weight) }), h('span', { class: 'pearl', text: `${pearl(worth(f))} P${isFresh(f, now) ? ' · fresh' : ''}`, title: isFresh(f, now) ? `Fresh catch: +20% for 10 minutes after landing, then ${pearl(f.sellPrice)}` : '' })),
         f.isSpecial
           ? h('span', { class: 'star special', text: '◆', title: 'Special fish' })
           : h('button', {

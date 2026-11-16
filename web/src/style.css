@@ -512,6 +512,14 @@ body {
   background: rgba(11, 12, 14, 0.45);
   padding: 10px;
 }
+/* A catch is a real modal: it covers the page, so it is never squeezed into the scene's height. */
+.scene-overlay:has(.reveal-catch) {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(11, 12, 14, 0.7);
+  padding: 16px;
+}
 .reveal {
   background: var(--panel);
   box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--line), 4px 4px 0 2px rgba(0, 0, 0, 0.5);
@@ -2416,7 +2424,13 @@ div.item {
 /* a jerk is coming: the gauge frame turns gold for the length of the warning */
 .gauge.warning {
   box-shadow: 0 0 0 2px var(--gold-hi);
-  animation: blink 0.2s steps(2, jump-none) infinite;
+  animation: gauge-warn 0.2s steps(2, jump-none) infinite;
+}
+/* only the frame flashes: the gauge itself must stay readable while the player reacts */
+@keyframes gauge-warn {
+  50% {
+    box-shadow: 0 0 0 2px var(--line);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .gauge.warning {

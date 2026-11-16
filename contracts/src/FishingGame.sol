@@ -147,6 +147,10 @@ contract FishingGame is Ownable {
     PearlToken public immutable pearl;
     FishNFT public immutable fishNft;
 
+    /// @notice Selling straight off the hook pays more than selling from the keepnet later.
+    uint256 internal constant FRESH_WINDOW = 10 minutes;
+    uint256 internal constant FRESH_BONUS_BPS = 2_000;
+
     Config public config;
     Item[] internal _rods;
     Item[] internal _lures;
@@ -832,7 +836,16 @@ contract FishingGame is Ownable {
         return (uint256(s.basePrice) * _clamp(_weightRatioBps(s, f.weight), 4_000, 30_000) * _qualityBps(f.quality)) / 1e8;
     }
 
-    /// @notice Payout after the daily emission soft cap is applied.
+    /// @dev A fish sold by the angler who landed it, within FRESH_WINDOW of the catch, pays FRESH_BONUS_BPS more.
+    function _saleValue(uint256 fishId, address seller) internal view returns (uint256 v) {
+        FishNFT.Fish memory f = fishNft.fish(fishId);
+        v = fishValue(fishId);
+        if (f.angler == seller && block.timestamp <= uint256(f.caughtAt) + FRESH_WINDOW) {
+            v = (v * (10_000 + FRESH_BONUS_BPS)) / 10_000;
+        }
+    }
+
+    /// @notice Payout after the daily emission soft cap is applied (without the fresh-catch bonus).
     function quoteSell(uint256 fishId) public view returns (uint256) {
         return _applyCap(fishValue(fishId), mintedOnDay[block.timestamp / 1 days]);
     }
@@ -849,7 +862,7 @@ contract FishingGame is Ownable {
         for (uint256 i; i < fishIds.length; i++) {
             uint256 id = fishIds[i];
             if (fishNft.ownerOf(id) != msg.sender) revert NotFishOwner();
-            uint256 payout = _applyCap(fishValue(id), minted);
+            uint256 payout = _applyCap(_saleValue(id, msg.sender), minted);
             fishNft.burn(id);
             minted += payout;
             total += payout;

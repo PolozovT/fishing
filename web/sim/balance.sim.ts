@@ -150,7 +150,7 @@ function career(seed: number, skill: SkillName, maxCasts: number) {
       if (q) {
         const l = landFish(s, c.ticket, h, q, now + s.stats.casts);
         s = l.save;
-        if (!l.fish.isSpecial) s = sellFish(s, [l.fish.id]).save;
+        if (!l.fish.isSpecial) s = sellFish(s, [l.fish.id], now + s.stats.casts).save;
         for (const id of l.unlocked) mark(`unlock:${LOCATIONS[id].name}`);
         if (l.fish.isSpecial) mark(`special:${SPECIES[l.fish.speciesId].name}`);
         for (const lv of [3, 8, 12]) if (levelOf(s.xp) >= lv) mark(`level ${lv}`);

@@ -86,15 +86,16 @@ export const ops = {
   async sellFish(ids: string[]): Promise<number | undefined> {
     if (!CHAIN) {
       return act(
-        (s) => A.sellFish(s, ids),
+        (s) => A.sellFish(s, ids, Date.now()),
         (r) => r.save,
       )?.earned;
     }
     const s = getSave();
     const sold = s.fish.filter((f) => ids.includes(f.id));
+    const now = Date.now();
     // the same protections the local rules enforce; the contract itself only checks ownership
     try {
-      A.sellFish(s, ids);
+      A.sellFish(s, ids, now);
     } catch (e) {
       if (e instanceof A.GameError) {
         toast(e.message, 'err');
@@ -103,7 +104,7 @@ export const ops = {
       throw e;
     }
     const ok = await send(`Sell ${ids.length} fish`, { functionName: 'sellFish', args: [ids.map((id) => BigInt(id))] });
-    return ok ? sold.reduce((a, f) => a + f.sellPrice, 0) : undefined;
+    return ok ? sold.reduce((a, f) => a + A.saleValue(f, now), 0) : undefined;
   },
 
   /** Favourites are a client-side convenience in both modes: they only guard the Sell buttons. */

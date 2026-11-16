@@ -16,8 +16,9 @@ import {
   type CastTicket,
   type Hooked,
   type Landing,
+  saleValue,
 } from '../../game/actions';
-import { BLEND_PRIZE, LOCATIONS, QUALITIES, SPECIES, special } from '../../game/content';
+import { BLEND_PRIZE, LOCATIONS, QUALITIES, SPECIES, TUNING, special } from '../../game/content';
 import { fishPrice, levelOf } from '../../game/economy';
 import type { CastOutcome } from '../../game/chainOutcome';
 import {
@@ -740,13 +741,14 @@ function showCatch(l: Landing, fightLine: string | null = null): void {
       h('div', { class: 'muted small', text: l.countedThisWeek ? `+${f.tournamentScore} pts · counts in this week's top 10` : `${f.tournamentScore} pts · below your weekly top 10` }),
       fightLine ? h('div', { class: 'muted small', text: fightLine }) : null,
       notes,
+      h('div', { class: 'muted small', text: `Fresh catch: +${Math.round(TUNING.freshBonus * 100)}% if sold within ${TUNING.freshWindowMs / 60_000} min, ${pearl(f.sellPrice)} after` }),
       h(
         'div',
         { class: 'reveal-actions' },
         canQuickSell
           ? h('button', {
               class: 'btn',
-              text: `Sell · ${pearl(f.sellPrice)}`,
+              text: `Sell now · ${pearl(saleValue(f, Date.now()))}`,
               onclick: () => {
                 hideOverlay();
                 void ops.sellFish([f.id]);

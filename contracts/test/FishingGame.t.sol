@@ -406,6 +406,7 @@ contract FishingGameTest is BaseTest {
 
         uint256[] memory ids = new uint256[](1);
         ids[0] = id;
+        vm.warp(block.timestamp + 10 minutes + 1); // past the fresh-catch window: the plain price
         vm.prank(alice);
         game.sellFish(ids);
         assertEq(pearl.balanceOf(alice), expected);
@@ -414,6 +415,27 @@ contract FishingGameTest is BaseTest {
         vm.expectRevert(); // the fish is burned: it cannot be sold twice
         game.sellFish(ids);
         assertEq(pearl.balanceOf(alice), expected);
+    }
+
+    function test_freshCatchSellsForMore() public {
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = _catch(alice, 0, 11);
+        uint256 base = game.fishValue(ids[0]);
+        vm.warp(block.timestamp + 10 minutes); // the last second of the window still counts
+        vm.prank(alice);
+        game.sellFish(ids);
+        assertEq(pearl.balanceOf(alice), (base * 12_000) / 10_000);
+    }
+
+    function test_freshBonusIsOnlyForTheAngler() public {
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = _catch(alice, 0, 12);
+        uint256 base = game.fishValue(ids[0]);
+        vm.prank(alice);
+        fish.transferFrom(alice, bob, ids[0]);
+        vm.prank(bob);
+        game.sellFish(ids);
+        assertEq(pearl.balanceOf(bob), base);
     }
 
     function test_sellIsAllOrNothing() public {

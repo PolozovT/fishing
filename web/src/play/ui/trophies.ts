@@ -1,5 +1,6 @@
 /** Trophies: the special collectible fish, what they unlock and the single passive-bonus slot. */
 import { BLEND_PRIZE, LOCATIONS, SPECIALS, SPECIES } from '../../game/content';
+import { saleValue } from '../../game/actions';
 import { isUnlocked } from '../../game/progress';
 import { RARITY_CLASS } from '../../i18n';
 import { fmtWeight, h, mount, sigOf } from '../../ui/dom';
@@ -75,7 +76,7 @@ function render(rerender: () => void): HTMLElement[] {
                     h('div', { class: 'spacer' }),
                     h('button', {
                       class: `btn btn-sm${confirming === f.id ? ' btn-danger' : ' btn-ghost'}`,
-                      text: confirming === f.id ? (held.length === 1 ? 'Confirm: bonus will turn off' : 'Confirm sale') : `Sell · ${pearl(f.sellPrice)}`,
+                      text: confirming === f.id ? (held.length === 1 ? 'Confirm: bonus will turn off' : 'Confirm sale') : `Sell · ${pearl(saleValue(f, Date.now()))}`,
                       onclick: () => {
                         if (confirming !== f.id) {
                           confirming = f.id;
