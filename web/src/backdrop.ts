@@ -1,4 +1,5 @@
-// Fixed, very dark pixel-art forest behind the whole page (pure decoration, drawn once per resize).
+// Fixed, faint pixel-art forest behind the whole page (pure decoration, redrawn on resize and when the theme changes).
+import { onTimeChange, timeOfDay } from './daytime';
 
 const PX = 4; // CSS px per art pixel
 
@@ -33,6 +34,14 @@ function treeline(c: CanvasRenderingContext2D, r: () => number, W: number, base:
   c.fillRect(0, base, W, fillBelow);
 }
 
+type Rgb = [number, number, number];
+function cssColor(name: string, fallback: string): Rgb {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+  const n = parseInt(v.replace('#', ''), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+const mix = (a: Rgb, b: Rgb, k: number): string => `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * k)).join(',')})`;
+
 export function initBackdrop(): void {
   const cv = document.createElement('canvas');
   cv.className = 'backdrop';
@@ -45,34 +54,42 @@ export function initBackdrop(): void {
     const H = Math.ceil(window.innerHeight / PX);
     cv.width = W;
     cv.height = H;
-    c.fillStyle = '#101215';
+    // every colour is the page colour nudged towards the text or the deep colour, so it follows the theme
+    const bg = cssColor('--bg', '#0c1424');
+    const fg = cssColor('--text', '#e8eef7');
+    const deep = cssColor('--bg-deep', '#070d19');
+    const dark = timeOfDay() === 'night' || timeOfDay() === 'evening';
+    c.fillStyle = mix(bg, fg, 0);
     c.fillRect(0, 0, W, H);
     const r = rng(42);
-    // a few dim stars in the upper band
+    // a few dim stars in the upper band (the draws stay so the forest is the same in every theme)
     for (let i = 0; i < W * 0.25; i++) {
-      c.fillStyle = r() < 0.2 ? '#2a2f35' : '#1b1f24';
-      c.fillRect(Math.floor(r() * W), Math.floor(r() * Math.min(40, H * 0.25)), 1, 1);
+      c.fillStyle = mix(bg, fg, r() < 0.2 ? 0.12 : 0.05);
+      const x = Math.floor(r() * W);
+      const y = Math.floor(r() * Math.min(40, H * 0.25));
+      if (dark) c.fillRect(x, y, 1, 1);
     }
     // upper forest band (like a hero treeline), stepped fog bands between layers
     const top = Math.min(70, Math.round(H * 0.32));
-    treeline(c, r, W, top - 6, 6, 14, 5, '#15181c', 6);
-    c.fillStyle = 'rgba(40,46,52,0.12)';
+    treeline(c, r, W, top - 6, 6, 14, 5, mix(bg, fg, dark ? 0.03 : 0.05), 6);
+    c.fillStyle = mix(bg, fg, dark ? 0.045 : 0.02);
     c.fillRect(0, top - 10, W, 3);
-    treeline(c, r, W, top, 10, 22, 9, '#121518', 4);
+    treeline(c, r, W, top, 10, 22, 9, mix(bg, fg, dark ? 0.015 : 0.03), 4);
     // fade the upper band back into the page colour in hard steps
-    const steps = ['#111316', '#101215'];
-    steps.forEach((col, i) => {
-      c.fillStyle = col;
+    [0.008, 0].forEach((k, i) => {
+      c.fillStyle = mix(bg, fg, k);
       c.fillRect(0, top + 4 + i * 3, W, H);
     });
-    // bottom forest, darkest
-    treeline(c, r, W, H - 2, 8, 20, 7, '#13161a', 2);
-    treeline(c, r, W, H + 2, 12, 30, 13, '#0d0f12', 2);
+    // bottom forest, strongest
+    treeline(c, r, W, H - 2, 8, 20, 7, mix(bg, dark ? fg : deep, dark ? 0.03 : 0.5), 2);
+    treeline(c, r, W, H + 2, 12, 30, 13, mix(bg, deep, dark ? 0.6 : 1), 2);
   };
   let raf = 0;
-  window.addEventListener('resize', () => {
+  const redraw = (): void => {
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(draw);
-  });
+  };
+  window.addEventListener('resize', redraw);
+  onTimeChange(redraw);
   draw();
 }

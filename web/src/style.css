@@ -1,43 +1,131 @@
 /* ==========================================================================
-   Onchain Fishing — pixel-art night-forest UI
-   Square corners, 2px "double" pixel borders, Silkscreen for game text,
-   IBM Plex Sans for body copy, muted gold accent. No blur, no soft shadows.
+   Onchain Fishing
+   Four themes that follow the time of day in the scene (:root[data-time]): night is the default.
+   Square corners and 2px "double" pixel borders; Two typefaces: IBM Plex Sans for titles and the interface,
+   Silkscreen only for the logo, numbers and the in-scene HUD. Teal accent. No blur, no soft shadows.
    ========================================================================== */
 
 :root {
-  --bg: #101215;
-  --bg-deep: #0b0c0e;
-  --panel: #13161a;
-  --panel-2: #181c21;
-  --panel-3: #1e2329;
-  --line: #343d43;
-  --line-soft: #252b30;
-  --text: #ecebe4;
-  --text-2: #c9c6bc;
-  --muted: #afb4b5;
-  --dim: #7d8488;
-  --gold: #b8a071;
-  --gold-hi: #cdb687;
-  --gold-lo: #8c7650;
-  --ink: #15171a;
-  --pearl: #d9cba4;
-  --warn: #d79b5a;
-  --danger: #c2574b;
-  --danger-hi: #d9776a;
-  --ok: #7fa36a;
-  --en: #d4b45e;
-  /* rarity: muted pixel palette */
-  --r0: #8b9196;
-  --r1: #7fa36a;
-  --r2: #6b93bb;
-  --r3: #9c7cb8;
-  --r4: #d0ad62;
-  /* pixel double border: dark outer ring + lighter inner ring */
+  /* night (default): deep navy, aqua accent */
+  --bg: #0c1424;
+  --bg-deep: #070d19;
+  --panel: #111c30;
+  --panel-2: #16233b;
+  --panel-3: #1c2c48;
+  --line: #2f4266;
+  --line-soft: #20304d;
+  --text: #e8eef7;
+  --text-2: #c3cede;
+  --muted: #9fb0c8;
+  --dim: #6f819c;
+  --accent: #4fc3c1;
+  --accent-hi: #7fdcd8;
+  --accent-lo: #2f8f92;
+  /* text on an accent or rarity fill */
+  --ink: #06181f;
+  --pearl: #e2d3a6;
+  --warn: #e0a362;
+  --danger: #d2665a;
+  --danger-hi: #e58a7e;
+  --ok: #86b872;
+  --en: #e0bd5e;
+  --blend: var(--blend);
+  /* rarity */
+  --r0: #93a0b0;
+  --r1: #86b872;
+  --r2: #6fa3d8;
+  --r3: #ab8ad0;
+  --r4: #dbb565;
+  --r5: #e98397;
+  --scrim: #04070d;
+  --shadow: var(--shadow);
+  /* derived tints */
+  --accent-wash: color-mix(in srgb, var(--accent) 10%, var(--panel));
+  --accent-line: color-mix(in srgb, var(--accent) 45%, var(--panel));
+  --danger-line: color-mix(in srgb, var(--danger) 45%, var(--panel));
+  --title-shadow: color-mix(in srgb, var(--accent) 40%, var(--bg-deep));
+  /* pixel double border: outer ring + inner ring */
   --px-border: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--line);
-  --px-border-gold: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--gold);
+  --px-border-accent: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--accent);
   --font-px: 'Silkscreen', ui-monospace, monospace;
   --font-body: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   color-scheme: dark;
+}
+/* evening: warm dusk, plum panels */
+:root[data-time='evening'] {
+  --bg: #1b1427;
+  --bg-deep: #120d1c;
+  --panel: #251a34;
+  --panel-2: #2d2040;
+  --panel-3: #38284e;
+  --line: #5a426f;
+  --line-soft: #3d2c52;
+  --text: #f6ebe6;
+  --text-2: #dccbd0;
+  --muted: #bda6b8;
+  --dim: #8c768f;
+  --accent: #5fcfc4;
+  --accent-hi: #8fe3da;
+  --accent-lo: #37958f;
+  --ink: #0a1a1c;
+  --scrim: #0b0612;
+}
+/* morning: warm paper, misty light */
+:root[data-time='morning'] {
+  --bg: #f1e9df;
+  --bg-deep: #dccfc1;
+  --panel: #fffaf3;
+  --panel-2: #f6eee4;
+  --panel-3: #ebdfd1;
+  --line: #bfae9c;
+  --line-soft: #ddd0c2;
+  --text: #2c2a33;
+  --text-2: #45414c;
+  --muted: #6a636b;
+  --dim: #938a8c;
+  --accent: #17767f;
+  --accent-hi: #0f5d66;
+  --accent-lo: #0d525a;
+  --ink: #ffffff;
+  --scrim: #2c2a33;
+}
+/* day: clear light, cool paper */
+:root[data-time='day'] {
+  --bg: #e6eff0;
+  --bg-deep: #cfdfe2;
+  --panel: #fbfdfc;
+  --panel-2: #f0f6f6;
+  --panel-3: #e1ecec;
+  --line: #9cb6bc;
+  --line-soft: #cbdbde;
+  --text: #15303a;
+  --text-2: #2c4a55;
+  --muted: #536f79;
+  --dim: #7f989f;
+  --accent: #0e7c86;
+  --accent-hi: #0a626b;
+  --accent-lo: #09565e;
+  --ink: #ffffff;
+  --scrim: #15303a;
+}
+:root[data-time='morning'],
+:root[data-time='day'] {
+  --pearl: #8a651a;
+  --warn: #a85c0e;
+  --danger: #b83d30;
+  --danger-hi: #9c2f25;
+  --ok: #3b7a30;
+  --en: #dba621;
+  --blend: #1b8548;
+  --r0: #5f6b73;
+  --r1: #3b7a30;
+  --r2: #2c6aa6;
+  --r3: #7a4da4;
+  --r4: #9f730c;
+  --r5: #c03d66;
+  --shadow: rgba(21, 48, 58, 0.2);
+  --title-shadow: color-mix(in srgb, var(--accent) 30%, var(--panel));
+  color-scheme: light;
 }
 
 * {
@@ -80,11 +168,11 @@ body {
   color: inherit;
 }
 ::selection {
-  background: var(--gold);
+  background: var(--accent);
   color: var(--ink);
 }
 :where(:focus-visible):not(:where(.fluent-root *)) {
-  outline: 2px solid var(--gold-hi);
+  outline: 2px solid var(--accent-hi);
   outline-offset: 2px;
 }
 
@@ -94,9 +182,8 @@ body {
   align-items: center;
   gap: 10px;
   margin: 0 0 10px;
-  font: 400 12px/1 var(--font-px);
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
+  font: 600 15px/1.15 var(--font-body);
+  letter-spacing: -0.005em;
   color: var(--text-2);
 }
 :where(h3):not(:where(.fluent-root *))::after {
@@ -169,33 +256,33 @@ body {
   font-size: 13px;
 }
 .btn-primary {
-  background: var(--gold);
-  box-shadow: 0 0 0 1px var(--gold-hi), 0 0 0 3px var(--bg-deep), inset 0 -2px 0 var(--gold-lo);
+  background: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-hi), 0 0 0 3px var(--bg-deep), inset 0 -2px 0 var(--accent-lo);
   color: var(--ink);
   font-weight: 600;
 }
 .btn-primary:hover:not(:disabled) {
-  background: var(--gold-hi);
+  background: var(--accent-hi);
   color: var(--ink);
 }
 .btn-primary:disabled {
-  background: #4a4436;
-  color: #8f8a7c;
-  box-shadow: 0 0 0 1px #5a5242, 0 0 0 3px var(--bg-deep);
+  background: var(--panel-3);
+  color: var(--dim);
+  box-shadow: 0 0 0 1px var(--line), 0 0 0 3px var(--bg-deep);
 }
 .btn-ghost {
   background: transparent;
 }
 .btn-danger {
   color: var(--danger-hi);
-  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px #5a2f2a;
+  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--danger-line);
 }
 
 /* ------------------------------------------------------------ badges */
 .badge {
   display: inline-block;
-  font: 400 10px/1 var(--font-px);
-  letter-spacing: 0.08em;
+  font: 600 11px/1 var(--font-body);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   padding: 4px 6px 3px;
   background: var(--panel-3);
@@ -203,9 +290,9 @@ body {
   box-shadow: inset 0 0 0 1px var(--line);
 }
 .badge-fluent {
-  color: #b9c7e8;
-  background: #161b26;
-  box-shadow: inset 0 0 0 1px #3a4a6b;
+  color: var(--r2);
+  background: color-mix(in srgb, var(--r2) 14%, var(--panel));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--r2) 45%, var(--panel));
 }
 .connect .warn {
   font-size: 12px;
@@ -214,29 +301,25 @@ body {
 .rarity {
   align-self: flex-start;
   display: inline-block;
-  font: 400 10px/1 var(--font-px);
-  letter-spacing: 0.08em;
+  font: 600 11px/1 var(--font-body);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   padding: 4px 6px 3px;
   color: var(--r0);
-  background: #1a1d20;
+  background: color-mix(in srgb, currentColor 13%, var(--panel));
   box-shadow: inset 0 0 0 1px currentColor;
 }
 .rarity.r1 {
   color: var(--r1);
-  background: #172015;
 }
 .rarity.r2 {
   color: var(--r2);
-  background: #141c25;
 }
 .rarity.r3 {
   color: var(--r3);
-  background: #1e1726;
 }
 .rarity.r4 {
   color: var(--r4);
-  background: #251f12;
 }
 .r0 .dot {
   color: var(--r0);
@@ -275,18 +358,18 @@ body {
   flex: 1 1 0;
   min-width: 3px;
   height: 6px;
-  background: #22272c;
+  background: var(--line-soft);
 }
 .segbar.en .seg.on {
   background: var(--en);
-  box-shadow: inset 0 -2px 0 #9c8240;
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--en) 70%, #000);
 }
 .segbar.dur .seg.on {
   background: var(--r1);
-  box-shadow: inset 0 -2px 0 #577446;
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--r1) 70%, #000);
 }
 .rod.broken .segbar.dur .seg {
-  background: #3a1f1c;
+  background: color-mix(in srgb, var(--danger) 35%, var(--panel));
 }
 
 /* ------------------------------------------------------------ header */
@@ -329,7 +412,7 @@ body {
 .wm-top {
   font-size: 10px;
   letter-spacing: 0.32em;
-  color: var(--gold);
+  color: var(--accent);
   margin-bottom: 3px;
 }
 .wm-main {
@@ -337,7 +420,7 @@ body {
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--text);
-  text-shadow: 2px 2px 0 #4a3a25;
+  text-shadow: 2px 2px 0 var(--title-shadow);
 }
 .connect {
   margin-left: auto;
@@ -359,8 +442,8 @@ body {
   min-width: 0;
 }
 .stat .k {
-  font: 400 10px/1 var(--font-px);
-  letter-spacing: 0.1em;
+  font: 600 11px/1 var(--font-body);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
 }
@@ -390,17 +473,17 @@ body {
   min-width: 150px;
 }
 .regen {
-  font: 400 10px/1 var(--font-px);
+  font: 600 11px/1 var(--font-body);
   color: var(--muted);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums;
 }
 .banner {
   margin: 14px 20px 0;
   padding: 10px 14px;
-  background: #22130f;
-  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px #5a2f2a;
-  color: #e8bcb4;
+  background: color-mix(in srgb, var(--danger) 14%, var(--panel));
+  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--danger-line);
+  color: color-mix(in srgb, var(--danger) 40%, var(--text));
 }
 .banner.banner-note {
   background: var(--panel);
@@ -432,8 +515,8 @@ body {
 .footer {
   text-align: center;
   color: var(--dim);
-  font: 400 10px/1.6 var(--font-px);
-  letter-spacing: 0.06em;
+  font: 600 11px/1.6 var(--font-body);
+  letter-spacing: 0.01em;
   padding: 8px 16px 28px;
   word-break: break-all;
 }
@@ -459,7 +542,7 @@ body {
   left: 12px;
   max-width: calc(100% - 24px);
   padding: 7px 10px 6px;
-  background: rgba(11, 12, 14, 0.88);
+  background: color-mix(in srgb, var(--bg-deep) 88%, transparent);
   box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--line);
   font: 400 11px/1.2 var(--font-px);
   letter-spacing: 0.08em;
@@ -474,7 +557,7 @@ body {
   height: 6px;
   margin-right: 8px;
   vertical-align: 1px;
-  background: var(--gold);
+  background: var(--accent);
   animation: blink 1s steps(2, jump-none) infinite;
 }
 @keyframes blink {
@@ -487,9 +570,8 @@ body {
   right: 16px;
   bottom: 16px;
   padding: 12px 22px;
-  font: 700 15px/1 var(--font-px);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font: 600 15px/1 var(--font-body);
+  letter-spacing: 0.01em;
   background: #d07a3e;
   color: #1c0f06;
   box-shadow: 0 0 0 1px #e89a5e, 0 0 0 3px var(--bg-deep), inset 0 -3px 0 #8f4f24;
@@ -509,7 +591,7 @@ body {
   inset: 2px;
   display: grid;
   place-items: center;
-  background: rgba(11, 12, 14, 0.45);
+  background: color-mix(in srgb, var(--scrim) 45%, transparent);
   padding: 10px;
 }
 /* A catch is a real modal: it covers the page, so it is never squeezed into the scene's height. */
@@ -517,12 +599,12 @@ body {
   position: fixed;
   inset: 0;
   z-index: 60;
-  background: rgba(11, 12, 14, 0.7);
+  background: color-mix(in srgb, var(--scrim) 70%, transparent);
   padding: 16px;
 }
 .reveal {
   background: var(--panel);
-  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--line), 4px 4px 0 2px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--line), 4px 4px 0 2px var(--shadow);
   padding: 14px 20px 16px;
   text-align: center;
   max-height: 100%;
@@ -541,15 +623,12 @@ body {
   }
 }
 .reveal-title {
-  font: 700 22px/1 var(--font-px);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--gold-hi);
-  text-shadow: 2px 2px 0 #3d3020;
+  font: 600 24px/1.15 var(--font-body);
+  letter-spacing: -0.005em;
+  color: var(--accent-hi);
 }
 .reveal-miss .reveal-title {
   color: var(--warn);
-  text-shadow: 2px 2px 0 #3b2414;
 }
 .reveal-miss p {
   margin: 0;
@@ -576,12 +655,11 @@ body {
   color: var(--r4);
 }
 .reveal-catch.r4 {
-  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--r4), 4px 4px 0 2px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--r4), 4px 4px 0 2px var(--shadow);
 }
 .reveal-name {
-  font: 400 15px/1.2 var(--font-px);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font: 600 17px/1.2 var(--font-body);
+  letter-spacing: -0.005em;
   color: var(--text);
 }
 .reveal .rarity {
@@ -611,15 +689,14 @@ body {
   justify-content: space-between;
   gap: 12px;
   padding: 12px 14px;
-  background: #1c1a15;
-  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px #5c4f33;
+  background: var(--accent-wash);
+  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--accent-line);
   flex-wrap: wrap;
 }
 .starter b {
-  font: 400 13px/1.3 var(--font-px);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--gold-hi);
+  font: 600 15px/1.3 var(--font-body);
+  letter-spacing: -0.005em;
+  color: var(--accent-hi);
 }
 .starter p {
   margin: 4px 0 0;
@@ -659,9 +736,9 @@ body {
 .spot.sel,
 .rod.sel,
 .bait.sel {
-  background: #1f1d18;
+  background: var(--accent-wash);
   color: var(--text);
-  box-shadow: var(--px-border-gold);
+  box-shadow: var(--px-border-accent);
 }
 .spot:disabled,
 .rod:disabled,
@@ -675,7 +752,7 @@ body {
   background: var(--panel);
 }
 .spot.locked {
-  background: #111316;
+  background: var(--bg);
   color: var(--dim);
 }
 .spot.locked .spot-name {
@@ -686,9 +763,8 @@ body {
 }
 .spot-name,
 .rod-title {
-  font: 400 12px/1.2 var(--font-px);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font: 600 13px/1.2 var(--font-body);
+  letter-spacing: 0.01em;
   color: inherit;
 }
 .spot-meta,
@@ -734,27 +810,26 @@ body {
   padding-top: 4px;
 }
 .btn-cast {
-  font: 700 20px/1 var(--font-px);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font: 600 20px/1 var(--font-body);
+  letter-spacing: 0.01em;
   padding: 16px 40px 15px;
-  background: var(--gold);
+  background: var(--accent);
   color: var(--ink);
-  box-shadow: 0 0 0 2px var(--gold-hi), 0 0 0 4px var(--bg-deep), inset 0 -4px 0 var(--gold-lo), inset 0 2px 0 #d9c697;
+  box-shadow: 0 0 0 2px var(--accent-hi), 0 0 0 4px var(--bg-deep), inset 0 -4px 0 var(--accent-lo), inset 0 2px 0 color-mix(in srgb, var(--accent) 55%, #fff);
 }
 .btn-cast:hover:not(:disabled) {
-  background: var(--gold-hi);
+  background: var(--accent-hi);
   color: var(--ink);
 }
 .btn-cast:active:not(:disabled) {
   top: 2px;
   left: 0;
-  box-shadow: 0 0 0 2px var(--gold-hi), 0 0 0 4px var(--bg-deep), inset 0 -2px 0 var(--gold-lo);
+  box-shadow: 0 0 0 2px var(--accent-hi), 0 0 0 4px var(--bg-deep), inset 0 -2px 0 var(--accent-lo);
 }
 .btn-cast:disabled {
-  background: #2a2721;
-  color: #6f6a5c;
-  box-shadow: 0 0 0 2px #3f392c, 0 0 0 4px var(--bg-deep), inset 0 -4px 0 #201e19;
+  background: var(--panel-3);
+  color: var(--dim);
+  box-shadow: 0 0 0 2px var(--line), 0 0 0 4px var(--bg-deep), inset 0 -4px 0 var(--line-soft);
 }
 .cast-info {
   display: flex;
@@ -762,9 +837,8 @@ body {
   gap: 8px;
 }
 .cast-info > div {
-  font: 400 11px/1.3 var(--font-px);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font: 600 12px/1.3 var(--font-body);
+  letter-spacing: 0.01em;
 }
 .toggle {
   display: inline-flex;
@@ -790,14 +864,14 @@ body {
   box-shadow: inset 0 0 0 2px var(--line);
 }
 .toggle:hover .toggle-box {
-  box-shadow: inset 0 0 0 2px #4a555c;
+  box-shadow: inset 0 0 0 2px var(--dim);
 }
 .toggle input:checked + .toggle-box {
-  background: var(--gold);
-  box-shadow: inset 0 0 0 2px var(--gold-lo), inset 0 0 0 4px var(--bg-deep);
+  background: var(--accent);
+  box-shadow: inset 0 0 0 2px var(--accent-lo), inset 0 0 0 4px var(--bg-deep);
 }
 .toggle input:focus-visible + .toggle-box {
-  outline: 2px solid var(--gold-hi);
+  outline: 2px solid var(--accent-hi);
   outline-offset: 2px;
 }
 
@@ -818,18 +892,17 @@ body {
   padding: 10px 14px 11px;
   cursor: pointer;
   color: var(--muted);
-  font: 400 12px/1 var(--font-px);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font: 600 13px/1 var(--font-body);
+  letter-spacing: 0.01em;
 }
 .tab:hover {
   color: var(--text);
   background: var(--panel-2);
 }
 .tab.active {
-  color: var(--gold-hi);
+  color: var(--accent-hi);
   background: var(--panel-2);
-  box-shadow: inset 0 -2px 0 var(--gold), inset 0 2px 0 var(--line-soft), inset 2px 0 0 var(--line-soft), inset -2px 0 0 var(--line-soft);
+  box-shadow: inset 0 -2px 0 var(--accent), inset 0 2px 0 var(--line-soft), inset 2px 0 0 var(--line-soft), inset -2px 0 0 var(--line-soft);
 }
 .panel {
   display: flex;
@@ -846,9 +919,8 @@ body {
   flex-wrap: wrap;
 }
 .toolbar > .muted {
-  font: 400 11px/1.3 var(--font-px);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font: 600 12px/1.3 var(--font-body);
+  letter-spacing: 0.01em;
 }
 .spacer {
   flex: 1;
@@ -858,7 +930,7 @@ body {
   text-align: center;
   padding: 28px 12px;
   margin: 0;
-  background: repeating-linear-gradient(45deg, transparent 0 6px, rgba(255, 255, 255, 0.015) 6px 12px);
+  background: repeating-linear-gradient(45deg, transparent 0 6px, color-mix(in srgb, var(--text) 3%, transparent) 6px 12px);
   box-shadow: inset 0 0 0 1px var(--line-soft);
 }
 .grid {
@@ -891,8 +963,8 @@ div.item {
   cursor: default;
 }
 .item.sel {
-  background: #1f1d18;
-  box-shadow: var(--px-border-gold);
+  background: var(--accent-wash);
+  box-shadow: var(--px-border-accent);
 }
 .item.r3:not(.sel) .nft-img {
   box-shadow: inset 0 0 0 2px var(--r3);
@@ -918,9 +990,8 @@ div.item {
   height: 24px;
 }
 .item-name {
-  font: 400 11px/1.3 var(--font-px);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font: 600 12px/1.3 var(--font-body);
+  letter-spacing: 0.01em;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
@@ -944,7 +1015,7 @@ div.item {
   display: grid;
   place-items: center;
   font: 700 12px/1 var(--font-px);
-  background: var(--gold);
+  background: var(--accent);
   color: var(--ink);
   box-shadow: 0 0 0 2px var(--bg-deep);
 }
@@ -977,9 +1048,8 @@ div.item {
   flex: 1 1 200px;
 }
 .shop-desc b {
-  font: 400 12px/1.3 var(--font-px);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font: 600 13px/1.3 var(--font-body);
+  letter-spacing: 0.01em;
   color: var(--text);
 }
 .shop-act {
@@ -1003,7 +1073,7 @@ div.item {
 .num:focus,
 .select:focus {
   outline: none;
-  box-shadow: inset 0 0 0 2px var(--gold);
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 .num::placeholder {
   color: var(--dim);
@@ -1042,18 +1112,17 @@ div.item {
   gap: 16px;
   padding: 14px 16px;
   margin: 2px;
-  background: #1c1a15;
-  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px #5c4f33;
+  background: var(--accent-wash);
+  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--accent-line);
 }
 .weekly b {
-  font: 400 13px/1.3 var(--font-px);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  font: 600 15px/1.3 var(--font-body);
+  letter-spacing: -0.005em;
 }
 .weekly-weight {
   font: 700 24px/1 var(--font-px);
   color: var(--r4);
-  text-shadow: 2px 2px 0 #3d3020;
+  text-shadow: 2px 2px 0 var(--title-shadow);
   white-space: nowrap;
 }
 .board {
@@ -1074,8 +1143,8 @@ div.item {
   border-bottom: 0;
 }
 .board th {
-  font: 400 10px/1 var(--font-px);
-  letter-spacing: 0.1em;
+  font: 600 11px/1 var(--font-body);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
   background: var(--panel-3);
@@ -1090,17 +1159,17 @@ div.item {
   color: var(--r4);
 }
 .board tbody tr:nth-child(2) td:first-child {
-  color: #c9c6bc;
+  color: var(--text-2);
 }
 .board tbody tr:nth-child(3) td:first-child {
-  color: #b0805a;
+  color: var(--warn);
 }
 .board tbody tr:nth-child(even) td {
-  background: rgba(255, 255, 255, 0.015);
+  background: color-mix(in srgb, var(--text) 3%, transparent);
 }
 .board tr.me td {
-  background: #222017;
-  color: var(--gold-hi);
+  background: color-mix(in srgb, var(--accent) 16%, var(--panel));
+  color: var(--accent-hi);
 }
 
 /* toasts */
@@ -1117,21 +1186,21 @@ div.item {
 .toast {
   padding: 10px 14px 10px 18px;
   background: var(--panel);
-  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--line), inset 6px 0 0 var(--line), 4px 4px 0 1px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--line), inset 6px 0 0 var(--line), 4px 4px 0 1px var(--shadow);
   color: var(--text-2);
   animation: pop 0.2s steps(2, end);
   cursor: pointer;
   overflow-wrap: anywhere;
 }
 .toast-ok {
-  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--line), inset 6px 0 0 var(--ok), 4px 4px 0 1px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--line), inset 6px 0 0 var(--ok), 4px 4px 0 1px var(--shadow);
 }
 .toast-err {
-  color: #e8bcb4;
-  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px #5a2f2a, inset 6px 0 0 var(--danger), 4px 4px 0 1px rgba(0, 0, 0, 0.45);
+  color: color-mix(in srgb, var(--danger) 40%, var(--text));
+  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--danger-line), inset 6px 0 0 var(--danger), 4px 4px 0 1px var(--shadow);
 }
 .toast-info {
-  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--line), inset 6px 0 0 var(--gold), 4px 4px 0 1px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--line), inset 6px 0 0 var(--accent), 4px 4px 0 1px var(--shadow);
 }
 .toast.out {
   opacity: 0;
@@ -1146,10 +1215,9 @@ div.item {
   box-shadow: var(--px-border);
 }
 .fatal h2 {
-  font: 400 18px/1.2 var(--font-px);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--gold-hi);
+  font: 600 20px/1.2 var(--font-body);
+  letter-spacing: -0.005em;
+  color: var(--accent-hi);
 }
 
 .btn-wallet {
@@ -1255,9 +1323,8 @@ div.item {
   margin-left: 8px;
 }
 .topnav a {
-  font: 400 12px/1 var(--font-px);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font: 600 13px/1 var(--font-body);
+  letter-spacing: 0.01em;
   color: var(--muted);
   text-decoration: none;
   padding: 9px 12px 8px;
@@ -1267,9 +1334,9 @@ div.item {
   background: var(--panel-2);
 }
 .topnav a.active {
-  color: var(--gold-hi);
+  color: var(--accent-hi);
   background: var(--bg-deep);
-  box-shadow: inset 0 -2px 0 var(--gold);
+  box-shadow: inset 0 -2px 0 var(--accent);
 }
 
 /* ------------------------------------------------------------ tackle page */
@@ -1283,11 +1350,9 @@ div.item {
 }
 .tk-title {
   margin: 0 0 6px;
-  font: 700 24px/1.1 var(--font-px);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font: 600 28px/1.15 var(--font-body);
+  letter-spacing: -0.005em;
   color: var(--text);
-  text-shadow: 2px 2px 0 #4a3a25;
 }
 .tk-intro p {
   margin: 0;
@@ -1296,8 +1361,8 @@ div.item {
 .tk-badge {
   margin-left: 6px;
   color: var(--warn);
-  box-shadow: inset 0 0 0 1px #6b4a2a;
-  background: #221a12;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 45%, var(--panel));
+  background: color-mix(in srgb, var(--warn) 12%, var(--panel));
   vertical-align: 1px;
 }
 .tk-section {
@@ -1323,7 +1388,7 @@ div.item {
   background: var(--panel-2);
 }
 .tk-card.sel {
-  box-shadow: var(--px-border-gold);
+  box-shadow: var(--px-border-accent);
   background: var(--panel-2);
 }
 .tk-card.sel::after {
@@ -1331,11 +1396,11 @@ div.item {
   position: absolute;
   top: 10px;
   right: 10px;
-  font: 400 9px/1 var(--font-px);
-  letter-spacing: 0.08em;
+  font: 600 10px/1 var(--font-body);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink);
-  background: var(--gold);
+  background: var(--accent);
   padding: 4px 5px 3px;
 }
 .tk-card-top {
@@ -1349,14 +1414,14 @@ div.item {
   place-items: center;
   width: 108px;
   height: 108px;
-  background: radial-gradient(circle at 50% 60%, #1c2a33 0%, var(--bg-deep) 70%);
+  background: radial-gradient(circle at 50% 60%, var(--panel-3) 0%, var(--bg-deep) 70%);
   box-shadow: inset 0 0 0 2px var(--line-soft);
 }
 .tk-card.r2 .tk-well {
-  box-shadow: inset 0 0 0 2px #2c3e52;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--r2) 40%, var(--panel));
 }
 .tk-card.r3 .tk-well {
-  box-shadow: inset 0 0 0 2px #45365a;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--r3) 40%, var(--panel));
 }
 .tk-well.sm {
   width: 72px;
@@ -1370,9 +1435,8 @@ div.item {
 }
 .tk-name {
   margin: 0;
-  font: 400 15px/1.15 var(--font-px);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font: 600 17px/1.15 var(--font-body);
+  letter-spacing: -0.005em;
   color: var(--text);
 }
 .tk-blurb {
@@ -1393,8 +1457,8 @@ div.item {
   gap: 8px;
 }
 .tk-stat-k {
-  font: 400 10px/1 var(--font-px);
-  letter-spacing: 0.08em;
+  font: 600 11px/1 var(--font-body);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--dim);
 }
@@ -1408,15 +1472,15 @@ div.item {
 }
 .segbar.tk-catch .seg.on {
   background: var(--ok);
-  box-shadow: inset 0 -2px 0 #577446;
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--r1) 70%, #000);
 }
 .segbar.tk-rarity .seg.on {
   background: var(--r3);
-  box-shadow: inset 0 -2px 0 #6b5585;
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--r3) 70%, #000);
 }
 .segbar.tk-weight .seg.on {
   background: var(--r2);
-  box-shadow: inset 0 -2px 0 #4a6a8a;
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--r2) 70%, #000);
 }
 
 .tk-spot {
@@ -1433,7 +1497,7 @@ div.item {
   color: var(--muted);
 }
 .tk-spot-v {
-  color: var(--gold-hi);
+  color: var(--accent-hi);
   font-weight: 600;
 }
 .tk-chips {
@@ -1443,7 +1507,7 @@ div.item {
   width: 100%;
 }
 .tk-chip {
-  font: 400 9px/1 var(--font-px);
+  font: 600 10px/1 var(--font-body);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-2);
@@ -1492,7 +1556,7 @@ div.item {
   border-top: 1px solid var(--line-soft);
 }
 .tk-wear {
-  font: 400 10px/1 var(--font-px);
+  font: 600 11px/1 var(--font-body);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--dim);
@@ -1544,9 +1608,8 @@ div.item {
   background: var(--panel-2);
   box-shadow: var(--px-border);
   color: var(--muted);
-  font: 400 10px/1 var(--font-px);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font: 600 11px/1 var(--font-body);
+  letter-spacing: 0.01em;
   padding: 9px 10px 8px;
   cursor: pointer;
 }
@@ -1554,8 +1617,8 @@ div.item {
   color: var(--text);
 }
 .tk-spotbtn.active {
-  color: var(--gold-hi);
-  box-shadow: var(--px-border-gold);
+  color: var(--accent-hi);
+  box-shadow: var(--px-border-accent);
 }
 .tk-lo-out {
   grid-column: 1 / -1;
@@ -1572,14 +1635,14 @@ div.item {
   box-shadow: inset 0 0 0 1px var(--line-soft);
 }
 .tk-big .k {
-  font: 400 10px/1 var(--font-px);
-  letter-spacing: 0.08em;
+  font: 600 11px/1 var(--font-body);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--dim);
 }
 .tk-big .v {
   font: 700 22px/1.1 var(--font-px);
-  color: var(--gold-hi);
+  color: var(--accent-hi);
 }
 .tk-big .d {
   font-size: 12px;
@@ -1612,12 +1675,8 @@ div.item {
 }
 
 /* ============================================================ local game */
-:root {
-  --r5: #e07a8c;
-}
 .rarity.r5 {
   color: var(--r5);
-  background: #261419;
 }
 .r5 .dot {
   color: var(--r5);
@@ -1626,32 +1685,31 @@ div.item {
   color: var(--ok);
 }
 .link {
-  font: 400 10px/1 var(--font-px);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--gold);
+  font: 600 11px/1 var(--font-body);
+  letter-spacing: 0.01em;
+  color: var(--accent);
   text-decoration: none;
 }
 .link:hover {
-  color: var(--gold-hi);
+  color: var(--accent-hi);
 }
 .badge-on {
-  color: #cfe3c3;
-  background: #172015;
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 14%, var(--panel));
   box-shadow: inset 0 0 0 1px var(--ok);
 }
 .badge-demo {
-  color: #d9c8a0;
-  background: #26200f;
-  box-shadow: inset 0 0 0 1px #6b5a2e;
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 12%, var(--panel));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 45%, var(--panel));
   margin-left: 8px;
 }
 .note-demo {
   margin: 0;
   padding: 8px 10px;
   color: var(--text-2);
-  background: #1c1a15;
-  box-shadow: inset 0 0 0 1px #5c4f33;
+  background: var(--accent-wash);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
 }
 .note-demo .badge-demo {
   margin: 0 4px 0 0;
@@ -1720,16 +1778,15 @@ div.item {
   justify-content: center;
 }
 .reveal .note {
-  font: 400 10px/1.3 var(--font-px);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font: 600 11px/1.3 var(--font-body);
+  letter-spacing: 0.01em;
   color: var(--text-2);
 }
 .reveal .note.gold {
-  color: var(--gold-hi);
+  color: var(--accent-hi);
 }
 .reveal-catch.r5 {
-  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--r5), 4px 4px 0 2px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--r5), 4px 4px 0 2px var(--shadow);
 }
 
 /* reel fight: one tension gauge, one instruction */
@@ -1741,15 +1798,14 @@ div.item {
   display: grid;
   gap: 8px;
   padding: 12px;
-  background: rgba(11, 12, 14, 0.94);
+  background: color-mix(in srgb, var(--bg-deep) 94%, transparent);
   box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--line);
   touch-action: none;
   user-select: none;
 }
 .reel-prompt {
-  font: 700 15px/1.2 var(--font-px);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font: 600 17px/1.2 var(--font-body);
+  letter-spacing: -0.005em;
   text-align: center;
   color: var(--text);
   min-height: 18px;
@@ -1767,8 +1823,8 @@ div.item {
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  font: 400 10px/1 var(--font-px);
-  letter-spacing: 0.08em;
+  font: 600 11px/1 var(--font-body);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--dim);
 }
@@ -1790,7 +1846,7 @@ div.item {
   text-transform: uppercase;
 }
 .gauge-seg.slack {
-  background: #20262b;
+  background: var(--panel-3);
   color: var(--dim);
 }
 .gauge-seg.green {
@@ -1816,10 +1872,10 @@ div.item {
   gap: 8px;
 }
 .haul-you {
-  font: 400 10px/1 var(--font-px);
-  letter-spacing: 0.08em;
+  font: 600 11px/1 var(--font-body);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--accent);
 }
 .haul-line {
   position: relative;
@@ -1863,7 +1919,7 @@ div.item {
   margin-right: -5px;
 }
 .haul-fish .pxi-hook rect {
-  fill: var(--gold-hi);
+  fill: var(--accent-hi);
 }
 /* the icon's nose is on its left: head toward the angler, hook in the mouth, tail trailing */
 .haul-fish .pxi-fish {
@@ -1911,7 +1967,7 @@ div.item {
   gap: 4px;
 }
 .loc-info.locked {
-  box-shadow: inset 0 0 0 1px #6b4a2a;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 45%, var(--panel));
 }
 .loc-info p {
   margin: 0;
@@ -1924,9 +1980,8 @@ div.item {
   align-items: center;
 }
 .loc-head b {
-  font: 400 12px/1.2 var(--font-px);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font: 600 15px/1.2 var(--font-body);
+  letter-spacing: -0.005em;
   color: var(--text);
 }
 .loc-info .pxi {
@@ -1946,7 +2001,7 @@ div.item {
   min-width: 0;
 }
 .gear-slot.broken {
-  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px #5a2f2a;
+  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--danger-line);
 }
 .gear-body {
   display: flex;
@@ -1989,7 +2044,7 @@ div.item {
   font-size: 14px;
   line-height: 1;
   color: var(--muted);
-  background: rgba(11, 12, 14, 0.8);
+  background: color-mix(in srgb, var(--bg-deep) 80%, transparent);
   box-shadow: inset 0 0 0 1px var(--line);
   cursor: pointer;
 }
@@ -2045,7 +2100,7 @@ div.item {
   box-shadow: var(--px-border);
 }
 .trophy.active {
-  box-shadow: var(--px-border-gold);
+  box-shadow: var(--px-border-accent);
 }
 .trophy-art {
   width: 112px;
@@ -2102,8 +2157,8 @@ div.item {
 .chip {
   padding: 7px 10px 6px;
   border: 0;
-  font: 400 10px/1 var(--font-px);
-  letter-spacing: 0.08em;
+  font: 600 11px/1 var(--font-body);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
   background: var(--panel-2);
@@ -2115,7 +2170,7 @@ div.item {
 }
 .chip.active {
   color: var(--ink);
-  background: var(--gold);
+  background: var(--accent);
   box-shadow: none;
 }
 .shop-row.done {
@@ -2215,7 +2270,7 @@ div.item {
 }
 .dd-btn:hover:not(:disabled),
 .dd.open .dd-btn {
-  box-shadow: inset 0 0 0 2px var(--gold);
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 .dd-btn:disabled {
   opacity: 0.55;
@@ -2230,7 +2285,7 @@ div.item {
 }
 .dd-hint {
   flex: none;
-  font: 400 10px/1 var(--font-px);
+  font: 600 11px/1 var(--font-body);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--dim);
@@ -2241,7 +2296,7 @@ div.item {
   width: 2px;
   height: 2px;
   margin: 0 5px 0 4px;
-  color: var(--gold);
+  color: var(--accent);
   background: currentColor;
   box-shadow: -4px -4px 0 currentColor, -2px -4px 0 currentColor, 0 -4px 0 currentColor, 2px -4px 0 currentColor, 4px -4px 0 currentColor, -2px -2px 0 currentColor, 0 -2px 0 currentColor, 2px -2px 0 currentColor;
   transform: translateY(2px);
@@ -2260,7 +2315,7 @@ div.item {
   overflow-y: auto;
   padding: 4px;
   background: var(--panel);
-  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--line), 4px 4px 0 2px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--line), 4px 4px 0 2px var(--shadow);
 }
 .dd.open .dd-menu {
   display: grid;
@@ -2294,10 +2349,10 @@ div.item {
   color: var(--text);
   background: var(--panel-3);
   outline: none;
-  box-shadow: inset 2px 0 0 var(--gold);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 .dd-opt.sel {
-  color: var(--gold-hi);
+  color: var(--accent-hi);
 }
 /* pixel tick for the current option */
 .dd-mark {
@@ -2307,11 +2362,11 @@ div.item {
 }
 .dd-opt.sel .dd-mark {
   background:
-    linear-gradient(var(--gold), var(--gold)) 0 4px / 2px 2px no-repeat,
-    linear-gradient(var(--gold), var(--gold)) 2px 6px / 2px 2px no-repeat,
-    linear-gradient(var(--gold), var(--gold)) 4px 4px / 2px 2px no-repeat,
-    linear-gradient(var(--gold), var(--gold)) 6px 2px / 2px 2px no-repeat,
-    linear-gradient(var(--gold), var(--gold)) 8px 0 / 2px 2px no-repeat;
+    linear-gradient(var(--accent), var(--accent)) 0 4px / 2px 2px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) 2px 6px / 2px 2px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) 4px 4px / 2px 2px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) 6px 2px / 2px 2px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) 8px 0 / 2px 2px no-repeat;
 }
 .gear-body .dd {
   align-self: stretch;
@@ -2324,18 +2379,18 @@ div.item {
 /* BLEND prize */
 .blend,
 .stat .v.blend {
-  color: #9ef0b5;
+  color: var(--blend);
 }
 .badge-blend {
-  color: #9ef0b5;
-  background: #13241b;
-  box-shadow: inset 0 0 0 1px #3f7f5a;
+  color: var(--blend);
+  background: color-mix(in srgb, var(--blend) 12%, var(--panel));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--blend) 50%, var(--panel));
 }
 .bottle-art .fish-sprite {
   width: 56%;
 }
 .trophy.prize.active {
-  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px #3f7f5a;
+  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px color-mix(in srgb, var(--blend) 50%, var(--panel));
 }
 
 .reel-note {
@@ -2380,8 +2435,8 @@ div.item {
   text-align: right;
 }
 .xc-unit {
-  font: 400 10px/1 var(--font-px);
-  letter-spacing: 0.08em;
+  font: 600 11px/1 var(--font-body);
+  letter-spacing: 0.06em;
 }
 .xc-out {
   min-width: 120px;
@@ -2417,13 +2472,13 @@ div.item {
   text-underline-offset: 3px;
 }
 .addr-link:hover {
-  color: var(--gold-hi);
+  color: var(--accent-hi);
   text-decoration-color: currentColor;
 }
 
 /* a jerk is coming: the gauge frame turns gold for the length of the warning */
 .gauge.warning {
-  box-shadow: 0 0 0 2px var(--gold-hi);
+  box-shadow: 0 0 0 2px var(--accent-hi);
   animation: gauge-warn 0.2s steps(2, jump-none) infinite;
 }
 /* only the frame flashes: the gauge itself must stay readable while the player reacts */
@@ -2436,4 +2491,105 @@ div.item {
   .gauge.warning {
     animation: none;
   }
+}
+
+/* ------------------------------------------------------------ cup (tournaments) */
+.cup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cup-item {
+  width: 100%;
+  text-align: left;
+}
+.cup-item .spot-meta {
+  flex-wrap: wrap;
+}
+.cup-side {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 16px;
+}
+.cup-off {
+  grid-column: 1 / -1;
+  padding: 24px;
+}
+/* the tournament fight advances in 50 ms ticks: ease the needle and the fish between them */
+.cup .gauge-needle,
+.cup .haul-fish,
+.cup .haul-taut {
+  transition: left 50ms linear, width 50ms linear;
+}
+
+/* ============================================================ time of day switch (header) */
+.time-switch {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--bg-deep);
+  box-shadow: inset 0 0 0 1px var(--line-soft);
+}
+.time-btn {
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 26px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.time-btn:hover {
+  background: var(--panel-2);
+  color: var(--text);
+}
+.time-btn.active {
+  background: var(--panel);
+  color: var(--accent-hi);
+  box-shadow: inset 0 0 0 1px var(--line), inset 0 -2px 0 var(--accent);
+}
+.time-btn .pxi {
+  width: 18px;
+  height: 18px;
+}
+.time-auto {
+  font: 600 11px/1 var(--font-body);
+  letter-spacing: 0.02em;
+}
+
+/* ============================================================ a locked water, previewed in the scene */
+.scene-lock {
+  position: absolute;
+  inset: 2px;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  background: color-mix(in srgb, var(--scrim) 38%, transparent);
+  pointer-events: none;
+}
+.scene-lock-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  max-width: min(320px, 100%);
+  padding: 14px 18px 12px;
+  text-align: center;
+  background: color-mix(in srgb, var(--bg-deep) 88%, transparent);
+  box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px var(--line);
+  color: var(--text-2);
+  font-size: 12px;
+}
+.scene-lock-card .pxi {
+  width: 35px;
+  height: 40px;
+  margin-bottom: 2px;
+}
+.scene-lock-card b {
+  font: 600 15px/1.2 var(--font-body);
+  color: var(--text);
 }

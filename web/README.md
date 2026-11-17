@@ -1,6 +1,6 @@
 # Onchain Fishing — web client
 
-Browser frontend for the contracts in `../contracts` (FishingGame, FishNFT, RodNFT, PearlToken, Marketplace).
+Browser frontend for the contracts in `../contracts` (FishingGame, Tournaments, FishNFT, PearlToken, PearlExchange, Marketplace).
 Stack: Vite + TypeScript + viem, no UI framework (plain DOM + canvas).
 
 ## Two modes, one set of rules

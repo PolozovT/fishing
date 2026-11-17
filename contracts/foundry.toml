@@ -7,6 +7,7 @@ evm_version = "cancun"
 optimizer = true
 optimizer_runs = 100
 via_ir = true
+extra_output = ["storageLayout"]
 remappings = [
   "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
   "forge-std/=lib/forge-std/src/",

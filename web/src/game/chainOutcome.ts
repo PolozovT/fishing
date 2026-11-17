@@ -80,7 +80,7 @@ export function resolveCast(c: ChainCatalog, i: CastInput): CastOutcome {
   };
 }
 
-function pickSpecies(c: ChainCatalog, loc: ChainCatalog['locations'][number], rarityBonus: number, hiddenMult: number, rnd: bigint): number {
+export function pickSpecies(c: ChainCatalog, loc: ChainCatalog['locations'][number], rarityBonus: number, hiddenMult: number, rnd: bigint): number {
   const eff = loc.speciesIds.map((id, k) => {
     const s = c.species[id];
     return BigInt(loc.weights[k]) * BigInt(100 + s.rarity * rarityBonus) * BigInt(s.hidden ? hiddenMult : 1);
@@ -94,7 +94,7 @@ function pickSpecies(c: ChainCatalog, loc: ChainCatalog['locations'][number], ra
   return loc.speciesIds[eff.length - 1];
 }
 
-function rollWeight(minW: number, maxW: number, bonus: number, rnd: bigint): number {
+export function rollWeight(minW: number, maxW: number, bonus: number, rnd: bigint): number {
   const u1 = rnd & MASK32;
   const u2 = (rnd >> 32n) & MASK32;
   const u = u1 < u2 ? u1 : u2;
@@ -102,7 +102,7 @@ function rollWeight(minW: number, maxW: number, bonus: number, rnd: bigint): num
   return Number(w > BigInt(maxW) ? BigInt(maxW) : w);
 }
 
-function rollQuality(c: ChainCatalog, rodCatch: number, rarity: number, roll: number): number {
+export function rollQuality(c: ChainCatalog, rodCatch: number, rarity: number, roll: number): number {
   const x = roll + rodCatch * c.config.qualityPerCatch - rarity * c.config.qualityPerRarity;
   if (x < 1_500) return 0;
   if (x < 4_500) return 1;

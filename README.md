@@ -8,7 +8,7 @@ Hypothesis results for the first version are in **[REPORT.md](REPORT.md)**; the 
 
 | Folder | Contents |
 |---|---|
-| `contracts/` | Foundry project: `FishingGame`, `GameLens`, `FishNFT`, `PearlToken`, `PearlExchange`, `Marketplace` + 56 tests |
+| `contracts/` | Foundry project: `FishingGame` and `Tournaments` (both behind upgradeable proxies), `FightVerifier`, `GameLens`, `FishNFT`, `PearlToken`, `PearlExchange`, `Marketplace` + 86 tests |
 | `contracts/script/GameSetup.sol` | catalog: species, locations, rods, lures, special fish, achievements, config |
 | `sim/` | model of the first version's formulas and an agent-based economy simulation (Python) |
 | `web/` | browser client (Vite + TypeScript + viem), see [web/README.md](web/README.md) |
@@ -58,11 +58,7 @@ grep DEPLOYER_ADDRESS contracts/.env
 contracts/deploy-fluent.sh
 ```
 
-The BLEND → PEARL exchange is a separate, optional contract added to an existing deployment (the sender must own `PearlToken`):
-
-```bash
-BLEND_TOKEN=0x… forge script script/DeployExchange.s.sol --rpc-url fluent_testnet --broadcast --private-key <key>
-```
+This is a complete, fresh deployment: tokens, market, lens, the BLEND → PEARL exchange, the game and the tournaments. `BLEND_TOKEN` picks the BLEND token (default: the testnet Mock Blend).
 
 To deploy from your own wallet (a key in the Foundry keystore) instead:
 
@@ -77,6 +73,32 @@ cd web && pnpm dev
 ```
 
 > ⚠️ Randomness comes from `blockhash`. It works on Fluent (verified on testnet: the value matches the real block hash), but blocks are produced by a sequencer, which could in theory influence outcomes. Anything with real value needs VRF (see REPORT.md). The code is not audited.
+
+## Upgrading without losing progress
+
+`FishingGame` and `Tournaments` sit behind transparent proxies (OpenZeppelin). Their addresses and all player state are permanent; a new version is new code behind the same address:
+
+```bash
+cd contracts && ./check-layout.sh
+```
+
+```bash
+TARGET=game forge script script/Upgrade.s.sol --rpc-url fluent_testnet --broadcast --private-key <owner key>
+```
+
+`TARGET=tournaments` upgrades the tournaments. `check-layout.sh` compares the storage layout with the one recorded at the last deployment (`contracts/storage/`): a new version may only **append** state variables, anything else would corrupt player state and the script says so. `PearlToken`, `FishNFT`, the market and the exchange are plain contracts and are never replaced. Whoever owns the proxies can change the rules, so on a mainnet the owner should be a multisig with a delay.
+
+## Tournaments
+
+Short events with a BLEND prize where the fight decides the score. Each tournament is fished with one rod and only players who own that rod in the game may enter (everyone owns the first one), so everyone fishes the same water with the same tackle and the same number of casts; every cast hooks a fish (which one is the block-hash draw); the player gets one fight at it. The browser records the fight as one bit per 50 ms tick, and `Tournaments.reel(id, inputs)` replays the recording in `FightVerifier` and scores the catch: half the fish's points for landing it, up to all of them by the share of the fight spent in the green. The score of a tournament is the sum of the best `counted` catches; ties go to whoever got there first; the top three share the prize 50 / 30 / 20 and claim it themselves.
+
+```bash
+contracts/new-tournament.sh "Village Pond Open" 0 0 0 0 25000 60 30 30 10 100
+```
+
+(the arguments are documented in the script). `FightVerifier` is behind an interface, so the replay can be swapped for another implementation, for example a Rust contract on Fluent, with `Tournaments.setVerifier`.
+
+> ⚠️ The fight seed is public once its block exists, so a program can compute a perfect recording, and a person can replay a fight by reloading within the two-minute deadline. The replay proves the input produces the score, not that a human produced the input. Fine for a testnet; an open event with real money needs an allow-list or a server that streams the fish live.
 
 ## Game loop (contracts)
 

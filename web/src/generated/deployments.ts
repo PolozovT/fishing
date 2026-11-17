@@ -10,18 +10,21 @@ export interface Deployment {
   /** Set once the BLEND → PEARL exchange is deployed. */
   blend?: `0x${string}`;
   exchange?: `0x${string}`;
+  /** Set once the tournaments are deployed. */
+  tournaments?: `0x${string}`;
 }
 
 export const deployments: Record<string, Deployment> = {
   "20994": {
     "chainId": 20994,
-    "startBlock": 42849729,
-    "game": "0x36dFf390F0B947bEC4c45bf057e7a9b8cF69Bfe5",
-    "fish": "0x76BB17044f47FD1f24F28F7c233488b080C6089F",
-    "lens": "0x0b1D70DCC87F90eE4F834b8211BBdC49a847B70e",
-    "pearl": "0x3FbEA20b71Db8475738764153F716a6ea9eBB6E9",
-    "market": "0x6d2423685C9842f0ae8a70bb0dc3E47Dc16044a1",
+    "startBlock": 42862832,
+    "game": "0x743595326b8DbbFF85885503AaBA1515aa48A42b",
+    "fish": "0x3Ec62368e2cEDE35C2027cf0BbDc78a0eCaAC037",
+    "lens": "0x5cb7F2af9f01e3FF4f3882eD45489DE8059bA3a1",
+    "pearl": "0xF843F0c048C521312371Eb8BdfEB1434A14CE794",
+    "market": "0x08EE1c78897F689e07A2279d87f0DCa1401379Cd",
     "blend": "0x83Fed707A8dDDC2535aE591CF19fB6C91D542D8E",
-    "exchange": "0xB089CFA87C88E60351E5dEcA72e0e186159fF7e8"
+    "exchange": "0x40C87c35C4ec8c699B1235E0C888318675623c12",
+    "tournaments": "0xf30af836B8054975FFF54D96db5eD4382640E951"
   }
 };

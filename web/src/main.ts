@@ -5,6 +5,10 @@ import '@fontsource/ibm-plex-sans/500.css';
 import '@fontsource/ibm-plex-sans/600.css';
 import './style.css';
 import { initBackdrop } from './backdrop';
+import { initDaytime, onTimeChange } from './daytime';
+import { emit } from './store';
 
+initDaytime();
+onTimeChange(emit);
 initBackdrop();
 void import('./play/app');

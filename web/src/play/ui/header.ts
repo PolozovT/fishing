@@ -2,6 +2,7 @@
 import { energyCountdown, energyNow, refillPrice } from '../../game/actions';
 import { BLEND_PRIZE, TUNING } from '../../game/content';
 import { levelOf, xpForLevel } from '../../game/economy';
+import { TIME_SETTINGS, setTimeSetting, timeOfDay, timeSetting, type TimeSetting } from '../../daytime';
 import { state } from '../../store';
 import { fmtCountdown, h, icon, mount, segBar, shortAddr, sigOf } from '../../ui/dom';
 import { fluentButton, type HeaderHandlers } from '../../ui/header';
@@ -15,7 +16,7 @@ let regenEl: HTMLElement | null = null;
 export function initLocalHeader(host: HTMLElement, on: HeaderHandlers): () => void {
   return mount(
     host,
-    () => sigOf(rev(), energyNow(getSave(), Date.now()), state.wallet?.address, state.fluentStatus, location.hash, world.blend?.balance),
+    () => sigOf(rev(), energyNow(getSave(), Date.now()), state.wallet?.address, state.fluentStatus, location.hash, world.blend?.balance, timeSetting(), timeOfDay()),
     () => render(on),
   );
 }
@@ -26,10 +27,27 @@ export function tickLocalHeader(): void {
   regenEl.textContent = left === 0 ? 'full' : `+1 in ${fmtCountdown(left)}`;
 }
 
+/** Morning, day, evening or night for the scene and the whole interface; "Auto" follows the player's clock. */
+function timeSwitch(): HTMLElement {
+  const chosen = timeSetting();
+  const button = (id: TimeSetting, label: string, hint: string): HTMLElement =>
+    h(
+      'button',
+      {
+        class: chosen === id ? 'time-btn active' : 'time-btn',
+        title: id === 'auto' ? `${hint} (now: ${timeOfDay()})` : hint,
+        attrs: { type: 'button', 'aria-label': label, 'aria-pressed': String(chosen === id) },
+        onclick: () => setTimeSetting(id),
+      },
+      id === 'auto' ? h('span', { class: 'time-auto', text: 'Auto' }) : icon(id),
+    );
+  return h('div', { class: 'time-switch', attrs: { role: 'group', 'aria-label': 'Time of day' } }, ...TIME_SETTINGS.map((t) => button(t.id, t.label, t.hint)));
+}
+
 function render(on: HeaderHandlers): HTMLElement[] {
   const s = getSave();
   const now = Date.now();
-  const page = location.hash === '#/tackle' ? 'tackle' : 'pond';
+  const page = location.hash === '#/tackle' ? 'tackle' : location.hash === '#/cup' ? 'cup' : 'pond';
   const link = (id: string, text: string, href: string): HTMLElement =>
     h('a', { class: page === id ? 'active' : '', text, attrs: { href, ...(page === id ? { 'aria-current': 'page' } : {}) } });
   const level = levelOf(s.xp);
@@ -47,7 +65,8 @@ function render(on: HeaderHandlers): HTMLElement[] {
       h('span', { class: 'logo' }, icon('bobber')),
       h('span', { class: 'wordmark' }, h('span', { class: 'wm-top', text: 'Onchain' }), h('span', { class: 'wm-main', text: 'Fishing' })),
     ),
-    h('nav', { class: 'topnav', attrs: { 'aria-label': 'Pages' } }, link('pond', 'Pond', '#/'), link('tackle', 'Tackle', '#/tackle')),
+    h('nav', { class: 'topnav', attrs: { 'aria-label': 'Pages' } }, link('pond', 'Pond', '#/'), link('cup', 'Cup', '#/cup'), link('tackle', 'Tackle', '#/tackle')),
+    timeSwitch(),
     h(
       'div',
       { class: 'stats' },

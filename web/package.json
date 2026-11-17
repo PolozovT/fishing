@@ -10,10 +10,11 @@
     "preview": "vite preview --port 4173",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "sim": "vitest run --config vitest.sim.config.ts"
+    "sim": "vitest run --config vitest.sim.config.ts",
+    "live": "vitest run --config vitest.live.config.ts"
   },
   "dependencies": {
-    "@fluent.xyz/connect": "0.8.1",
+    "@fluent.xyz/connect": "0.8.2",
     "@fontsource/ibm-plex-sans": "5.3.0",
     "@fontsource/silkscreen": "5.3.0",
     "@tanstack/react-query": "5.107.1",

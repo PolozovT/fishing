@@ -97,11 +97,35 @@ nonce and the contract address. This is **not** manipulation-resistant randomnes
 - **Value at stake.** Today: testnet tokens and NFTs with no market. That is why this is acceptable now.
 
 Before anything with real value rides on a catch, the source should be a VRF or a randomness beacon.
-**Consequences of switching:** the randomness source is compiled into `FishingGame`, which is not upgradeable and
-holds all player progress. Replacing it means deploying a new game contract and either migrating state
-(snapshot and import of every player's progress, with the fish and PEARL contracts re-pointed) or starting a new
-season. An oracle-based source also changes the flow: the contract waits for a callback instead of reading a
-block hash, so `reel()` becomes "claim when fulfilled". Not done here; it needs a decision first.
+**Consequences of switching:** the randomness source is compiled into `FishingGame`. The game runs behind an
+upgradeable proxy, so a new source is an upgrade that keeps all player progress, not a new game. An oracle-based
+source also changes the flow: the contract waits for a callback instead of reading a block hash, so `reel()`
+becomes "claim when fulfilled". Not done here; it needs a decision first.
+
+## Tournaments: where skill does decide
+
+In free play the fight changes nothing onchain. Tournaments are the opposite by design, and they do it without a
+server: the fight itself is verified by the contract.
+
+1. `Tournaments.cast(id)` spends one of the player's casts and commits to block `N+2`.
+2. Once that block exists the fish is fixed and public (`web/src/game/tournamentRoll.ts` mirrors
+   `Tournaments._roll`), and so is the fight seed.
+3. The browser runs the fight as an integer machine on a fixed 50 ms tick (`web/src/game/fight.ts`), driven by
+   one bit per tick: is the player reeling. It records the bits.
+4. `Tournaments.reel(id, inputs)` hands the recording to `FightVerifier.replay`, the same machine in Solidity, and
+   scores what it reports: nothing for a lost fish, otherwise the fish's points × (50% + 50% × share of ticks in
+   the green).
+
+The two implementations are pinned together by vectors: `fixtures/fights.json` (fights recorded by the client,
+replayed by the Solidity tests) and `fixtures/tournament.json` (draws made by the contract, replayed by the client
+tests), plus `pnpm live`, which plays a tournament on the deployed contracts and compares every score.
+
+What this does and does not prove: the contract never trusts a result from the browser, only an input, and it
+computes the result itself. It cannot tell who produced the input. The seed is public, so a bot can search for a
+perfect recording, and a person can retry a fight by reloading until the deadline (about two minutes from the
+bite). Mitigations that need no server: the deadline, the cast limit, equal tackle, a rod that must be owned to enter. Mitigations that do:
+an allow-list of entrants, or a referee that streams the fish live and co-signs the result (`setVerifier` and an
+upgrade leave room for both).
 
 ## Contract changes that would help (none are deployed)
 
@@ -109,7 +133,7 @@ block hash, so `reel()` becomes "claim when fulfilled". Not done here; it needs 
    mirror with code that can be fuzz-tested against the game in the same Foundry suite. The lens holds no state and
    no permissions, so deploying a new one touches no progress.
 2. **Tackle passed to `cast(location, rod, lure)`** instead of separate `equipRod`/`equipLure` transactions:
-   two fewer confirmation windows when changing gear. Needs a new game contract (progress would reset).
+   two fewer confirmation windows when changing gear. An upgrade of the game proxy; progress is kept.
 3. **A session key or sponsored, review-free calls** for `cast`/`reel`, if the wallet supports it: the remaining
    friction is the confirmation window, not the gas.
 4. **Verified skill (option B)**: a signer address in the contract and `reel(result, signature)`, plus the backend
@@ -118,6 +142,7 @@ block hash, so `reel()` becomes "claim when fulfilled". Not done here; it needs 
 
 ## Limits
 
-- On the contracts, skill changes time and nothing else. That is the honest ceiling without a trusted validator.
+- In free play on the contracts, skill changes time and nothing else. In tournaments the fight is replayed by the
+  contract and decides the score; see above for what that does not prove.
 - The model players in `web/BALANCE.md` are models. The landing rates are estimates to check by hand.
 - A bot can play the mini-game. On the contracts that buys nothing; in the local game nothing is at stake.

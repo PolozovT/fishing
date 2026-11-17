@@ -60,6 +60,7 @@ type Phase = 'idle' | 'casting' | 'waiting' | 'bite' | 'landing' | 'reeling' | '
 let scene: WaterScene;
 let statusEl: HTMLElement;
 let overlayEl: HTMLElement;
+let lockEl: HTMLElement;
 let hookBtn: HTMLButtonElement;
 let landBtn: HTMLButtonElement;
 let reelEl: HTMLElement;
@@ -74,10 +75,11 @@ export function initPond(sceneHost: HTMLElement, controlsHost: HTMLElement): () 
   const canvas = h('canvas', { class: 'water', attrs: { 'aria-label': 'Water' } });
   statusEl = h('div', { class: 'scene-status' });
   overlayEl = h('div', { class: 'scene-overlay hidden' });
+  lockEl = h('div', { class: 'scene-lock hidden' });
   hookBtn = h('button', { class: 'btn btn-reel hidden', text: 'Hook!', onclick: () => doHook() });
   landBtn = h('button', { class: 'btn btn-reel hidden', text: 'Land it', title: 'Send the settlement transaction again', onclick: () => void settleOnChain() });
   reelEl = h('div', { class: 'reel hidden' });
-  sceneHost.append(canvas, statusEl, hookBtn, landBtn, reelEl, overlayEl);
+  sceneHost.append(canvas, statusEl, lockEl, hookBtn, landBtn, reelEl, overlayEl);
   scene = new WaterScene(canvas);
 
   sceneHost.addEventListener('pointerdown', (e) => {
@@ -95,9 +97,28 @@ export function initPond(sceneHost: HTMLElement, controlsHost: HTMLElement): () 
   return () => {
     renderControls();
     resumeChainCast();
-    scene.setPalette(LOCATIONS[ticket?.locationId ?? getSave().location].palette);
-    statusEl.textContent = statusText();
+    syncScene();
   };
+}
+
+/** A locked water the player picked to look at: the scene shows it behind a lock. Never while a cast is out. */
+function peekLocation(): number | null {
+  if (viewLoc === null || pondBusy()) return null;
+  return canEnter(getSave(), LOCATIONS[viewLoc]) ? null : viewLoc;
+}
+
+let lockShown: number | null = null;
+/** The water in the scene: the one being fished, or a locked one the player is looking at. */
+function syncScene(): void {
+  const peek = peekLocation();
+  scene.setSpot(peek ?? ticket?.locationId ?? getSave().location);
+  statusEl.textContent = statusText();
+  lockEl.classList.toggle('hidden', peek === null);
+  if (peek === lockShown) return;
+  lockShown = peek;
+  if (peek === null) return lockEl.replaceChildren();
+  const loc = LOCATIONS[peek];
+  lockEl.replaceChildren(h('div', { class: 'scene-lock-card' }, icon('lock', 'Locked'), h('b', { text: loc.name }), h('span', { text: unlockText(loc.unlock, getSave()) })));
 }
 
 export const pondBusy = (): boolean => phase !== 'idle' && phase !== 'result';
@@ -124,8 +145,10 @@ function statusText(): string {
       return landRetry ? 'At the pier: land it to claim it' : reveal || !predicted ? 'Setting the hook…' : 'Landing your catch…';
     case 'reeling':
       return 'Fish on! Reel it in';
-    default:
-      return 'Ready to cast';
+    default: {
+      const peek = peekLocation();
+      return peek === null ? 'Ready to cast' : `${LOCATIONS[peek].name} · locked`;
+    }
   }
 }
 
@@ -162,7 +185,7 @@ function doCast(): void {
   );
   if (!r) return;
   ticket = r.ticket;
-  scene.setPalette(LOCATIONS[ticket.locationId].palette);
+  scene.setSpot(ticket.locationId);
   scene.setPhase('casting');
   setPhase('casting');
   timer = setTimeout(() => {
@@ -247,7 +270,7 @@ async function castOnChain(): Promise<void> {
   const me = state.wallet?.address;
   const locationId = s.location;
   const totalsNow = currentTotals(s, locationId);
-  scene.setPalette(LOCATIONS[locationId].palette);
+  scene.setSpot(locationId);
   scene.setPhase('casting');
   setPhase('casting');
   const receipt = await tx('Cast', { functionName: 'cast', args: [locationId] }, true);

@@ -7,6 +7,8 @@ import {FishingGame} from "../src/FishingGame.sol";
 import {GameLens} from "../src/GameLens.sol";
 import {GameSetup} from "../script/GameSetup.sol";
 
+import {CatchMath} from "../src/CatchMath.sol";
+
 contract FishingGameTest is BaseTest {
     // ------------------------------------------------------------------ catalog
 
@@ -327,7 +329,7 @@ contract FishingGameTest is BaseTest {
         assertEq(w, f.weight);
         FishingGame.WeekEntry[] memory week = game.weekEntries(game.currentWeek(), alice);
         assertEq(week.length, 1);
-        assertEq(week[0].score, game.scoreOf(s, f.weight, f.quality));
+        assertEq(week[0].score, CatchMath.score(s.rarity, s.minWeight, s.maxWeight, f.weight, f.quality));
         assertEq(game.weekTotal(game.currentWeek(), alice), week[0].score);
         assertEq(game.weekPlayerCount(game.currentWeek()), 1);
     }
@@ -335,17 +337,17 @@ contract FishingGameTest is BaseTest {
     function test_scoreFormula() public view {
         FishNFT.Species memory taimen = fish.species(9);
         uint256 avg = uint256(8000) + uint256(50000 - 8000) / 3;
-        assertEq(game.scoreOf(taimen, avg, 2), 400);
-        assertEq(game.scoreOf(taimen, 50000, 4), 780); // 400 × 1.5 × 1.3
-        assertEq(game.scoreOf(taimen, 8000, 0), 224); // 400 × 0.7 × 0.8
-        assertEq(game.scoreOf(fish.species(22), uint256(1000) + uint256(8000) / 3, 2), 800);
+        assertEq(CatchMath.score(taimen.rarity, taimen.minWeight, taimen.maxWeight, avg, 2), 400);
+        assertEq(CatchMath.score(taimen.rarity, taimen.minWeight, taimen.maxWeight, 50000, 4), 780); // 400 × 1.5 × 1.3
+        assertEq(CatchMath.score(taimen.rarity, taimen.minWeight, taimen.maxWeight, 8000, 0), 224); // 400 × 0.7 × 0.8
+        assertEq(CatchMath.score(5, 1000, 9000, uint256(1000) + uint256(8000) / 3, 2), 800);
     }
 
     function test_levelCurve() public view {
-        assertEq(game.levelOf(0), 1);
-        assertEq(game.levelOf(299), 2);
-        assertEq(game.levelOf(300), 3);
-        assertEq(game.levelOf(6600), 12);
+        assertEq(CatchMath.levelOf(0), 1);
+        assertEq(CatchMath.levelOf(299), 2);
+        assertEq(CatchMath.levelOf(300), 3);
+        assertEq(CatchMath.levelOf(6600), 12);
     }
 
     function test_weekKeepsTheTenBestSortedAndSurvivesSelling() public {

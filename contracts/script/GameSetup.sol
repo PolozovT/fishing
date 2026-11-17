@@ -6,6 +6,10 @@ import {FishNFT} from "../src/FishNFT.sol";
 import {FishingGame} from "../src/FishingGame.sol";
 import {Marketplace} from "../src/Marketplace.sol";
 import {GameLens} from "../src/GameLens.sol";
+import {Tournaments} from "../src/Tournaments.sol";
+import {FightVerifier, IFightVerifier} from "../src/FightVerifier.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 /// @notice Deploys and seeds the whole game. Shared by the deploy script and the tests so both use the same catalog.
 ///         The numbers mirror the web client's catalog (web/src/game/content.ts and web/src/tackle/catalog.ts);
@@ -64,11 +68,20 @@ library GameSetup {
         (d.game, d.lens) = deployGame(owner, d.pearl, d.fish);
     }
 
+    /// @notice Puts `implementation` behind an upgradeable proxy and runs `init` on it. The proxy's address and state
+    ///         are permanent; `owner` can later point it at new code through the proxy's ProxyAdmin.
+    function proxied(address implementation, address owner, bytes memory init) internal returns (address) {
+        return address(new TransparentUpgradeableProxy(implementation, owner, init));
+    }
+
     /// @notice A fresh, fully seeded game (and its lens) on top of existing PEARL and fish contracts.
-    ///         Player state lives in the game, so it starts empty; fish and PEARL balances are untouched.
-    ///         When replacing a game, revoke the old one's PEARL minter role afterwards.
+    ///         The game sits behind a proxy: later versions are upgrades of it (script/UpgradeGame.s.sol), not new
+    ///         deployments, so player progress is kept.
     function deployGame(address owner, PearlToken pearl, FishNFT fish) internal returns (FishingGame game, GameLens lens) {
-        game = new FishingGame(owner, pearl, fish, defaultConfig());
+        game = FishingGame(
+            proxied(address(new FishingGame(pearl, fish)), owner, abi.encodeCall(FishingGame.initialize, (owner)))
+        );
+        game.setConfig(defaultConfig());
         lens = new GameLens(game);
         pearl.setMinter(address(game), true);
         fish.setGame(address(game));
@@ -79,6 +92,21 @@ library GameSetup {
         game.setHidden(14, true); // Lake Spirit
         game.setHidden(34, true); // Spectral Sturgeon
         game.setHidden(35, true); // Albino Pike
+    }
+
+    /// @notice The tournaments, behind their own proxy, with the Solidity fight verifier. `blend` pays the prizes.
+    function deployTournaments(address owner, FishingGame game, FishNFT fish, IERC20 blend)
+        internal
+        returns (Tournaments tournaments, FightVerifier verifier)
+    {
+        verifier = new FightVerifier();
+        tournaments = Tournaments(
+            proxied(
+                address(new Tournaments(game, fish, blend)),
+                owner,
+                abi.encodeCall(Tournaments.initialize, (owner, IFightVerifier(address(verifier))))
+            )
+        );
     }
 
     function _sp(FishNFT f, string memory name, uint8 rarity, uint32 minW, uint32 maxW, uint256 price, uint24 color)

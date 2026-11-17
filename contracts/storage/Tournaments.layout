@@ -1,0 +1,7 @@
+0 0 _owner t_address
+1 0 verifier t_contract(IFightVerifier)
+1 20 fightBlocks t_uint64
+2 0 _tournaments t_array(t_struct(Tournament)_storage)dyn_storage
+3 0 _entries t_mapping(t_uint256,t_mapping(t_address,t_struct(Entry)_storage))
+4 0 _top t_mapping(t_uint256,t_array(t_address)dyn_storage)
+5 0 _seq t_uint64

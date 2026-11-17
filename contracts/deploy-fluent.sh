@@ -21,8 +21,12 @@ else
   SIGNER=(--private-key "$DEPLOYER_KEY")
 fi
 
+# BLEND pays tournament prizes and buys PEARL. Default: the testnet Mock Blend.
+export BLEND_TOKEN="${BLEND_TOKEN:-0x83Fed707A8dDDC2535aE591CF19fB6C91D542D8E}"
+
 forge script script/Deploy.s.sol --rpc-url "$RPC" --broadcast --slow "${SIGNER[@]}" "${VERIFY[@]}" || {
   echo "If only verification failed, the contracts are already deployed; addresses are in ../deployments/20994.json" >&2
   exit 1
 }
+./check-layout.sh --record
 echo "Done: ../deployments/20994.json. Next: cd ../web && pnpm dev"

@@ -7,6 +7,7 @@ import { initTackle } from '../tackle/page';
 import { h } from '../ui/dom';
 import { toast } from '../ui/toast';
 import { initCollection } from './ui/collection';
+import { initCup, tickCup } from './ui/cup';
 import { initLocalHeader, tickLocalHeader } from './ui/header';
 import { initKeepnet } from './ui/keepnet';
 import { initPond, tickPond } from './ui/pond';
@@ -58,6 +59,7 @@ function selectTab(k: Tab): void {
 }
 
 const tackleEl = h('main', { class: 'tackle hidden' });
+const cupEl = h('main', { class: 'layout cup hidden' });
 const pondEl = h(
   'main',
   { class: 'layout' },
@@ -68,6 +70,7 @@ const pondEl = h(
 app.append(
   headerEl,
   pondEl,
+  cupEl,
   tackleEl,
   h(
     'footer',
@@ -79,9 +82,11 @@ selectTab(tab);
 
 function route(): void {
   const tackle = location.hash === '#/tackle';
-  pondEl.classList.toggle('hidden', tackle);
+  const cup = location.hash === '#/cup';
+  pondEl.classList.toggle('hidden', tackle || cup);
+  cupEl.classList.toggle('hidden', !cup);
   tackleEl.classList.toggle('hidden', !tackle);
-  document.title = tackle ? 'Tackle · Onchain Fishing' : 'Onchain Fishing';
+  document.title = tackle ? 'Tackle · Onchain Fishing' : cup ? 'Cup · Onchain Fishing' : 'Onchain Fishing';
   emit();
 }
 window.addEventListener('hashchange', () => {
@@ -127,6 +132,7 @@ const renders = [
   initTrophies(panels.trophy),
   initRanks(panels.ranks),
   initTackle(tackleEl, true),
+  initCup(cupEl),
 ];
 subscribe(() => renders.forEach((r) => r()));
 route();
@@ -134,6 +140,7 @@ setInterval(() => {
   tickLocalHeader();
   tickRanks();
   tickPond();
+  tickCup();
 }, 1000);
 
 if (CHAIN) {

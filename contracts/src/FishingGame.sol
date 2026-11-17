@@ -4,6 +4,7 @@ pragma solidity ^0.8.28;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {PearlToken} from "./PearlToken.sol";
 import {FishNFT} from "./FishNFT.sol";
+import {CatchMath} from "./CatchMath.sol";
 
 /// @title Onchain Fishing: the whole game.
 /// @notice Flow: `cast` (spend energy, wear the rod and the lure, commit to a future block) → wait `revealDelay`
@@ -227,10 +228,21 @@ contract FishingGame is Ownable {
 
     // ------------------------------------------------------------------ setup
 
-    constructor(address owner_, PearlToken pearl_, FishNFT fish_, Config memory config_) Ownable(owner_) {
+    /// @dev The game runs behind a proxy, so players' progress survives a new version of this code. The constructor
+    ///      only fixes the token addresses in the bytecode; all state is set up by `initialize` on the proxy.
+    ///      Storage rule for new versions: never reorder or remove a state variable, only append at the end
+    ///      (checked by contracts/check-layout.sh).
+    constructor(PearlToken pearl_, FishNFT fish_) Ownable(msg.sender) {
         pearl = pearl_;
         fishNft = fish_;
-        _setConfig(config_);
+        config.maxEnergy = 1; // the bare implementation can never be initialized
+    }
+
+    /// @notice One-time setup, called through the proxy when it is created. The owner then sets the config, which
+    ///         also closes this door for good.
+    function initialize(address owner_) external {
+        if (owner() != address(0) || config.maxEnergy != 0) revert BadConfig();
+        _transferOwnership(owner_);
     }
 
     function setConfig(Config calldata c) external onlyOwner {
@@ -255,16 +267,6 @@ contract FishingGame is Ownable {
         id = _lures.length;
         if (id >= 255 || it.wear == 0) revert BadConfig();
         _lures.push(it);
-    }
-
-    function updateRod(uint256 id, Item calldata it) external onlyOwner {
-        if (id >= _rods.length) revert UnknownRod();
-        _rods[id] = it;
-    }
-
-    function updateLure(uint256 id, Item calldata it) external onlyOwner {
-        if (id >= _lures.length || it.wear == 0) revert UnknownLure();
-        _lures[id] = it;
     }
 
     function addLocation(Location calldata l) external onlyOwner returns (uint256 id) {
@@ -437,12 +439,6 @@ contract FishingGame is Ownable {
     }
 
     // ------------------------------------------------------------------ progression
-
-    /// @notice Level n needs 50·n·(n−1) XP.
-    function levelOf(uint256 xp) public pure returns (uint256 level) {
-        level = 1;
-        while (50 * (level + 1) * level <= xp) level++;
-    }
 
     function isUnlocked(address player, uint256 locationId) public view returns (bool) {
         if (locationId >= _locations.length) return false;
@@ -683,9 +679,9 @@ contract FishingGame is Ownable {
         uint256 seed
     ) internal {
         FishNFT.Species memory s = fishNft.species(speciesId);
-        uint32 weight = _rollWeight(s.minWeight, s.maxWeight, weightBonus, seed >> 128);
-        uint8 quality = _rollQuality(rodCatch, s.rarity, (seed >> 200) % 10_000);
-        uint16 score = uint16(scoreOf(s, weight, quality));
+        uint32 weight = CatchMath.rollWeight(s.minWeight, s.maxWeight, weightBonus, seed >> 128);
+        uint8 quality = CatchMath.rollQuality(rodCatch, s.rarity, (seed >> 200) % 10_000, config.qualityPerCatch, config.qualityPerRarity);
+        uint16 score = uint16(CatchMath.score(s.rarity, s.minWeight, s.maxWeight, weight, quality));
 
         uint256 fishId = fishNft.mint(
             player, FishNFT.Fish(speciesId, weight, locationId, quality, uint40(block.timestamp), player)
@@ -733,54 +729,8 @@ contract FishingGame is Ownable {
         return pool.speciesIds[n - 1]; // unreachable
     }
 
-    /// @dev min of two uniforms → small fish are common, trophies are rare. The bonus scales the roll, capped at
-    ///      the species maximum.
-    function _rollWeight(uint32 minW, uint32 maxW, uint256 bonus, uint256 rnd) internal pure returns (uint32) {
-        uint256 u1 = rnd & 0xffffffff;
-        uint256 u2 = (rnd >> 32) & 0xffffffff;
-        uint256 u = u1 < u2 ? u1 : u2;
-        uint256 w = ((minW + ((uint256(maxW - minW) * u) >> 32)) * (100 + bonus)) / 100;
-        return uint32(w > maxW ? maxW : w);
-    }
-
-    /// @dev 0 D … 4 S. A better rod shifts the roll up, a rarer fish shifts it down.
-    function _rollQuality(int256 rodCatch, uint256 rarity, uint256 roll) internal view returns (uint8) {
-        int256 x = int256(roll) + rodCatch * int256(uint256(config.qualityPerCatch))
-            - int256(rarity * config.qualityPerRarity);
-        if (x < 1_500) return 0;
-        if (x < 4_500) return 1;
-        if (x < 7_500) return 2;
-        if (x < 9_200) return 3;
-        return 4;
-    }
-
     function _xpFor(uint256 rarity) internal pure returns (uint64) {
         return rarity >= 5 ? 80 : uint64(10 * (rarity + 1));
-    }
-
-    function _qualityBps(uint256 q) internal pure returns (uint256) {
-        if (q == 0) return 8_000;
-        if (q == 1) return 9_000;
-        if (q == 2) return 10_000;
-        if (q == 3) return 11_500;
-        return 13_000;
-    }
-
-    /// @dev weight / species mean, in bps. The mean of min(u1,u2) is a third of the way up the range.
-    function _weightRatioBps(FishNFT.Species memory s, uint256 weight) internal pure returns (uint256) {
-        uint256 avg = uint256(s.minWeight) + (uint256(s.maxWeight) - s.minWeight) / 3;
-        return (weight * 10_000) / avg;
-    }
-
-    function _clamp(uint256 v, uint256 lo, uint256 hi) internal pure returns (uint256) {
-        return v < lo ? lo : v > hi ? hi : v;
-    }
-
-    /// @notice Tournament score = rarity points × weight factor (0.7–1.5) × quality factor, fixed at the catch.
-    function scoreOf(FishNFT.Species memory s, uint256 weight, uint256 quality) public pure returns (uint256) {
-        uint256[6] memory points = [uint256(10), 25, 60, 150, 400, 800];
-        uint256 raw = points[s.rarity] * _clamp(_weightRatioBps(s, weight), 7_000, 15_000) * _qualityBps(quality);
-        return (raw + 5e7) / 1e8;
     }
 
     // ------------------------------------------------------------------ weekly championship
@@ -833,7 +783,7 @@ contract FishingGame is Ownable {
     function fishValue(uint256 fishId) public view returns (uint256) {
         FishNFT.Fish memory f = fishNft.fish(fishId);
         FishNFT.Species memory s = fishNft.species(f.speciesId);
-        return (uint256(s.basePrice) * _clamp(_weightRatioBps(s, f.weight), 4_000, 30_000) * _qualityBps(f.quality)) / 1e8;
+        return (uint256(s.basePrice) * CatchMath.clamp(CatchMath.weightRatioBps(s.minWeight, s.maxWeight, f.weight), 4_000, 30_000) * CatchMath.qualityBps(f.quality)) / 1e8;
     }
 
     /// @dev A fish sold by the angler who landed it, within FRESH_WINDOW of the catch, pays FRESH_BONUS_BPS more.

@@ -100,13 +100,19 @@ export function segBar(value: number, max: number, segs: number, cls = ''): HTML
 }
 
 // Tiny pixel icons drawn as rects (crispEdges). Each entry: [viewBox w, h, rects "x,y,w,h,color;..."]
+// A colour is a hex value or the name of a theme variable ("--muted"), so icons follow the time of day.
 const ICONS: Record<string, [number, number, string]> = {
-  lock: [7, 8, '2,0,3,1,#afb4b5;1,1,1,3,#afb4b5;5,1,1,3,#afb4b5;0,3,7,5,#b8a071;3,5,1,2,#15171a'],
-  bolt: [5, 8, '2,0,3,1,#e2c47a;1,1,3,1,#e2c47a;0,2,3,1,#e2c47a;0,3,5,1,#e2c47a;2,4,2,1,#e2c47a;1,5,2,1,#e2c47a;1,6,1,1,#e2c47a;0,7,1,1,#e2c47a'],
-  fish: [10, 6, '3,0,4,1,#5a6670;1,1,7,1,#5a6670;0,2,9,2,#5a6670;1,4,7,1,#5a6670;3,5,4,1,#5a6670;7,1,1,1,#afb4b5;9,1,1,4,#5a6670'],
+  lock: [7, 8, '2,0,3,1,--muted;1,1,1,3,--muted;5,1,1,3,--muted;0,3,7,5,--accent;3,5,1,2,--ink'],
+  bolt: [5, 8, '2,0,3,1,--en;1,1,3,1,--en;0,2,3,1,--en;0,3,5,1,--en;2,4,2,1,--en;1,5,2,1,--en;1,6,1,1,--en;0,7,1,1,--en'],
+  fish: [10, 6, '3,0,4,1,--dim;1,1,7,1,--dim;0,2,9,2,--dim;1,4,7,1,--dim;3,5,4,1,--dim;7,1,1,1,--panel;9,1,1,4,--dim'],
   // a fish hook lying on its side: eye on the left, shank along the line, bend on the right, point and barb below
-  hook: [8, 5, '0,1,7,1,#ecebe4;7,2,1,2,#ecebe4;4,4,3,1,#ecebe4;4,3,1,1,#ecebe4'],
-  bobber: [5, 9, '2,0,1,2,#c9c6bc;1,2,3,1,#c2453b;0,3,5,2,#c2453b;1,3,1,1,#e7766a;0,5,5,2,#e6e4dc;1,7,3,1,#e6e4dc;2,8,1,1,#afb4b5'],
+  hook: [8, 5, '0,1,7,1,--text;7,2,1,2,--text;4,4,3,1,--text;4,3,1,1,--text'],
+  bobber: [5, 9, '2,0,1,2,--muted;1,2,3,1,#c2453b;0,3,5,2,#c2453b;1,3,1,1,#e7766a;0,5,5,2,#e6e4dc;1,7,3,1,#e6e4dc;2,8,1,1,--muted'],
+  // time of day (9×9): the sun on the horizon, high sun, low red sun, crescent moon
+  morning: [9, 9, '4,0,1,1,#e9b949;1,2,1,1,#e9b949;7,2,1,1,#e9b949;3,3,3,1,#f2cf6b;2,4,5,2,#f2cf6b;0,6,9,1,--muted;2,8,5,1,--dim'],
+  day: [9, 9, '4,0,1,1,#e3a92b;4,8,1,1,#e3a92b;0,4,1,1,#e3a92b;8,4,1,1,#e3a92b;1,1,1,1,#e3a92b;7,1,1,1,#e3a92b;1,7,1,1,#e3a92b;7,7,1,1,#e3a92b;3,2,3,1,#f0bd3a;2,3,5,3,#f0bd3a;3,6,3,1,#f0bd3a'],
+  evening: [9, 9, '3,3,3,1,#e2703f;2,4,5,2,#e2703f;0,6,9,1,--muted;1,8,3,1,#e2703f;5,8,3,1,#e2703f'],
+  night: [9, 9, '3,0,3,1,--text-2;2,1,2,1,--text-2;1,2,2,5,--text-2;2,7,2,1,--text-2;3,8,3,1,--text-2;6,7,1,1,--text-2;7,1,1,1,--dim;6,3,1,1,--dim'],
 };
 
 export function icon(name: keyof typeof ICONS, label?: string): SVGSVGElement {
@@ -127,7 +133,8 @@ export function icon(name: keyof typeof ICONS, label?: string): SVGSVGElement {
     el.setAttribute('y', y);
     el.setAttribute('width', rw);
     el.setAttribute('height', rh);
-    el.setAttribute('fill', fill);
+    if (fill.startsWith('--')) el.style.fill = `var(${fill})`;
+    else el.setAttribute('fill', fill);
     svg.append(el);
   }
   return svg;

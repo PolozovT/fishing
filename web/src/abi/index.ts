@@ -5,3 +5,4 @@ export { fishNftAbi } from '../generated/FishNFT';
 export { pearlTokenAbi } from '../generated/PearlToken';
 export { marketplaceAbi } from '../generated/Marketplace';
 export { pearlExchangeAbi } from '../generated/PearlExchange';
+export { tournamentsAbi } from '../generated/Tournaments';
