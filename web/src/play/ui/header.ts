@@ -79,7 +79,10 @@ function render(on: HeaderHandlers): HTMLElement[] {
       h('div', { class: 'stat' }, h('span', { class: 'k', text: 'PEARL' }), h('span', { class: 'v pearl', text: pearl(s.pearl) })),
       h(
         'div',
-        { class: 'stat', title: `There is a small chance to fish out a sealed bottle with ${BLEND_PRIZE.amount} BLEND in any water. ${CHAIN && world.blend ? 'Shown here: the BLEND in your wallet, which buys PEARL on the Tackle page. A bottle win is recorded by the contract and not paid out yet.' : `Preview: ${CHAIN ? 'recorded by the contract' : 'a local counter'}, nothing is paid out yet.`}` },
+        {
+          class: 'stat',
+          title: `From level ${world.bottle?.minLevel ?? BLEND_PRIZE.minLevel} there is a small chance to fish out a sealed bottle with ${(world.bottle?.amount ?? BLEND_PRIZE.amount).toLocaleString('en-US')} BLEND in any water. ${CHAIN ? (world.blend ? 'Shown here: the BLEND in your wallet, which buys PEARL on the Tackle page. A bottle is paid straight into it.' : 'A bottle is paid straight to your wallet.') : 'Local game: this is a counter in this browser.'}`,
+        },
         h('span', { class: 'k', text: 'BLEND' }),
         h('span', { class: 'v blend', text: (CHAIN && world.blend ? world.blend.balance : s.blend).toLocaleString('en-US', { maximumFractionDigits: 2 }) }),
       ),

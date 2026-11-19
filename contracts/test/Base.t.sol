@@ -2,12 +2,23 @@
 pragma solidity ^0.8.28;
 
 import {Test} from "forge-std/Test.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {GameSetup} from "../script/GameSetup.sol";
 import {PearlToken} from "../src/PearlToken.sol";
 import {FishNFT} from "../src/FishNFT.sol";
 import {FishingGame} from "../src/FishingGame.sol";
 import {Marketplace} from "../src/Marketplace.sol";
 import {GameLens} from "../src/GameLens.sol";
+import {BottlePool} from "../src/BottlePool.sol";
+
+contract MockBlend is ERC20 {
+    constructor() ERC20("Mock Blend", "BLEND") {}
+
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
+    }
+}
 
 abstract contract BaseTest is Test {
     uint256 internal constant E = 1e18;
@@ -16,17 +27,20 @@ abstract contract BaseTest is Test {
     address internal alice = makeAddr("alice");
     address internal bob = makeAddr("bob");
 
+    MockBlend internal blend;
     PearlToken internal pearl;
     FishNFT internal fish;
     FishingGame internal game;
     Marketplace internal market;
     GameLens internal lens;
+    BottlePool internal bottles;
 
     function setUp() public virtual {
         vm.warp(1_750_000_000);
         vm.roll(1_000);
+        blend = new MockBlend();
         vm.startPrank(owner);
-        GameSetup.Deployment memory d = GameSetup.deploy(owner);
+        GameSetup.Deployment memory d = GameSetup.deploy(owner, IERC20(address(blend)));
         // the test contract can mint PEARL to fund players
         d.pearl.setMinter(address(this), true);
         vm.stopPrank();
@@ -35,6 +49,7 @@ abstract contract BaseTest is Test {
         game = d.game;
         market = d.market;
         lens = d.lens;
+        bottles = d.bottles;
     }
 
     function _fund(address who, uint256 amount) internal {

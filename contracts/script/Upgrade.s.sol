@@ -7,7 +7,7 @@ import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.s
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {PearlToken} from "../src/PearlToken.sol";
 import {FishNFT} from "../src/FishNFT.sol";
-import {FishingGame} from "../src/FishingGame.sol";
+import {FishingGame, IBottlePool} from "../src/FishingGame.sol";
 import {Tournaments} from "../src/Tournaments.sol";
 
 /// @notice Points a proxy at the current code, keeping its address and every player's state.
@@ -28,7 +28,7 @@ contract Upgrade is Script {
 
         vm.startBroadcast();
         address impl = isGame
-            ? address(new FishingGame(pearl, fish))
+            ? address(new FishingGame(pearl, fish, IBottlePool(vm.parseJsonAddress(json, ".bottles"))))
             : address(new Tournaments(FishingGame(vm.parseJsonAddress(json, ".game")), fish, IERC20(vm.parseJsonAddress(json, ".blend"))));
         admin.upgradeAndCall(ITransparentUpgradeableProxy(proxy), impl, "");
         vm.stopBroadcast();

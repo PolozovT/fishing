@@ -12,6 +12,8 @@ export interface Deployment {
   exchange?: `0x${string}`;
   /** Set once the tournaments are deployed. */
   tournaments?: `0x${string}`;
+  /** The BLEND bottle pool, once the game pays bottles out of it. */
+  bottles?: `0x${string}`;
 }
 
 export const deployments: Record<string, Deployment> = {
@@ -25,6 +27,7 @@ export const deployments: Record<string, Deployment> = {
     "market": "0x08EE1c78897F689e07A2279d87f0DCa1401379Cd",
     "blend": "0x83Fed707A8dDDC2535aE591CF19fB6C91D542D8E",
     "exchange": "0x40C87c35C4ec8c699B1235E0C888318675623c12",
-    "tournaments": "0xf30af836B8054975FFF54D96db5eD4382640E951"
+    "tournaments": "0xf30af836B8054975FFF54D96db5eD4382640E951",
+    "bottles": "0xe90E6D38A5531A7ce63eFea06E86229B977b781C"
   }
 };

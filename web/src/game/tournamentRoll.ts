@@ -32,7 +32,7 @@ export interface TournamentFish {
 const QUALITY = { qualityPerCatch: 150, qualityPerRarity: 300 };
 
 export function tournamentFish(c: Pick<ChainCatalog, 'locations' | 'species'>, t: TournamentTackle, seed: bigint): TournamentFish {
-  const catalog = { ...c, specials: [], config: { ...QUALITY, blendMaxWins: 0, blendChancePpm: 0, blendAmount: 0 } };
+  const catalog = { ...c, specials: [], config: { ...QUALITY, blendChancePpm: 0, blendMaxWins: 0 } };
   // no special fish and no hidden-species boost in a tournament: every pool weight counts as it is
   const speciesId = pickSpecies(catalog, c.locations[t.locationId], t.rarity, 1, seed >> 64n);
   const s = c.species[speciesId];

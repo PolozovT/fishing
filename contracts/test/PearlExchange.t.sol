@@ -1,28 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {BaseTest} from "./Base.t.sol";
 import {PearlExchange} from "../src/PearlExchange.sol";
 import {PearlToken} from "../src/PearlToken.sol";
 
-contract MockBlend is ERC20 {
-    constructor() ERC20("Mock Blend", "BLEND") {}
-
-    function mint(address to, uint256 amount) external {
-        _mint(to, amount);
-    }
-}
-
 contract PearlExchangeTest is BaseTest {
-    MockBlend internal blend;
     PearlExchange internal exchange;
     address internal treasury = makeAddr("treasury");
 
     function setUp() public override {
         super.setUp();
-        blend = new MockBlend();
         vm.startPrank(owner);
         exchange = new PearlExchange(owner, pearl, IERC20(address(blend)), 100, treasury); // 100 PEARL per BLEND
         pearl.setMinter(address(exchange), true);

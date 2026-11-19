@@ -20,6 +20,7 @@ const CONTRACTS = {
   Marketplace: 'marketplaceAbi',
   PearlExchange: 'pearlExchangeAbi',
   Tournaments: 'tournamentsAbi',
+  BottlePool: 'bottlePoolAbi',
 };
 
 mkdirSync(genDir, { recursive: true });
@@ -58,6 +59,7 @@ if (existsSync(depDir)) {
       market: d.market,
       ...(d.blend && d.exchange ? { blend: d.blend, exchange: d.exchange } : {}),
       ...(d.tournaments ? { tournaments: d.tournaments } : {}),
+      ...(d.bottles ? { bottles: d.bottles } : {}),
     };
   }
 }
@@ -65,7 +67,7 @@ if (!existsSync(depDir) && existsSync(depDst)) {
   console.warn('[sync] ../deployments not found, keeping existing deployments.ts');
 } else {
   const type =
-    'export interface Deployment {\n  chainId: number;\n  startBlock: number;\n  game: `0x${string}`;\n  fish: `0x${string}`;\n  lens: `0x${string}`;\n  pearl: `0x${string}`;\n  market: `0x${string}`;\n  /** Set once the BLEND → PEARL exchange is deployed. */\n  blend?: `0x${string}`;\n  exchange?: `0x${string}`;\n  /** Set once the tournaments are deployed. */\n  tournaments?: `0x${string}`;\n}\n';
+    'export interface Deployment {\n  chainId: number;\n  startBlock: number;\n  game: `0x${string}`;\n  fish: `0x${string}`;\n  lens: `0x${string}`;\n  pearl: `0x${string}`;\n  market: `0x${string}`;\n  /** Set once the BLEND → PEARL exchange is deployed. */\n  blend?: `0x${string}`;\n  exchange?: `0x${string}`;\n  /** Set once the tournaments are deployed. */\n  tournaments?: `0x${string}`;\n  /** The BLEND bottle pool, once the game pays bottles out of it. */\n  bottles?: `0x${string}`;\n}\n';
   writeFileSync(
     depDst,
     `${header}${type}\nexport const deployments: Record<string, Deployment> = ${JSON.stringify(deployments, null, 2)};\n`,

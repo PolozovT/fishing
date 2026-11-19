@@ -21,7 +21,7 @@ contract Deploy is Script {
 
         vm.startBroadcast();
         (, address sender,) = vm.readCallers();
-        d = GameSetup.deploy(sender);
+        d = GameSetup.deploy(sender, blend);
         PearlExchange exchange = new PearlExchange(sender, d.pearl, blend, rate, vm.envOr("BLEND_TREASURY", sender));
         d.pearl.setMinter(address(exchange), true);
         (Tournaments tournaments, FightVerifier verifier) = GameSetup.deployTournaments(sender, d.game, d.fish, blend);
@@ -34,6 +34,7 @@ contract Deploy is Script {
         vm.serializeAddress(k, "fish", address(d.fish));
         vm.serializeAddress(k, "market", address(d.market));
         vm.serializeAddress(k, "lens", address(d.lens));
+        vm.serializeAddress(k, "bottles", address(d.bottles));
         vm.serializeAddress(k, "blend", address(blend));
         vm.serializeAddress(k, "exchange", address(exchange));
         vm.serializeAddress(k, "tournaments", address(tournaments));

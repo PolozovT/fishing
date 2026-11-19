@@ -12,6 +12,11 @@ export const fishingGameAbi = [
         "name": "fish_",
         "type": "address",
         "internalType": "contract FishNFT"
+      },
+      {
+        "name": "bottles_",
+        "type": "address",
+        "internalType": "contract IBottlePool"
       }
     ],
     "stateMutability": "nonpayable"
@@ -530,6 +535,19 @@ export const fishingGameAbi = [
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "bottles",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IBottlePool"
       }
     ],
     "stateMutability": "view"

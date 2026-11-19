@@ -4,7 +4,7 @@
  * Here the chain is the source of truth: nothing in localStorage decides a catch, a balance or an unlock.
  */
 import { erc20Abi, formatEther, parseEther, parseEventLogs, type Address, type TransactionReceipt } from 'viem';
-import { fishingGameAbi, gameLensAbi, pearlExchangeAbi } from '../abi';
+import { bottlePoolAbi, fishingGameAbi, gameLensAbi, pearlExchangeAbi } from '../abi';
 import { publicClient } from '../clients';
 import { deployment } from '../config';
 import { resolveCast, type CastOutcome, type ChainCatalog } from '../game/chainOutcome';
@@ -36,7 +36,7 @@ export interface World {
   /** The player's unresolved cast, if any. */
   cast: { targetBlock: bigint; nonce: bigint; locationId: number; rod: number; lure: number; special: number } | null;
   /** What the pending cast's outcome depends on besides the block hash (see game/chainOutcome.ts). */
-  rolls: { blendWins: number; specialsFound: number; dry: number[] };
+  rolls: { blendWins: number; xp: bigint; specialsFound: number; dry: number[] };
   week: number;
   standings: Standing[];
   /** The player's past weeks, newest first. */
@@ -44,9 +44,11 @@ export interface World {
   loaded: boolean;
   /** The BLEND → PEARL exchange, when one is deployed. Balances are of the BLEND token in the player's wallet. */
   blend: { balance: number; allowance: bigint; pearlPerBlend: number; paused: boolean } | null;
+  /** The bottle as the contracts have it now: the prize, who may hook it, and how many are left to find. */
+  bottle: { amount: number; minLevel: number; maxWins: number; dailyMax: number; today: number; left: number } | null;
 }
 
-export const world: World = { cast: null, rolls: { blendWins: 0, specialsFound: 0, dry: [] }, week: 0, standings: [], history: [], loaded: false, blend: null };
+export const world: World = { cast: null, rolls: { blendWins: 0, xp: 0n, specialsFound: 0, dry: [] }, week: 0, standings: [], history: [], loaded: false, blend: null, bottle: null };
 
 // ------------------------------------------------------------------ client-side preferences (not game state)
 
@@ -90,12 +92,14 @@ function recalledLocation(): number {
 export async function loadChainSave(): Promise<Save | null> {
   const me = state.wallet?.address;
   if (!me) return null;
-  const [v, keep, blend] = await Promise.all([
+  const [v, keep, blend, bottle] = await Promise.all([
     publicClient.readContract({ ...lens, functionName: 'playerView', args: [me] }),
     publicClient.readContract({ ...lens, functionName: 'keepnet', args: [me] }),
     loadBlend(me),
+    loadBottle(),
   ]);
   world.blend = blend;
+  world.bottle = bottle;
   const now = Date.now();
   const skew = now - Number(v.timestamp) * 1000;
   const p = v.p;
@@ -178,10 +182,31 @@ export async function loadChainSave(): Promise<Save | null> {
   s.location = s.permanentUnlocks.includes(wanted) ? wanted : 0;
 
   world.cast = v.cast.targetBlock === 0n ? null : { targetBlock: v.cast.targetBlock, nonce: v.cast.nonce, locationId: v.cast.locationId, rod: v.cast.rod, lure: v.cast.lure, special: v.cast.special };
-  world.rolls = { blendWins: p.blendWins, specialsFound: p.specialsFound, dry: [...v.dry] };
+  world.rolls = { blendWins: p.blendWins, xp: p.xp, specialsFound: p.specialsFound, dry: [...v.dry] };
   world.week = week;
   world.loaded = true;
   return s;
+}
+
+const bottles = deployment?.bottles ? ({ address: deployment.bottles, abi: bottlePoolAbi } as const) : null;
+
+/** Reads the bottle pool: its rules, today's count and what is left. For the UI only: null when it cannot be read. */
+async function loadBottle(): Promise<World['bottle']> {
+  if (!bottles) return null;
+  try {
+    const head = await publicClient.getBlock();
+    const [cfg, amount, minLevel, dailyMax, left, today] = await Promise.all([
+      publicClient.readContract({ ...game, functionName: 'config' }),
+      publicClient.readContract({ ...bottles, functionName: 'amount' }),
+      publicClient.readContract({ ...bottles, functionName: 'minLevel' }),
+      publicClient.readContract({ ...bottles, functionName: 'dailyMax' }),
+      publicClient.readContract({ ...bottles, functionName: 'left' }),
+      publicClient.readContract({ ...bottles, functionName: 'foundOnDay', args: [head.timestamp / 86_400n] }),
+    ]);
+    return { amount: num(amount), maxWins: cfg[15], minLevel, dailyMax, today: Number(today), left: Number(left) };
+  } catch {
+    return null;
+  }
 }
 
 const exchange = deployment?.exchange && deployment.blend ? { address: deployment.exchange, token: deployment.blend } : null;
@@ -268,7 +293,7 @@ function chainCatalog(): Promise<ChainCatalog> {
   catalogPromise ??= (async () => {
     const [c, cfg] = await Promise.all([publicClient.readContract({ ...lens, functionName: 'catalog' }), publicClient.readContract({ ...game, functionName: 'config' })]);
     return {
-      config: { qualityPerCatch: cfg[11], qualityPerRarity: cfg[12], blendAmount: num(cfg[13]), blendChancePpm: cfg[14], blendMaxWins: cfg[15] },
+      config: { qualityPerCatch: cfg[11], qualityPerRarity: cfg[12], blendChancePpm: cfg[14], blendMaxWins: cfg[15] },
       locations: c.locations.map((l) => ({ special: l.special, speciesIds: [...l.speciesIds], weights: [...l.weights] })),
       species: c.species.map((s, i) => ({ rarity: s.rarity, minWeight: s.minWeight, maxWeight: s.maxWeight, hidden: c.hidden[i] })),
       specials: c.specials.map((s) => ({ speciesId: s.speciesId, chancePpm: s.chancePpm, pity: s.pity })),
@@ -296,10 +321,13 @@ export async function previewCast(): Promise<CastOutcome | null> {
   if (head <= c.targetBlock) return null;
   // the settlement lands in a later block still, so leave a margin before calling the hash readable
   const expired = head - c.targetBlock >= BLOCKHASH_WINDOW - 2n;
-  const [catalog, block, lo] = await Promise.all([
+  const [catalog, block, lo, poolOpen, bottleAmount] = await Promise.all([
     chainCatalog(),
     expired ? Promise.resolve(null) : publicClient.getBlock({ blockNumber: c.targetBlock }),
     publicClient.readContract({ ...game, functionName: 'loadout', args: [BigInt(c.rod), BigInt(c.lure), BigInt(c.special), BigInt(c.locationId)] }),
+    // asked now, as the settlement will ask: the player's XP cannot change while a cast is out, the pool can
+    bottles ? publicClient.readContract({ ...bottles, functionName: 'open', args: [world.rolls.xp] }) : Promise.resolve(false),
+    bottles ? publicClient.readContract({ ...bottles, functionName: 'amount' }) : Promise.resolve(0n),
   ]);
   return resolveCast(catalog, {
     blockHash: block?.hash ?? null,
@@ -308,7 +336,10 @@ export async function previewCast(): Promise<CastOutcome | null> {
     nonce: c.nonce,
     locationId: c.locationId,
     loadout: { rodCatch: Number(lo[0]), biteBps: Number(lo[1]), rarity: Number(lo[2]), weight: Number(lo[3]), hiddenMult: Number(lo[4]) },
-    ...world.rolls,
+    bottleOpen: poolOpen && world.rolls.blendWins < catalog.config.blendMaxWins,
+    bottleAmount: num(bottleAmount),
+    specialsFound: world.rolls.specialsFound,
+    dry: world.rolls.dry,
   });
 }
 
@@ -430,12 +461,16 @@ export async function catalogMismatches(): Promise<string[]> {
     check(`${sp.name} pity`, on.pity, sp.pity);
   });
   const cfg = await publicClient.readContract({ ...game, functionName: 'config' });
-  // [maxEnergy, energyRegenSeconds, revealDelay, baseBiteBps, maxBiteBps, …, blendAmount, blendChancePpm, blendMaxWins]
+  // [maxEnergy, energyRegenSeconds, revealDelay, baseBiteBps, maxBiteBps, …, blendAmount (unused), blendChancePpm, blendMaxWins]
   check('max energy', cfg[0], TUNING.maxEnergy);
   check('energy regen seconds', cfg[1], TUNING.energyRegenSeconds);
   check('base bite', cfg[3], TUNING.baseBite * 100);
   check('refill price', num(cfg[8]), TUNING.refillPrice);
-  check('BLEND amount', num(cfg[13]), BLEND_PRIZE.amount);
   check('BLEND chance', cfg[14], Math.round(BLEND_PRIZE.chance * 1_000_000));
+  check('BLEND bottles per player', cfg[15], BLEND_PRIZE.maxWins);
+  if (bottles) {
+    check('BLEND amount', num(await publicClient.readContract({ ...bottles, functionName: 'amount' })), BLEND_PRIZE.amount);
+    check('BLEND level', await publicClient.readContract({ ...bottles, functionName: 'minLevel' }), BLEND_PRIZE.minLevel);
+  }
   return out;
 }

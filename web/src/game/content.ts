@@ -214,18 +214,20 @@ export const special = (id: string): SpecialDef | undefined => SPECIALS.find((s)
 
 /**
  * The BLEND prize: now and then the thing on the hook is not a fish but a sealed bottle with tokens in it.
- * Frontend only for now: the balance is a local counter and no tokens are paid out. A real payout must be
- * decided by a contract or a trusted server, never by this client.
+ * On the contracts the game pays it on the spot out of its BLEND pool (FishingGame.bottleOpen says when a bottle
+ * can bite at all); these numbers mirror its config. In the local game the balance is a counter in this browser.
  */
 /** PEARL that one BLEND buys. On the contracts the PearlExchange rate is the truth; this mirrors it for local play. */
 export const PEARL_PER_BLEND = 100;
 
 export const BLEND_PRIZE = {
-  amount: 100,
+  amount: 1000,
   /** Chance per bite, at any location. */
-  chance: 0.004,
+  chance: 0.001,
   /** Prizes one player can land in total. */
   maxWins: 1,
+  /** Below this level a bite is never a bottle. */
+  minLevel: 5,
   /** The bottle fights like a fish of this rarity. */
   fightRarity: 2 as Rarity,
 };

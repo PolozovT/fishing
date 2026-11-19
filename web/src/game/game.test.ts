@@ -304,9 +304,17 @@ describe('landing a fish', () => {
 
 describe('BLEND prize', () => {
   const ticket: CastTicket = { locationId: 0, totals: totals(rod('willow'), null, LOCATIONS[0]) };
+  /** A player who has just reached the level the bottle asks for. */
+  const seasoned = (): Save => ({ ...freshSave(NOW), xp: xpForLevel(BLEND_PRIZE.minLevel) });
+  it('never bites below its level', () => {
+    const rng = seeded(5);
+    const novice = { ...freshSave(NOW), xp: xpForLevel(BLEND_PRIZE.minLevel) - 1 };
+    for (let i = 0; i < 20_000; i++) expect(hookFish(novice, ticket, rng).prize).toBeUndefined();
+    expect(hookFish(seasoned(), ticket, () => 0).prize).toBe(BLEND_PRIZE.amount);
+  });
   it('turns up at its configured rate and never after the limit', () => {
     const rng = seeded(11);
-    const s = freshSave(NOW);
+    const s = seasoned();
     let hits = 0;
     const n = 200_000;
     for (let i = 0; i < n; i++) if (hookFish(s, ticket, rng).prize) hits++;
@@ -316,9 +324,9 @@ describe('BLEND prize', () => {
     for (let i = 0; i < 20_000; i++) expect(hookFish(done, ticket, rng).prize).toBeUndefined();
   });
   it('credits the amount exactly once', () => {
-    const hooked = hookFish(freshSave(NOW), ticket, () => 0);
+    const hooked = hookFish(seasoned(), ticket, () => 0);
     expect(hooked.prize).toBe(BLEND_PRIZE.amount);
-    const s = landPrize(freshSave(NOW), hooked);
+    const s = landPrize(seasoned(), hooked);
     expect(s.blend).toBe(BLEND_PRIZE.amount);
     expect(s.fish).toHaveLength(0);
     expect(() => landPrize(s, hooked)).toThrow(/already claimed/);

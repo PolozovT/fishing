@@ -3,7 +3,8 @@ pragma solidity ^0.8.28;
 
 import {PearlToken} from "../src/PearlToken.sol";
 import {FishNFT} from "../src/FishNFT.sol";
-import {FishingGame} from "../src/FishingGame.sol";
+import {FishingGame, IBottlePool} from "../src/FishingGame.sol";
+import {BottlePool} from "../src/BottlePool.sol";
 import {Marketplace} from "../src/Marketplace.sol";
 import {GameLens} from "../src/GameLens.sol";
 import {Tournaments} from "../src/Tournaments.sol";
@@ -22,7 +23,13 @@ library GameSetup {
         FishingGame game;
         Marketplace market;
         GameLens lens;
+        BottlePool bottles;
     }
+
+    // the BLEND bottle: the prize, the level it asks for and how many all players together can find in a UTC day
+    uint96 internal constant BOTTLE_AMOUNT = uint96(1_000 * E);
+    uint8 internal constant BOTTLE_MIN_LEVEL = 5;
+    uint8 internal constant BOTTLE_DAILY_MAX = 2;
 
     uint256 internal constant E = 1e18;
 
@@ -53,19 +60,20 @@ library GameSetup {
             emissionSoftCap: 0,
             qualityPerCatch: 150,
             qualityPerRarity: 300,
-            blendAmount: uint96(100 * E),
-            blendChancePpm: 4_000,
+            blendAmount: 0, // not used: the prize is BottlePool.amount
+            blendChancePpm: 1_000,
             blendMaxWins: 1
         });
     }
 
-    function deploy(address owner) internal returns (Deployment memory d) {
+    /// @param blend the token in the bottles
+    function deploy(address owner, IERC20 blend) internal returns (Deployment memory d) {
         d.pearl = new PearlToken(owner);
         d.fish = new FishNFT(owner);
         d.market = new Marketplace(owner, d.pearl, 500);
         d.market.setCollection(address(d.fish), true);
         _seedSpecies(d.fish);
-        (d.game, d.lens) = deployGame(owner, d.pearl, d.fish);
+        (d.game, d.lens, d.bottles) = deployGame(owner, d.pearl, d.fish, blend);
     }
 
     /// @notice Puts `implementation` behind an upgradeable proxy and runs `init` on it. The proxy's address and state
@@ -75,12 +83,22 @@ library GameSetup {
     }
 
     /// @notice A fresh, fully seeded game (and its lens) on top of existing PEARL and fish contracts.
-    ///         The game sits behind a proxy: later versions are upgrades of it (script/UpgradeGame.s.sol), not new
-    ///         deployments, so player progress is kept.
-    function deployGame(address owner, PearlToken pearl, FishNFT fish) internal returns (FishingGame game, GameLens lens) {
+    ///         The game sits behind a proxy: later versions are upgrades of it (script/Upgrade.s.sol), not new
+    ///         deployments, so player progress is kept. The bottle pool starts empty: send it BLEND to switch the
+    ///         bottles on.
+    function deployGame(address owner, PearlToken pearl, FishNFT fish, IERC20 blend)
+        internal
+        returns (FishingGame game, GameLens lens, BottlePool bottles)
+    {
+        bottles = new BottlePool(owner, blend, BOTTLE_AMOUNT, BOTTLE_MIN_LEVEL, BOTTLE_DAILY_MAX);
         game = FishingGame(
-            proxied(address(new FishingGame(pearl, fish)), owner, abi.encodeCall(FishingGame.initialize, (owner)))
+            proxied(
+                address(new FishingGame(pearl, fish, IBottlePool(address(bottles)))),
+                owner,
+                abi.encodeCall(FishingGame.initialize, (owner))
+            )
         );
+        bottles.setGame(address(game));
         game.setConfig(defaultConfig());
         lens = new GameLens(game);
         pearl.setMinter(address(game), true);

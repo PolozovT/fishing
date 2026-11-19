@@ -8,7 +8,7 @@ Hypothesis results for the first version are in **[REPORT.md](REPORT.md)**; the 
 
 | Folder | Contents |
 |---|---|
-| `contracts/` | Foundry project: `FishingGame` and `Tournaments` (both behind upgradeable proxies), `FightVerifier`, `GameLens`, `FishNFT`, `PearlToken`, `PearlExchange`, `Marketplace` + 86 tests |
+| `contracts/` | Foundry project: `FishingGame` and `Tournaments` (both behind upgradeable proxies), `FightVerifier`, `BottlePool`, `GameLens`, `FishNFT`, `PearlToken`, `PearlExchange`, `Marketplace` + 92 tests |
 | `contracts/script/GameSetup.sol` | catalog: species, locations, rods, lures, special fish, achievements, config |
 | `sim/` | model of the first version's formulas and an agent-based economy simulation (Python) |
 | `web/` | browser client (Vite + TypeScript + viem), see [web/README.md](web/README.md) |
@@ -58,7 +58,7 @@ grep DEPLOYER_ADDRESS contracts/.env
 contracts/deploy-fluent.sh
 ```
 
-This is a complete, fresh deployment: tokens, market, lens, the BLEND → PEARL exchange, the game and the tournaments. `BLEND_TOKEN` picks the BLEND token (default: the testnet Mock Blend).
+This is a complete, fresh deployment: tokens, market, lens, the BLEND → PEARL exchange, the game, the bottle pool and the tournaments. `BLEND_TOKEN` picks the BLEND token (default: the testnet Mock Blend).
 
 To deploy from your own wallet (a key in the Foundry keystore) instead:
 
@@ -100,6 +100,21 @@ contracts/new-tournament.sh "Village Pond Open" 0 0 0 0 25000 60 30 30 10 100
 
 > ⚠️ The fight seed is public once its block exists, so a program can compute a perfect recording, and a person can replay a fight by reloading within the two-minute deadline. The replay proves the input produces the score, not that a human produced the input. Fine for a testnet; an open event with real money needs an allow-list or a server that streams the fish live.
 
+## The BLEND bottle
+
+Now and then a bite is not a fish but a sealed bottle with BLEND in it, paid to the player's wallet in the same transaction that settles the cast. The game rolls for it (0.1% of bites, one bottle per player ever); `BottlePool` holds the money and says whether there is a bottle to give:
+
+| Rule | Value | Where |
+|---|---|---|
+| Prize | 1,000 BLEND | `BottlePool.amount` |
+| Player level | 5 or higher (1,000 XP, about 140 casts at the pond) | `BottlePool.minLevel` |
+| Found per UTC day, all players together | 2 | `BottlePool.dailyMax` |
+| Chance per bite / bottles per player | 0.1% / 1 | `FishingGame.config` |
+
+The pool is the BLEND balance of the `bottles` address in `deployments/<chainId>.json`: send BLEND there to fund it, and the bottles can never cost more than was sent. With less than one whole bottle in the pool, a "bottle" roll lands a fish as usual. The owner changes the rules with `BottlePool.setRules(amount, minLevel, dailyMax)` and takes unspent BLEND back with `withdraw`.
+
+> ⚠️ Free play has no skill onchain, so a script can level up many wallets and fish for the bottle. The level and the daily limit only slow that down; the pool size is the real cap on what it can take.
+
 ## Game loop (contracts)
 
 1. `cast(locationId)` spends energy, one point of rod durability and one lure cast, and commits to target block `N+2`. The equipped rod, lure and active special-fish bonus are fixed at this moment.
@@ -109,6 +124,6 @@ contracts/new-tournament.sh "Village Pond Open" 0 0 0 0 25000 60 30 30 10 100
 5. PEARL is burned on rods (`buyRod`), lures (`buyLure`), repairs and energy refills (each further refill on the same day costs ×2).
 6. Progress is onchain: XP and level, the species encyclopedia, permanent location unlocks, personal records, the ten best catches of each week, and achievements that pay PEARL once.
 
-What the contract decides, the client cannot. Once a cast's block exists its outcome is fixed and public, so the client computes it, plays the bite, the hook and the fight on it, and settles afterwards: skill there changes how soon you land the fish, never which fish it is. See [ARCHITECTURE.md](ARCHITECTURE.md). The BLEND bottle (a rare non-fish catch) is recorded by the game contract; no token is transferred.
+What the contract decides, the client cannot. Once a cast's block exists its outcome is fixed and public, so the client computes it, plays the bite, the hook and the fight on it, and settles afterwards: skill there changes how soon you land the fish, never which fish it is. See [ARCHITECTURE.md](ARCHITECTURE.md).
 
 Energy: max 20, regenerates 1 every 2 minutes. If a cast is not reeled in within 256 blocks, the fish gets away.

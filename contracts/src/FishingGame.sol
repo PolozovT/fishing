@@ -6,6 +6,12 @@ import {PearlToken} from "./PearlToken.sol";
 import {FishNFT} from "./FishNFT.sol";
 import {CatchMath} from "./CatchMath.sol";
 
+/// @dev The BLEND bottles (src/BottlePool.sol): holds the prize money and pays it.
+interface IBottlePool {
+    /// @return amount BLEND paid to `player`, or 0 when no bottle is open for them
+    function pay(address player, uint256 xp) external returns (uint256 amount);
+}
+
 /// @title Onchain Fishing: the whole game.
 /// @notice Flow: `cast` (spend energy, wear the rod and the lure, commit to a future block) → wait `revealDelay`
 ///         blocks → `reel` (the outcome is derived from that block's hash). The block did not exist at cast time,
@@ -112,8 +118,8 @@ contract FishingGame is Ownable {
         uint256 emissionSoftCap; // PEARL per UTC day from selling fish; above it payouts shrink. 0 = off
         uint16 qualityPerCatch; // quality roll shift per point of rod catch, bps
         uint16 qualityPerRarity; // quality roll penalty per rarity tier of the fish, bps
-        uint96 blendAmount; // BLEND recorded per bottle (a record only: no token is transferred)
-        uint32 blendChancePpm; // chance per bite
+        uint96 blendAmount; // not used since the bottles are paid by the BottlePool (its `amount` is the prize)
+        uint32 blendChancePpm; // chance per bite that it is a bottle, if the pool has one for the player
         uint8 blendMaxWins; // bottles one player can land
     }
 
@@ -147,6 +153,7 @@ contract FishingGame is Ownable {
 
     PearlToken public immutable pearl;
     FishNFT public immutable fishNft;
+    IBottlePool public immutable bottles;
 
     /// @notice Selling straight off the hook pays more than selling from the keepnet later.
     uint256 internal constant FRESH_WINDOW = 10 minutes;
@@ -232,9 +239,10 @@ contract FishingGame is Ownable {
     ///      only fixes the token addresses in the bytecode; all state is set up by `initialize` on the proxy.
     ///      Storage rule for new versions: never reorder or remove a state variable, only append at the end
     ///      (checked by contracts/check-layout.sh).
-    constructor(PearlToken pearl_, FishNFT fish_) Ownable(msg.sender) {
+    constructor(PearlToken pearl_, FishNFT fish_, IBottlePool bottles_) Ownable(msg.sender) {
         pearl = pearl_;
         fishNft = fish_;
+        bottles = bottles_;
         config.maxEnergy = 1; // the bare implementation can never be initialized
     }
 
@@ -638,11 +646,16 @@ contract FishingGame is Ownable {
 
         Player storage p = players[player];
         if (p.blendWins < config.blendMaxWins && (seed >> 16) % 1_000_000 < config.blendChancePpm) {
-            p.blendWins += 1;
-            blendWon[player] += config.blendAmount;
-            totalBlendWon += config.blendAmount;
-            emit BottleFound(player, config.blendAmount);
-            return;
+            // the pool decides whether there is a bottle for this player (level, today's limit, BLEND left) and
+            // pays it on the spot; with none, the bite is a fish as usual
+            uint256 amount = bottles.pay(player, p.xp);
+            if (amount != 0) {
+                p.blendWins += 1;
+                blendWon[player] += amount;
+                totalBlendWon += amount;
+                emit BottleFound(player, amount);
+                return;
+            }
         }
 
         Location storage l = _locations[c.locationId];

@@ -5,7 +5,7 @@ import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.s
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {BaseTest} from "./Base.t.sol";
 import {GameSetup} from "../script/GameSetup.sol";
-import {FishingGame} from "../src/FishingGame.sol";
+import {FishingGame, IBottlePool} from "../src/FishingGame.sol";
 import {PearlToken} from "../src/PearlToken.sol";
 import {FishNFT} from "../src/FishNFT.sol";
 
@@ -13,7 +13,7 @@ import {FishNFT} from "../src/FishNFT.sol";
 contract FishingGameV2 is FishingGame {
     uint256 public seasons;
 
-    constructor(PearlToken p, FishNFT f) FishingGame(p, f) {}
+    constructor(PearlToken p, FishNFT f, IBottlePool b) FishingGame(p, f, b) {}
 
     function startSeason() external onlyOwner {
         seasons += 1;
@@ -37,7 +37,7 @@ contract UpgradeTest is BaseTest {
         uint32 weekBefore = game.weekTotal(game.currentWeek(), alice);
         assertGt(before.xp, 0);
 
-        FishingGameV2 next = new FishingGameV2(pearl, fish);
+        FishingGameV2 next = new FishingGameV2(pearl, fish, IBottlePool(address(bottles)));
         ProxyAdmin admin = _admin();
         vm.prank(owner);
         admin.upgradeAndCall(ITransparentUpgradeableProxy(address(game)), address(next), "");
@@ -64,7 +64,7 @@ contract UpgradeTest is BaseTest {
     }
 
     function test_onlyTheOwnerUpgrades() public {
-        FishingGameV2 next = new FishingGameV2(pearl, fish);
+        FishingGameV2 next = new FishingGameV2(pearl, fish, IBottlePool(address(bottles)));
         ProxyAdmin admin = _admin();
         assertEq(admin.owner(), owner);
         vm.prank(alice);
@@ -85,7 +85,7 @@ contract UpgradeTest is BaseTest {
     }
 
     function test_bareImplementationIsInert() public {
-        FishingGame impl = new FishingGame(pearl, fish);
+        FishingGame impl = new FishingGame(pearl, fish, IBottlePool(address(bottles)));
         vm.prank(alice);
         vm.expectRevert(FishingGame.BadConfig.selector);
         impl.initialize(alice);

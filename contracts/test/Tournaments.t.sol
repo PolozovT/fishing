@@ -4,7 +4,6 @@ pragma solidity ^0.8.28;
 import {Vm} from "forge-std/Vm.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {BaseTest} from "./Base.t.sol";
-import {MockBlend} from "./PearlExchange.t.sol";
 import {GameSetup} from "../script/GameSetup.sol";
 import {Tournaments} from "../src/Tournaments.sol";
 import {FightVerifier, IFightVerifier} from "../src/FightVerifier.sol";
@@ -25,7 +24,6 @@ contract ScriptedVerifier is IFightVerifier {
 }
 
 contract TournamentsTest is BaseTest {
-    MockBlend internal blend;
     Tournaments internal cup;
     FightVerifier internal realVerifier;
     ScriptedVerifier internal judge;
@@ -36,7 +34,6 @@ contract TournamentsTest is BaseTest {
 
     function setUp() public override {
         super.setUp();
-        blend = new MockBlend();
         judge = new ScriptedVerifier();
         vm.startPrank(owner);
         (cup, realVerifier) = GameSetup.deployTournaments(owner, game, fish, IERC20(address(blend)));

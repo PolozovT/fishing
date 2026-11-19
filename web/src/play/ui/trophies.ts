@@ -7,6 +7,8 @@ import { fmtWeight, h, mount, sigOf } from '../../ui/dom';
 import { toast } from '../../ui/toast';
 import { fishArt } from '../fishSprite';
 import { CHAIN, ops } from '../ops';
+import { levelOf } from '../../game/economy';
+import { world } from '../chain';
 import { getSave, rev } from '../state';
 import { ago, pearl, qualityTag, rarityTag } from './fmt';
 
@@ -15,14 +17,27 @@ let confirming: string | null = null;
 export function initTrophies(host: HTMLElement): () => void {
   const rerender = mount(
     host,
-    () => sigOf(rev(), confirming),
+    () => sigOf(rev(), confirming, world.bottle?.left, world.bottle?.today),
     () => render(rerender),
   );
   return rerender;
 }
 
+type Bottle = { amount: number; minLevel: number; maxWins: number; dailyMax: number; today: number; left: number | null };
+
+/** Where the player stands with the bottle, in one line. */
+function bottleStatus(wins: number, level: number, b: Bottle): string {
+  if (wins >= b.maxWins) return 'you have found yours';
+  if (level < b.minLevel) return `opens at level ${b.minLevel} (you are level ${level})`;
+  if (b.left === 0) return 'the pool is empty for now';
+  if (b.dailyMax && b.today >= b.dailyMax) return "today's bottles are found, the next ones bite tomorrow (UTC)";
+  return 'it can bite on any cast';
+}
+
 function render(rerender: () => void): HTMLElement[] {
   const s = getSave();
+  // on the contracts the numbers are the contract's; the local game has no pool and no daily limit
+  const bottle: Bottle = CHAIN && world.bottle ? world.bottle : { amount: BLEND_PRIZE.amount, minLevel: BLEND_PRIZE.minLevel, maxWins: BLEND_PRIZE.maxWins, dailyMax: 0, today: 0, left: null };
   const out: HTMLElement[] = [
     h(
       'p',
@@ -103,10 +118,10 @@ function render(rerender: () => void): HTMLElement[] {
       h(
         'div',
         { class: 'trophy-body' },
-        h('div', { class: 'trophy-head' }, h('h3', { text: 'Sealed bottle' }), h('span', { class: 'badge badge-blend', text: `${BLEND_PRIZE.amount} BLEND` }), s.blendWins > 0 ? h('span', { class: 'badge badge-on', text: 'Found' }) : null),
-        h('p', { class: 'muted small', text: `Once in a great while the thing on your hook is not a fish but a bottle with ${BLEND_PRIZE.amount} BLEND tokens. It can bite in any water, and you still have to reel it in.` }),
-        h('p', { class: 'small' }, h('span', { class: 'muted', text: 'Found: ' }), `${s.blendWins}/${BLEND_PRIZE.maxWins}`, h('span', { class: 'muted', text: ' · balance: ' }), h('span', { class: 'blend', text: `${s.blend} BLEND` })),
-        h('p', { class: 'muted small' }, h('span', { class: 'badge', text: 'Preview' }), CHAIN ? ' The win is recorded by the game contract. No tokens are paid out yet.' : ' The balance is stored in this browser. No tokens are paid out yet.'),
+        h('div', { class: 'trophy-head' }, h('h3', { text: 'Sealed bottle' }), h('span', { class: 'badge badge-blend', text: `${bottle.amount.toLocaleString('en-US')} BLEND` }), s.blendWins > 0 ? h('span', { class: 'badge badge-on', text: 'Found' }) : null),
+        h('p', { class: 'muted small', text: `Once in a great while the thing on your hook is not a fish but a bottle with ${bottle.amount.toLocaleString('en-US')} BLEND tokens. It can bite in any water once you are level ${bottle.minLevel}, and you still have to reel it in.` }),
+        h('p', { class: 'small' }, h('span', { class: 'muted', text: 'Found: ' }), `${s.blendWins}/${bottle.maxWins}`, h('span', { class: 'muted', text: ' · ' }), bottleStatus(s.blendWins, levelOf(s.xp), bottle)),
+        h('p', { class: 'muted small', text: CHAIN ? `The game contract pays the bottle straight to your wallet out of its pool${world.bottle ? `: ${world.bottle.left} ${world.bottle.left === 1 ? 'bottle' : 'bottles'} left` : ''}${world.bottle?.dailyMax ? `, at most ${world.bottle.dailyMax} found a day by all players` : ''}.` : 'Local game: the balance is stored in this browser.' }),
       ),
     ),
   );

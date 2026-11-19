@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+import {Vm} from "forge-std/Vm.sol";
 import {BaseTest} from "./Base.t.sol";
 import {FishNFT} from "../src/FishNFT.sol";
 import {FishingGame} from "../src/FishingGame.sol";
 import {GameLens} from "../src/GameLens.sol";
+import {BottlePool} from "../src/BottlePool.sol";
 import {GameSetup} from "../script/GameSetup.sol";
 
 import {CatchMath} from "../src/CatchMath.sol";
@@ -655,29 +657,173 @@ contract FishingGameTest is BaseTest {
 
     // ------------------------------------------------------------------ the BLEND bottle
 
-    function test_bottleIsRecordedOnceAndNothingIsTransferred() public {
+    uint256 internal constant BOTTLE = 1_000 * E;
+
+    /// @dev Every bite is a bottle for whoever may have one; the pool's rules are the arguments.
+    function _bottles(uint8 minLevel, uint8 dailyMax) internal {
         FishingGame.Config memory c = GameSetup.defaultConfig();
-        c.blendChancePpm = 1_000_000; // every bite is a bottle
-        vm.prank(owner);
+        c.blendChancePpm = 1_000_000;
+        vm.startPrank(owner);
         game.setConfig(c);
-        uint256 i;
-        while (game.playerOf(alice).blendWins == 0) _fishOnce(alice, 0, bytes32(++i));
-        assertEq(game.blendWon(alice), 100 * E);
-        assertEq(game.totalBlendWon(), 100 * E);
+        bottles.setRules(uint96(BOTTLE), minLevel, dailyMax);
+        vm.stopPrank();
+    }
+
+    /// @dev What the client asks before it shows a bottle on the hook.
+    function _open(address who) internal view returns (bool) {
+        FishingGame.Player memory p = game.playerOf(who);
+        return p.blendWins < 1 && bottles.open(p.xp);
+    }
+
+    /// @dev Casts until something bites; true when it was a bottle.
+    function _bite(address who, uint256 salt) internal returns (bool bottle) {
+        uint256 wins = game.playerOf(who).blendWins;
+        uint256 catches = game.playerOf(who).catches;
+        for (uint256 i; game.playerOf(who).blendWins == wins && game.playerOf(who).catches == catches; i++) {
+            if (game.currentEnergy(who) == 0) vm.warp(block.timestamp + 40 minutes); // not a whole day: see the limit
+            _fishOnce(who, 0, keccak256(abi.encode("bite", salt, i)));
+        }
+        return game.playerOf(who).blendWins > wins;
+    }
+
+    function test_bottlePaysFromThePoolOnce() public {
+        _bottles(0, 0);
+        blend.mint(address(bottles), 5 * BOTTLE);
+        assertTrue(_open(alice));
+        vm.recordLogs();
+        assertTrue(_bite(alice, 1));
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        uint256 found;
+        for (uint256 k; k < logs.length; k++) {
+            if (logs[k].emitter != address(game) || logs[k].topics[0] != FishingGame.BottleFound.selector) continue;
+            assertEq(logs[k].topics[1], bytes32(uint256(uint160(alice))));
+            assertEq(abi.decode(logs[k].data, (uint256)), BOTTLE);
+            found++;
+        }
+        assertEq(found, 1, "one BottleFound event");
+        assertEq(blend.balanceOf(alice), BOTTLE, "paid on the spot");
+        assertEq(bottles.left(), 4);
+        assertEq(game.blendWon(alice), BOTTLE);
+        assertEq(game.totalBlendWon(), BOTTLE);
+        assertEq(bottles.foundOnDay(block.timestamp / 1 days), 1);
+        assertEq(bottles.totalFound(), 1);
         assertEq(fish.balanceOf(alice), 0, "a bottle is not a fish");
         assertEq(pearl.balanceOf(alice), 0);
-        // the limit is one bottle: from now on bites are fish again
-        _catch(alice, 0, 77);
-        assertEq(game.playerOf(alice).blendWins, 1);
-        assertEq(game.blendWon(alice), 100 * E);
+        // the limit is one bottle per player: from now on bites are fish again
+        assertFalse(_open(alice));
+        assertFalse(_bite(alice, 2));
+        assertEq(blend.balanceOf(alice), BOTTLE);
+        assertEq(bottles.left(), 4);
+    }
+
+    function test_noBottleWithoutAWholeOneInThePool() public {
+        _bottles(0, 0);
+        assertFalse(_open(alice), "empty pool");
+        assertFalse(_bite(alice, 1));
+        blend.mint(address(bottles), BOTTLE - 1);
+        assertFalse(_open(alice), "a part of a bottle is not a bottle");
+        assertFalse(_bite(alice, 2));
+        assertEq(game.totalBlendWon(), 0);
+        assertEq(game.playerOf(alice).blendWins, 0, "a bite without a bottle does not use up the player's one");
+        // anyone tops the pool up with a plain transfer
+        blend.mint(bob, 1);
+        vm.prank(bob);
+        blend.transfer(address(bottles), 1);
+        assertTrue(_open(alice));
+        assertTrue(_bite(alice, 3));
+        assertEq(blend.balanceOf(address(bottles)), 0);
+        // the pool is dry again: the next player gets fish
+        assertFalse(_open(bob));
+        assertFalse(_bite(bob, 4));
+    }
+
+    function test_bottleNeedsTheLevel() public {
+        _bottles(3, 0); // level 3 = 300 XP
+        blend.mint(address(bottles), 5 * BOTTLE);
+        assertFalse(bottles.open(299));
+        assertTrue(bottles.open(300));
+        uint256 n;
+        while (game.playerOf(alice).xp < 300) {
+            assertFalse(_bite(alice, ++n), "below the level every bite is a fish");
+        }
+        assertTrue(_open(alice));
+        assertTrue(_bite(alice, ++n));
+        assertEq(blend.balanceOf(alice), BOTTLE);
+    }
+
+    function test_bottleDailyLimitIsSharedAndResets() public {
+        _bottles(0, 2);
+        blend.mint(address(bottles), 10 * BOTTLE);
+        address carol = makeAddr("carol");
+        vm.warp((block.timestamp / 1 days + 1) * 1 days); // the start of a day
+        assertTrue(_bite(alice, 1));
+        assertTrue(_bite(bob, 2));
+        assertFalse(_open(carol), "two today already");
+        assertFalse(_bite(carol, 3));
+        assertEq(blend.balanceOf(carol), 0);
+        vm.warp(block.timestamp + 1 days);
+        assertTrue(_open(carol));
+        assertTrue(_bite(carol, 4));
+        assertEq(bottles.left(), 7);
+    }
+
+    function test_reelForPaysThePlayerNotTheCaller() public {
+        _bottles(0, 0);
+        blend.mint(address(bottles), BOTTLE);
+        uint256 i;
+        while (blend.balanceOf(alice) == 0) {
+            vm.prank(alice);
+            game.cast(0);
+            uint64 target = game.castOf(alice).targetBlock;
+            vm.roll(target + 1);
+            vm.setBlockhash(target, keccak256(abi.encode("for", ++i)));
+            vm.prank(bob);
+            game.reelFor(alice);
+        }
+        assertEq(blend.balanceOf(alice), BOTTLE);
+        assertEq(blend.balanceOf(bob), 0);
+    }
+
+    function test_onlyTheGameTakesBottlesAndOnlyTheOwnerRunsThePool() public {
+        blend.mint(address(bottles), 3 * BOTTLE);
+        vm.prank(alice);
+        vm.expectRevert(BottlePool.NotTheGame.selector);
+        bottles.pay(alice, 1_000_000);
+        vm.startPrank(alice);
+        vm.expectRevert();
+        bottles.withdraw(alice, BOTTLE);
+        vm.expectRevert();
+        bottles.setRules(1, 0, 0);
+        vm.expectRevert();
+        bottles.setGame(alice);
+        vm.stopPrank();
+        vm.prank(owner);
+        bottles.withdraw(owner, 2 * BOTTLE);
+        assertEq(blend.balanceOf(owner), 2 * BOTTLE);
+        assertEq(bottles.left(), 1);
+    }
+
+    function test_defaultBottleSettings() public view {
+        (,,,,,,,,,,,,,, uint32 chance, uint8 maxWins) = game.config();
+        assertEq(chance, 1_000);
+        assertEq(maxWins, 1);
+        assertEq(bottles.amount(), BOTTLE);
+        assertEq(bottles.minLevel(), 5);
+        assertEq(bottles.dailyMax(), 2);
+        assertEq(bottles.game(), address(game));
+        assertEq(address(game.bottles()), address(bottles));
+        assertEq(bottles.left(), 0, "the pool starts empty: no bottles until it is funded");
     }
 
     function test_bottleRateIsNearItsChance() public {
         FishingGame.Config memory c = GameSetup.defaultConfig();
         c.blendChancePpm = 200_000; // 20% of bites, so a short run is enough
         c.blendMaxWins = 255;
-        vm.prank(owner);
+        vm.startPrank(owner);
         game.setConfig(c);
+        bottles.setRules(uint96(BOTTLE), 0, 0);
+        vm.stopPrank();
+        blend.mint(address(bottles), 1_000 * BOTTLE);
         uint256 n = 500;
         for (uint256 i; i < n; i++) {
             if (game.currentEnergy(alice) == 0) _rest();

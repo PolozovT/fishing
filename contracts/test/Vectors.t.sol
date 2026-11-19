@@ -33,12 +33,22 @@ contract VectorsTest is BaseTest {
         uint256 n = 240;
         for (uint256 i; i < n; i++) {
             if (i == n / 2) {
-                // second half: bottles are common, so that branch is covered too
+                // second half: bottles are common and the pool is full, so that branch is covered too; one a day,
+                // so the daily limit also closes it now and then ("the roll says bottle, but none is open")
                 FishingGame.Config memory c = GameSetup.defaultConfig();
                 c.blendChancePpm = 150_000;
                 c.blendMaxWins = 255;
-                vm.prank(owner);
+                vm.startPrank(owner);
                 game.setConfig(c);
+                bottles.setRules(uint96(1_000 * E), 0, 1);
+                vm.stopPrank();
+                blend.mint(address(bottles), 100_000 * E);
+            }
+            if (i == n * 3 / 4) {
+                // last quarter: the pool is dry, so every "bottle" roll lands a fish
+                vm.startPrank(owner);
+                bottles.withdraw(owner, blend.balanceOf(address(bottles)));
+                vm.stopPrank();
             }
             out = string.concat(out, i == 0 ? "" : ",", _vector(i));
         }
@@ -107,13 +117,12 @@ contract VectorsTest is BaseTest {
             vm.toString(rarity), ',"weight":', vm.toString(weight), ',"hiddenMult":', vm.toString(hiddenMult), "}"
         );
         string memory d = string.concat(
-            ',"blendWins":', vm.toString(p.blendWins), ',"specialsFound":', vm.toString(p.specialsFound), ',"dry":[',
+            ',"bottleOpen":', p.blendWins < blendMax && bottles.open(p.xp) ? "true" : "false", ',"specialsFound":',
+            vm.toString(p.specialsFound), ',"dry":[',
             vm.toString(game.dryCatches(alice, 0)), ",", vm.toString(game.dryCatches(alice, 1)), ",",
             vm.toString(game.dryCatches(alice, 2)), "]"
         );
-        string memory e = string.concat(
-            ',"blendChancePpm":', vm.toString(blendChance), ',"blendMaxWins":', vm.toString(blendMax)
-        );
+        string memory e = string.concat(',"blendChancePpm":', vm.toString(blendChance));
         return string.concat(a, b, d, e);
     }
 }

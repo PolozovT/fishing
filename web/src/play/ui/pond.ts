@@ -732,7 +732,7 @@ function showPrize(amount: number): void {
       bottleArt(),
       h('div', { class: 'reveal-name', text: 'A sealed bottle' }),
       h('div', { class: 'reveal-stats' }, h('span', { class: 'blend', text: `+${amount} BLEND` })),
-      h('div', { class: 'muted small', text: 'Not a fish at all: there are tokens inside. Preview: the balance is local and nothing is paid out yet.' }),
+      h('div', { class: 'muted small', text: `Not a fish at all: there are tokens inside. ${CHAIN ? 'The game contract has sent them to your wallet.' : 'Local game: the balance is stored in this browser.'}` }),
       h('div', { class: 'reveal-actions' }, h('button', { class: 'btn btn-primary', text: 'Nice!', onclick: hideOverlay })),
     ),
   );

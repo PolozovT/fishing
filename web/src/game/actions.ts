@@ -192,7 +192,8 @@ export interface Hooked {
   prize?: number;
 }
 
-export const blendPrizeAvailable = (s: Save): boolean => s.blendWins < BLEND_PRIZE.maxWins;
+/** Local game: the bottle can bite once the player has the level and has not found it yet. */
+export const blendPrizeAvailable = (s: Save): boolean => s.blendWins < BLEND_PRIZE.maxWins && levelOf(s.xp) >= BLEND_PRIZE.minLevel;
 
 export function hookFish(s: Save, t: CastTicket, rng: Rng): Hooked {
   const loc = LOCATIONS[t.locationId];

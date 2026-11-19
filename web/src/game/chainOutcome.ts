@@ -12,7 +12,7 @@
 import { encodeAbiParameters, keccak256, type Address, type Hex } from 'viem';
 
 export interface ChainCatalog {
-  config: { blendMaxWins: number; blendChancePpm: number; blendAmount: number; qualityPerCatch: number; qualityPerRarity: number };
+  config: { blendChancePpm: number; blendMaxWins: number; qualityPerCatch: number; qualityPerRarity: number };
   locations: { special: number; speciesIds: number[]; weights: number[] }[];
   species: { rarity: number; minWeight: number; maxWeight: number; hidden: boolean }[];
   specials: { speciesId: number; chancePpm: number; pity: number }[];
@@ -27,7 +27,10 @@ export interface CastInput {
   locationId: number;
   /** FishingGame.loadout(rod, lure, special, location) for the tackle fixed at cast time. */
   loadout: { rodCatch: number; biteBps: number; rarity: number; weight: number; hiddenMult: number };
-  blendWins: number;
+  /** May this player's bite be a bottle right now: they have not found theirs and BottlePool.open(xp) says yes. */
+  bottleOpen: boolean;
+  /** BottlePool.amount, in whole BLEND: what a bottle pays. */
+  bottleAmount: number;
   /** Bit per special id. */
   specialsFound: number;
   /** Dry-catch counters per special id. */
@@ -51,8 +54,8 @@ export function resolveCast(c: ChainCatalog, i: CastInput): CastOutcome {
   const seed = castSeed(i.blockHash, i.player, i.nonce, i.game);
   if (seed % 10_000n >= BigInt(i.loadout.biteBps)) return { kind: 'missed' };
 
-  if (i.blendWins < c.config.blendMaxWins && (seed >> 16n) % 1_000_000n < BigInt(c.config.blendChancePpm)) {
-    return { kind: 'bottle', amount: c.config.blendAmount };
+  if ((seed >> 16n) % 1_000_000n < BigInt(c.config.blendChancePpm) && i.bottleOpen) {
+    return { kind: 'bottle', amount: i.bottleAmount };
   }
 
   const loc = c.locations[i.locationId];
