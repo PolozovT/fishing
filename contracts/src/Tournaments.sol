@@ -9,7 +9,7 @@ import {FishNFT} from "./FishNFT.sol";
 import {CatchMath} from "./CatchMath.sol";
 import {IFightVerifier} from "./FightVerifier.sol";
 
-/// @title Fishing tournaments: short events with a BLEND prize, where the fight decides the score.
+/// @title Fishing tournaments: short events with a BLEND prize pool, where the fight decides the score.
 /// @notice Everyone in a tournament fishes the same water with the same tackle and has the same number of casts,
 ///         so tackle and time spent do not decide it. Every cast hooks a fish; which fish is the luck of the
 ///         draw (the hash of a future block, as in the game). What the player adds is the fight: the browser
@@ -17,7 +17,12 @@ import {IFightVerifier} from "./FightVerifier.sol";
 ///         fought. A fish that gets away scores nothing and the cast is spent.
 ///
 ///         Score of a tournament = the sum of the player's best `counted` catches. Ties go to whoever got there
-///         first. The top three share the prize 50 / 30 / 20.
+///         first. The top three share the prize pool 50 / 30 / 20.
+///
+///         A tournament may ask an entry fee in BLEND. Its prize pool is then the larger of two numbers: what the
+///         sponsor put up (the guarantee) and the fees collected less the organiser's share (`rakeBps`). So a
+///         small field still plays for the guarantee, and a large one plays for its own fees. Whatever the
+///         contract holds above the pool goes to the sponsor when the tournament is over.
 ///
 ///         Every tournament is fished with one rod, and only players who own that rod in the game may enter:
 ///         different tournaments for different rods, equal tackle inside each.
@@ -43,9 +48,16 @@ contract Tournaments is Ownable {
         bool unused; // storage kept from the first version (an optional rod requirement); do not reuse
         bool reclaimed; // the sponsor took back the shares nobody won
         uint32 players;
-        uint96 prize; // BLEND, held by this contract
+        uint96 prize; // BLEND put up by the sponsor: the least the prize pool can be
         address sponsor;
         string name;
+    }
+
+    /// @dev Kept beside the tournaments (`_terms`), because a struct stored in an array cannot grow.
+    struct Terms {
+        uint96 fee; // BLEND a player pays to enter, 0 = free
+        uint16 rakeBps; // share of the fees that does not go into the prize pool
+        uint96 collected; // fees paid so far
     }
 
     struct Entry {
@@ -70,6 +82,8 @@ contract Tournaments is Ownable {
         uint16 castLimit;
         uint8 counted;
         uint96 prize;
+        uint96 fee;
+        uint16 rakeBps;
     }
 
     uint256 internal constant TOP = 10;
@@ -91,6 +105,7 @@ contract Tournaments is Ownable {
     mapping(uint256 => mapping(address => Entry)) internal _entries;
     mapping(uint256 => address[]) internal _top; // best first, at most TOP
     uint64 internal _seq;
+    mapping(uint256 => Terms) internal _terms;
 
     error BadTournament();
     error NotOpen();
@@ -104,6 +119,7 @@ contract Tournaments is Ownable {
     error NothingToClaim();
 
     event TournamentCreated(uint256 indexed id, string name, uint40 start, uint40 end, uint96 prize);
+    event TournamentTerms(uint256 indexed id, uint96 fee, uint16 rakeBps);
     event Entered(uint256 indexed id, address indexed player);
     event TournamentCast(uint256 indexed id, address indexed player, uint16 castNo, uint64 targetBlock);
     /// @param points 0 when the fish got away. @param base what a perfect fight would have scored.
@@ -150,12 +166,12 @@ contract Tournaments is Ownable {
 
     // ------------------------------------------------------------------ organising
 
-    /// @notice Opens a tournament and takes its prize from the caller (approve BLEND first).
+    /// @notice Opens a tournament and takes its guaranteed prize from the caller (approve BLEND first).
     function create(NewTournament calldata t) external onlyOwner returns (uint256 id) {
         if (
             t.end <= t.start || t.end <= block.timestamp || t.counted == 0 || t.counted > TOP
                 || t.castLimit < t.counted || t.green == 0 || t.locationId >= game.locationCount()
-                || t.rod >= game.rodCount() || t.lure > game.lureCount()
+                || t.rod >= game.rodCount() || t.lure > game.lureCount() || t.rakeBps > 10_000
         ) revert BadTournament();
         id = _tournaments.length;
         Tournament storage n = _tournaments.push();
@@ -171,14 +187,17 @@ contract Tournaments is Ownable {
         n.counted = t.counted;
         n.prize = t.prize;
         n.sponsor = msg.sender;
+        _terms[id] = Terms(t.fee, t.rakeBps, 0);
         if (t.prize != 0) blend.safeTransferFrom(msg.sender, address(this), t.prize);
         emit TournamentCreated(id, t.name, t.start, t.end, t.prize);
+        emit TournamentTerms(id, t.fee, t.rakeBps);
     }
 
     // ------------------------------------------------------------------ playing
 
-    /// @notice Free. Possible until the tournament ends; needs the tournament's rod owned in the game
-    ///         (everyone owns the first rod).
+    /// @notice Possible until the tournament ends; needs the tournament's rod owned in the game (everyone owns
+    ///         the first rod). Takes the entry fee, if the tournament has one (approve BLEND first). The fee is
+    ///         not returned.
     function enter(uint256 id) external {
         Tournament storage t = _get(id);
         if (block.timestamp >= t.end) revert NotOpen();
@@ -187,6 +206,12 @@ contract Tournaments is Ownable {
         if (!game.ownsRod(msg.sender, t.rod)) revert RodRequired();
         e.entered = true;
         t.players += 1;
+        Terms storage terms = _terms[id];
+        uint96 fee = terms.fee;
+        if (fee != 0) {
+            terms.collected += fee;
+            blend.safeTransferFrom(msg.sender, address(this), fee);
+        }
         emit Entered(id, msg.sender);
     }
 
@@ -337,6 +362,15 @@ contract Tournaments is Ownable {
         return block.timestamp > uint256(_get(id).end) + GRACE;
     }
 
+    /// @notice The prize pool the top three share: the sponsor's guarantee, or the entry fees less the
+    ///         organiser's share when that is more. It only grows, and is final once the tournament has ended.
+    function pool(uint256 id) public view returns (uint256) {
+        Terms storage terms = _terms[id];
+        uint256 fromFees = (uint256(terms.collected) * (10_000 - terms.rakeBps)) / 10_000;
+        uint256 guaranteed = _get(id).prize;
+        return fromFees > guaranteed ? fromFees : guaranteed;
+    }
+
     /// @notice The top three collect their share once the tournament and its grace period are over.
     function claim(uint256 id) external returns (uint256 amount) {
         if (!isOver(id)) revert NotOver();
@@ -346,19 +380,23 @@ contract Tournaments is Ownable {
         for (uint256 i; i < top.length && i < 3; i++) {
             if (top[i] == msg.sender) place = i;
         }
-        amount = (uint256(_tournaments[id].prize) * prizeShareBps(place)) / 10_000;
+        amount = (pool(id) * prizeShareBps(place)) / 10_000;
         if (e.claimed || amount == 0) revert NothingToClaim();
         e.claimed = true;
         blend.safeTransfer(msg.sender, amount);
         emit PrizeClaimed(id, msg.sender, place, amount);
     }
 
-    /// @notice Places nobody took (fewer than three players scored) go back to the sponsor.
+    /// @notice Sends the sponsor what the winners are not owed: the guarantee and the fees above the prize pool
+    ///         (the organiser's share of the fees, or all of them while they are below the guarantee), and the
+    ///         places nobody took (fewer than three players scored).
     function reclaim(uint256 id) external returns (uint256 amount) {
         if (!isOver(id)) revert NotOver();
         Tournament storage t = _tournaments[id];
+        uint256 prizes = pool(id);
+        amount = uint256(t.prize) + _terms[id].collected - prizes;
         for (uint256 place = _top[id].length; place < 3; place++) {
-            amount += (uint256(t.prize) * prizeShareBps(place)) / 10_000;
+            amount += (prizes * prizeShareBps(place)) / 10_000;
         }
         if (t.reclaimed || amount == 0) revert NothingToClaim();
         t.reclaimed = true;
@@ -385,22 +423,39 @@ contract Tournaments is Ownable {
         return _entries[id][player];
     }
 
+    function termsOf(uint256 id) external view returns (Terms memory) {
+        _get(id);
+        return _terms[id];
+    }
+
     /// @notice The newest `limit` tournaments (newest first) with `player`'s entry in each, in one call.
+    ///         `terms` and `pools` came with the entry fees and sit at the end, so older clients still read the rest.
     function list(address player, uint256 limit)
         external
         view
-        returns (uint256[] memory ids, Tournament[] memory ts, Entry[] memory entries, uint64 blockNumber)
+        returns (
+            uint256[] memory ids,
+            Tournament[] memory ts,
+            Entry[] memory entries,
+            uint64 blockNumber,
+            Terms[] memory terms,
+            uint256[] memory pools
+        )
     {
         uint256 n = _tournaments.length;
         if (limit > n) limit = n;
         ids = new uint256[](limit);
         ts = new Tournament[](limit);
         entries = new Entry[](limit);
+        terms = new Terms[](limit);
+        pools = new uint256[](limit);
         for (uint256 i; i < limit; i++) {
             uint256 id = n - 1 - i;
             ids[i] = id;
             ts[i] = _tournaments[id];
             entries[i] = _entries[id][player];
+            terms[i] = _terms[id];
+            pools[i] = pool(id);
         }
         blockNumber = uint64(block.number);
     }

@@ -335,11 +335,11 @@ describe('BLEND prize', () => {
   });
   it('buys PEARL at the fixed rate, exactly once, and only with BLEND in hand', () => {
     const s = { ...freshSave(NOW), blend: 100, pearl: 7 };
-    const r = buyPearl(s, 4.5);
-    expect(r.pearl).toBe(4.5 * PEARL_PER_BLEND);
-    expect(r.save.blend).toBe(95.5);
-    expect(r.save.pearl).toBe(7 + 450);
-    expect(buyRod(r.save, 'carbon').pearl).toBe(7);
+    const r = buyPearl(s, 15.5);
+    expect(r.pearl).toBe(15.5 * PEARL_PER_BLEND);
+    expect(r.save.blend).toBe(84.5);
+    expect(r.save.pearl).toBe(7 + 1550);
+    expect(buyRod(r.save, 'carbon').pearl).toBe(57);
     expect(() => buyPearl(s, 100.01)).toThrow(/Not enough BLEND/);
     expect(() => buyPearl(s, 0)).toThrow(GameError);
     expect(() => buyPearl(s, -5)).toThrow(GameError);
@@ -397,8 +397,8 @@ describe('selling', () => {
 
 describe('purchases', () => {
   it('buying a rod subtracts the price once and equips it', () => {
-    const s = buyRod({ ...freshSave(NOW), pearl: 500 }, 'carbon');
-    expect(s.pearl).toBe(500 - rod('carbon').price);
+    const s = buyRod({ ...freshSave(NOW), pearl: 2000 }, 'carbon');
+    expect(s.pearl).toBe(2000 - rod('carbon').price);
     expect(s.equipped.rod).toBe('carbon');
     expect(() => buyRod(s, 'carbon')).toThrow(/already own/);
   });
@@ -421,7 +421,7 @@ describe('purchases', () => {
     const before = s.pearl;
     s = repairRod(s, 'carbon');
     expect(s.rods.carbon.durability).toBe(80);
-    expect(before - s.pearl).toBe(Math.ceil(450 * TUNING.repairShare * 0.5));
+    expect(before - s.pearl).toBe(Math.ceil(rod('carbon').price * TUNING.repairShare * 0.5));
     expect(() => repairRod(s, 'carbon')).toThrow(GameError);
   });
   it('energy refill doubles in price within a day and resets the next day', () => {

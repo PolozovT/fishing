@@ -1770,6 +1770,29 @@ export const fishingGameAbi = [
   },
   {
     "type": "function",
+    "name": "setPrice",
+    "inputs": [
+      {
+        "name": "lure",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "price",
+        "type": "uint96",
+        "internalType": "uint96"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "specialCount",
     "inputs": [],
     "outputs": [

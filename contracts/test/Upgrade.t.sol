@@ -30,7 +30,7 @@ contract UpgradeTest is BaseTest {
 
     function test_upgradeKeepsProgressAndAddress() public {
         uint256 fishId = _catch(alice, 0, 1);
-        _fund(alice, 1_000 * E);
+        _fund(alice, 2_000 * E);
         vm.prank(alice);
         game.buyRod(1);
         FishingGame.Player memory before = game.playerOf(alice);

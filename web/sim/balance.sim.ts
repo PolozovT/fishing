@@ -28,6 +28,8 @@ function mulberry32(seed: number): () => number {
 }
 
 const N = 100_000;
+/** Energy a day of somebody who plays six full bars. */
+const CASUAL_ENERGY = 120;
 const RARITY = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic'];
 const pct = (x: number, d = 1): string => `${(x * 100).toFixed(d)}%`;
 const table = (head: string[], rows: (string | number)[][]): string =>
@@ -117,7 +119,13 @@ function career(seed: number, skill: SkillName, maxCasts: number) {
   let s: Save = { ...freshSave(0), blendWins: 99 };
   const now = 1000;
   const marks: Record<string, number> = {};
-  const mark = (k: string): void => void (marks[k] ??= s.stats.casts);
+  /** Energy spent when each milestone was reached: energy, not casts, is what a day of play is made of. */
+  const energyAt: Record<string, number> = {};
+  let energy = 0;
+  const mark = (k: string): void => {
+    marks[k] ??= s.stats.casts;
+    energyAt[k] ??= energy;
+  };
   const wishlist: [string, 'rod' | 'lure'][] = [
     ['spoon', 'lure'],
     ['carbon', 'rod'],
@@ -144,6 +152,7 @@ function career(seed: number, skill: SkillName, maxCasts: number) {
     }
     const c = startCast(s, now);
     s = c.save;
+    energy += target.energyCost;
     if (rollBite(c.ticket, rng)) {
       const h = hookFish(s, c.ticket, rng);
       const q = sampleFight(SPECIES[h.speciesId].rarity, LOCATIONS[c.ticket.locationId].tier, c.ticket.totals.zone, rng, skill);
@@ -168,7 +177,7 @@ function career(seed: number, skill: SkillName, maxCasts: number) {
     }
     if (s.stats.casts === 1000) earnedAt1000 = s.stats.earned;
   }
-  return { marks, save: s, earnedAt1000 };
+  return { marks, energyAt, save: s, earnedAt1000 };
 }
 
 const FINDINGS = `## Findings
@@ -176,9 +185,9 @@ const FINDINGS = `## Findings
 What the first runs showed, and what was changed because of it. The tables below are the state after those changes.
 
 - **Rarity odds hold up.** Bonuses are a relative weighting, so even the strongest rarity build (+250) moves Legendary fish from 2.4% to 3.7% at Taimen Rapids and from 0.5% to 1.7% at sea. No loadout makes rare fish common.
-- **Late game was far too fast.** With the first numbers a player bought the best rod after ~170 casts and earned 360k PEARL in 1,000 casts. Fixes: XP curve doubled (50·L·(L−1)), the new waters' fish repriced, Fly Rod 1,500 → 2,500, Deep Troller 1,800 → 4,000, Pearl Master 5,000 → 25,000. It now takes ~500 casts to the last rod.
+- **Tackle was bought in a day.** With the first numbers a player bought the best rod after ~170 casts; the second pass (XP curve doubled to 50·L·(L−1), the new waters' fish repriced, Pearl Master at 25,000) made it ~500 casts, which is still one day of energy for somebody who never lets the bar fill up. The third pass raised the prices alone, what fish pay is unchanged: Carbon Spinner 450 → 1,500, Ironwood 900 → 4,000, Taiga Fly Rod 2,500 → 12,000, Deep Troller 4,000 → 30,000, Pearl Master 25,000 → 150,000, lures about 1.6× (Abyss Spoon 2×). The first rod is still a first-day purchase; every later one is a goal of days or weeks (see "Progression in days"). A full set is 197,500 PEARL, or 1,975 BLEND at the exchange for somebody who would rather not wait.
 - **Pearl Master was the best rod everywhere.** It is now a generalist (catch 4, rarity 50, weight 6): close to the top in every water but beaten by the specialist at home. Carbon Spinner wins the pond and river, Taiga Fly Rod the rapids, Deep Troller deep water, Ironwood the lake and swamp. Six different best loadouts across eight locations.
-- **Rod upkeep punished expensive rods.** Repair at 20% of the price per full bar made the Fly Rod lose money against the free starter. Repair is now 6% of the price.
+- **Rod upkeep punished expensive rods.** Repair at 20% of the price per full bar made the Fly Rod lose money against the free starter. Repair went to 6% of the price, and to 1.5% when the prices went up, so upkeep per cast stayed about where it was (2.6 PEARL a cast for the Fly Rod, 9 for the Deep Troller, 19 for the Pearl Master).
 - **Copper Spinner was the best lure everywhere** (rarity 30 for 1.5 PEARL a cast). Its base rarity is 15 now, with the extra moved into its Forest River bonus.
 - **The reel fight.** A bot could not lose the first two versions, so skill meant nothing. The current fight has jerks: a short warning, then a burst that raises tension by itself. A line that is let go at the warning never snaps (tested for every difficulty), so every loss is a missed reaction, not bad luck. How hard a fish fights is its rarity plus how rough the water is. The players below are models (reaction lag, aim error, chance of missing a warning), not measurements: read the rates as estimates to check by hand. Against the targets, calm water is a little easier than asked for the novice (97–99% vs 85–95%), rough water is in range for the novice except Taimen Rapids (too hard) and easier than asked for the experienced player. On the contracts a lost fight is a retry, not a lost fish, so these rates there mean time, not value.
 - **Progression has no dead ends.** All 40 simulated careers of both skill levels opened all eight locations. Pity (120 / 160 / 220 dry catches) caps the worst case for each special fish.
@@ -307,6 +316,32 @@ it('balance simulation', () => {
     return `${med(got)} (worst ${Math.max(...got)})`;
   };
   out.push(table(['Milestone', 'Experienced player', 'Novice'], keys.map((k) => [k, cell(runs.experienced, k), cell(runs.novice, k)])), '');
+  // the same careers in days: a cast costs 1–4 energy, and energy is what a day gives
+  const buys = ['buy:carbon', 'buy:flyrod', 'buy:troller', 'buy:pearlmaster'];
+  const perDay = Math.round(86_400 / TUNING.energyRegenSeconds);
+  const energyCell = (rs: ReturnType<typeof career>[], k: string): number | null => {
+    const got = rs.map((r) => r.energyAt[k]).filter((x) => x !== undefined);
+    return got.length < rs.length / 2 ? null : med(got);
+  };
+  const days = (e: number | null, daily: number): string => (e === null ? 'never' : e / daily < 1 ? 'day 1' : `day ${Math.floor(e / daily) + 1}`);
+  out.push(
+    '## Progression in days',
+    '',
+    `Energy comes back at one point per ${TUNING.energyRegenSeconds / 60} minutes: ${perDay} a day for somebody who never lets the bar fill up (a script, or a player who also buys refills), and about ${CASUAL_ENERGY} for somebody who empties the bar of ${TUNING.maxEnergy} six times a day. Median day on which each rod is bought, experienced player / novice. The bot does not buy the Ironwood Rod, so a full set is later still.`,
+    '',
+  );
+  out.push(
+    table(
+      ['Rod', 'Price', 'Energy spent (experienced)', `At ${CASUAL_ENERGY} energy a day`, `At ${perDay} energy a day`],
+      buys.map((k) => {
+        const rod = RODS.find((r) => `buy:${r.id}` === k)!;
+        const e = energyCell(runs.experienced, k);
+        const nv = energyCell(runs.novice, k);
+        return [rod.name, rod.price.toLocaleString('en-US'), e ?? 'never', `${days(e, CASUAL_ENERGY)} / ${days(nv, CASUAL_ENERGY)}`, `${days(e, perDay)} / ${days(nv, perDay)}`];
+      }),
+    ),
+    '',
+  );
   out.push(`PEARL earned in the first 1,000 casts (median): experienced ${med(runs.experienced.map((r) => r.earnedAt1000))}, novice ${med(runs.novice.map((r) => r.earnedAt1000))}.`, '');
   out.push(`All 8 locations open after 20,000 casts: experienced ${runs.experienced.filter((r) => r.save.permanentUnlocks.length === 8).length}/40, novice ${runs.novice.filter((r) => r.save.permanentUnlocks.length === 8).length}/40.`, '');
 

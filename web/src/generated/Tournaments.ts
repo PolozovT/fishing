@@ -189,6 +189,16 @@ export const tournamentsAbi = [
             "name": "prize",
             "type": "uint96",
             "internalType": "uint96"
+          },
+          {
+            "name": "fee",
+            "type": "uint96",
+            "internalType": "uint96"
+          },
+          {
+            "name": "rakeBps",
+            "type": "uint16",
+            "internalType": "uint16"
           }
         ]
       }
@@ -520,6 +530,33 @@ export const tournamentsAbi = [
         "name": "blockNumber",
         "type": "uint64",
         "internalType": "uint64"
+      },
+      {
+        "name": "terms",
+        "type": "tuple[]",
+        "internalType": "struct Tournaments.Terms[]",
+        "components": [
+          {
+            "name": "fee",
+            "type": "uint96",
+            "internalType": "uint96"
+          },
+          {
+            "name": "rakeBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "collected",
+            "type": "uint96",
+            "internalType": "uint96"
+          }
+        ]
+      },
+      {
+        "name": "pools",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
       }
     ],
     "stateMutability": "view"
@@ -565,6 +602,25 @@ export const tournamentsAbi = [
       }
     ],
     "stateMutability": "pure"
+  },
+  {
+    "type": "function",
+    "name": "pool",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -675,6 +731,42 @@ export const tournamentsAbi = [
         "name": "totals",
         "type": "uint32[]",
         "internalType": "uint32[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "termsOf",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct Tournaments.Terms",
+        "components": [
+          {
+            "name": "fee",
+            "type": "uint96",
+            "internalType": "uint96"
+          },
+          {
+            "name": "rakeBps",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "collected",
+            "type": "uint96",
+            "internalType": "uint96"
+          }
+        ]
       }
     ],
     "stateMutability": "view"
@@ -1045,6 +1137,31 @@ export const tournamentsAbi = [
         "type": "uint96",
         "indexed": false,
         "internalType": "uint96"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "TournamentTerms",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "fee",
+        "type": "uint96",
+        "indexed": false,
+        "internalType": "uint96"
+      },
+      {
+        "name": "rakeBps",
+        "type": "uint16",
+        "indexed": false,
+        "internalType": "uint16"
       }
     ],
     "anonymous": false

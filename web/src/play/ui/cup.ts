@@ -16,7 +16,7 @@ import { LURES, RODS } from '../../tackle/catalog';
 import { fmtCountdown, fmtWeight, h, icon, mount, shortAddr, sigOf } from '../../ui/dom';
 import { toast } from '../../ui/toast';
 import { waitPastBlock } from '../chain';
-import { CUP_DEPLOYED, PRIZE_SHARES, castTargetOf, cupOps, cupResultOf, cupStage, cups, hookedFish, loadCupStandings, loadCups, type Cup, type CupResult, type HookedCupFish } from '../cup';
+import { CUP_DEPLOYED, PRIZE_SHARES, castTargetOf, cupOps, cupResultOf, cupStage, cups, hookedFish, loadCupStandings, loadCups, poolWith, type Cup, type CupResult, type HookedCupFish } from '../cup';
 import { fishArt } from '../fishSprite';
 import { CHAIN } from '../ops';
 import { pearl, qualityTag, rarityTag } from './fmt';
@@ -40,6 +40,8 @@ let hook: HookedCupFish | null = null;
 let deadlineAt = 0;
 let recording: boolean[] = [];
 let lastFight: { landed: boolean; ticks: number; good: number; lost?: 'snapped' | 'slack' | 'time' } | null = null;
+/** An entry is being signed or mined: the Enter button waits, so a fee is never paid twice. */
+let entering = false;
 
 const blend = (n: number): string => (Number.isInteger(n) ? String(n) : n.toFixed(2));
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
@@ -53,7 +55,10 @@ function current(): Cup | null {
     if (c) return c;
   }
   const now = Date.now();
-  return cups.list.find((c) => cupStage(c, now) !== 'over') ?? cups.list[0] ?? null;
+  const open = cups.list.filter((c) => cupStage(c, now) !== 'over');
+  // one the player is in, else one they can enter right now (own the rod, can pay the fee), else the newest
+  const canEnter = (c: Cup): boolean => c.ownsRod && (c.fee === 0 || cups.blend.balance >= c.fee);
+  return open.find((c) => c.entry.entered) ?? open.find(canEnter) ?? open[0] ?? cups.list[0] ?? null;
 }
 
 export function initCup(root: HTMLElement): () => void {
@@ -88,7 +93,7 @@ export function initCup(root: HTMLElement): () => void {
 
   const sig = (): string => {
     const c = current();
-    return sigOf(cups.rev, c?.id, c ? cupStage(c, Date.now()) : '', phase, state.wallet?.address, visible());
+    return sigOf(cups.rev, c?.id, c ? cupStage(c, Date.now()) : '', phase, state.wallet?.address, visible(), entering);
   };
   const renderControls = mount(controlsHost, sig, controlsView);
   const renderSide = mount(sideHost, sig, sideView);
@@ -468,6 +473,32 @@ function countdown(c: Cup, cls = 'muted small'): HTMLElement {
   return el;
 }
 
+/** Signs the entry (and the fee, if the tournament has one), then reads the tournaments again. */
+async function doEnter(c: Cup): Promise<void> {
+  if (entering) return;
+  entering = true;
+  emit();
+  try {
+    if (await cupOps.enter(c)) {
+      toast(c.fee > 0 ? `You are in: ${blend(c.fee)} BLEND went into the tournament` : 'You are in', 'ok');
+      await reload();
+    }
+  } finally {
+    entering = false;
+    emit();
+  }
+}
+
+/** How the prize pool of a tournament with a fee is made up, in one sentence. */
+function poolText(c: Cup): string {
+  const toWinners = Math.round((1 - c.rake) * 100);
+  const share = toWinners === 100 ? 'All entry fees go' : `${toWinners}% of the entry fees goes`;
+  if (c.guarantee <= 0) return `${share} to the winners, so the prize pool grows with every angler who enters.`;
+  const perEntry = c.fee * (1 - c.rake);
+  const passes = Math.floor(c.guarantee / perEntry) + 1;
+  return `The prize pool is ${blend(c.guarantee)} BLEND however few turn up. ${share} to the winners, so from ${passes} anglers on the pool is bigger than that and keeps growing.`;
+}
+
 const tackleText = (c: Cup): string => `${RODS[c.rod]?.name ?? `rod ${c.rod}`}${c.lure ? ` + ${LURES[c.lure - 1]?.name ?? 'a lure'}` : ', no lure'}`;
 
 function place(c: Cup): number {
@@ -507,9 +538,13 @@ function controlsView(): HTMLElement[] {
     }
   } else if (!e.entered) {
     const rodName = RODS[c.rod]?.name ?? 'rod';
-    button = h('button', { class: 'btn btn-cast', disabled: busy || !c.ownsRod, onclick: () => void cupOps.enter(c.id).then((r) => r && reload()) }, 'Enter');
-    info = c.ownsRod ? `Free to enter. Everyone fishes with the ${rodName}` : `This tournament is for anglers who own the ${rodName}. Buy it in the tackle shop to enter`;
-    warn = !c.ownsRod;
+    const short = c.fee > 0 && cups.blend.balance < c.fee;
+    button = h('button', { class: 'btn btn-cast', disabled: busy || entering || !c.ownsRod || short, onclick: () => void doEnter(c) }, entering ? 'Entering…' : c.fee > 0 ? `Enter · ${blend(c.fee)} BLEND` : 'Enter');
+    if (!c.ownsRod) info = `This tournament is for anglers who own the ${rodName}. Buy it in the tackle shop to enter`;
+    else if (short) info = `Entry is ${blend(c.fee)} BLEND and your wallet holds ${blend(cups.blend.balance)}. The first BLEND comes from a free tournament or from a bottle in the water`;
+    else if (c.fee > 0) info = `Entry is ${blend(c.fee)} BLEND, paid once and not returned. First place takes at least ${blend(poolWith(c, 1) * PRIZE_SHARES[0])} BLEND. Everyone fishes with the ${rodName}`;
+    else info = `Free to enter. Everyone fishes with the ${rodName}`;
+    warn = !c.ownsRod || short;
   } else if (stage === 'soon') {
     button = h('button', { class: 'btn btn-cast', disabled: true }, 'Cast');
     info = 'You are in. Casting opens when the tournament starts';
@@ -537,10 +572,10 @@ function controlsView(): HTMLElement[] {
       h(
         'div',
         { class: 'tk-lo-out bonus-row' },
-        tile('Prize', `${blend(c.prize)}`, 'BLEND · 50 / 30 / 20'),
+        tile(c.fee > 0 ? 'Prize pool' : 'Prize', `${blend(c.prize)}`, 'BLEND · 50 / 30 / 20'),
+        tile('Entry', c.fee > 0 ? blend(c.fee) : 'Free', c.fee > 0 ? 'BLEND, once' : 'no fee'),
         tile('Your score', String(e.total), e.entered ? (myPlace >= 0 ? `place ${myPlace + 1}` : 'no catch yet') : 'not entered'),
-        tile('Casts', e.entered ? `${Math.max(0, left)}` : String(c.castLimit), e.entered ? `of ${c.castLimit} left` : 'per angler'),
-        tile('Counted', String(c.counted), 'best catches'),
+        tile('Casts', e.entered ? `${Math.max(0, left)}` : String(c.castLimit), `${e.entered ? `of ${c.castLimit} left` : 'per angler'} · best ${c.counted} count`),
       ),
       e.best.length ? h('p', { class: 'small' }, h('span', { class: 'muted', text: 'Your counted catches: ' }), e.best.join(' · ')) : null,
       h(
@@ -549,6 +584,7 @@ function controlsView(): HTMLElement[] {
         h('div', { class: 'loc-head' }, h('b', { text: LOCATIONS[c.locationId].name }), h('span', { class: 'muted small', text: `${tackleText(c)} for everyone` })),
         h('p', { class: 'muted small', text: `Every cast hooks a fish; which one is the luck of the draw. The points are yours to win: land it and it scores half, keep the needle in the green and it scores up to all of it. A lost fish scores nothing. Your ${c.counted} best catches make your score, ties go to whoever got there first.` }),
         h('p', { class: 'muted small', text: 'The contract replays every fight from your recorded input, so the score is the contract’s, not the browser’s. You have about two minutes from the bite to land the fish and send it.' }),
+        c.fee > 0 ? h('p', { class: 'muted small', text: poolText(c) }) : null,
         h('p', { class: 'muted small' }, icon('lock', 'Rod'), ` Open to anglers who own the ${RODS[c.rod]?.name ?? 'rod'}. Everyone fishes with it, so nobody has better tackle than you.`),
       ),
     ),
@@ -592,7 +628,7 @@ function sideView(): HTMLElement[] {
               },
             },
             h('span', { class: 'spot-name', text: t.name }),
-            h('span', { class: 'spot-meta' }, h('span', { class: 'blend', text: `${blend(t.prize)} BLEND` }), h('span', { class: 'sep', text: '·' }), countdown(t, ''), t.entry.entered ? h('span', { class: 'sep', text: '· you are in' }) : null),
+            h('span', { class: 'spot-meta' }, h('span', { class: 'blend', text: `${blend(t.prize)} BLEND` }), h('span', { class: 'sep', text: t.fee > 0 ? `· entry ${blend(t.fee)} ·` : '· free ·' }), countdown(t, ''), t.entry.entered ? h('span', { class: 'sep', text: '· you are in' }) : null),
           );
         }),
       ),
@@ -601,7 +637,8 @@ function sideView(): HTMLElement[] {
   if (c) {
     const table = cups.standings[c.id] ?? [];
     const stage = cupStage(c, now);
-    const unwon = stage === 'over' && !c.reclaimed && table.length < 3 && me === c.sponsor.toLowerCase();
+    // the sponsor is owed the places nobody took and, in a tournament with a fee, what the fees left above the pool
+    const unwon = stage === 'over' && !c.reclaimed && (table.length < 3 || (c.fee > 0 && c.players > 0)) && me === c.sponsor.toLowerCase();
     out.push(
       h(
         'section',
@@ -630,7 +667,7 @@ function sideView(): HTMLElement[] {
             )
           : null,
         h('p', { class: 'muted small', text: 'The ten best anglers, straight from the tournament contract. Prizes are paid in BLEND and claimed by the winners themselves once the tournament is over.' }),
-        unwon ? h('button', { class: 'btn btn-sm', text: 'Take back unwon prizes', onclick: () => void cupOps.reclaim(c.id).then((r) => r && reload()) }) : null,
+        unwon ? h('button', { class: 'btn btn-sm', text: table.length < 3 ? 'Take back unwon prizes' : 'Collect the organiser’s share', onclick: () => void cupOps.reclaim(c.id).then((r) => r && reload()) }) : null,
       ),
     );
   }

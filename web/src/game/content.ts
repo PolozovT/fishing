@@ -256,7 +256,7 @@ export const TUNING = {
   freshWindowMs: 10 * 60_000,
   freshBonus: 0.2,
   /** Full repair of a rod costs this share of its price. */
-  repairShare: 0.06,
+  repairShare: 0.015,
 };
 
 export const QUALITIES: Quality[] = ['D', 'C', 'B', 'A', 'S'];

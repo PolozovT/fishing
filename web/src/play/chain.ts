@@ -466,6 +466,7 @@ export async function catalogMismatches(): Promise<string[]> {
   check('energy regen seconds', cfg[1], TUNING.energyRegenSeconds);
   check('base bite', cfg[3], TUNING.baseBite * 100);
   check('refill price', num(cfg[8]), TUNING.refillPrice);
+  check('repair share', cfg[7], Math.round(TUNING.repairShare * 10_000));
   check('BLEND chance', cfg[14], Math.round(BLEND_PRIZE.chance * 1_000_000));
   check('BLEND bottles per player', cfg[15], BLEND_PRIZE.maxWins);
   if (bottles) {

@@ -45,6 +45,10 @@ contract TournamentsTest is BaseTest {
     }
 
     function _new(uint16 castLimit, uint8 counted, uint8 rod) internal returns (uint256 id) {
+        return _paid(castLimit, counted, rod, 0, 0);
+    }
+
+    function _paid(uint16 castLimit, uint8 counted, uint8 rod, uint96 fee, uint16 rakeBps) internal returns (uint256 id) {
         vm.prank(owner);
         id = cup.create(
             Tournaments.NewTournament({
@@ -58,7 +62,9 @@ contract TournamentsTest is BaseTest {
                 green: 31_250,
                 castLimit: castLimit,
                 counted: counted,
-                prize: PRIZE
+                prize: PRIZE,
+                fee: fee,
+                rakeBps: rakeBps
             })
         );
     }
@@ -113,7 +119,7 @@ contract TournamentsTest is BaseTest {
 
     function test_onlyOwnerCreatesAndBadParamsRevert() public {
         Tournaments.NewTournament memory t = Tournaments.NewTournament(
-            "x", uint40(block.timestamp + 1), uint40(block.timestamp + 100), 0, 0, 0, 0, 31_250, 30, 10, 0
+            "x", uint40(block.timestamp + 1), uint40(block.timestamp + 100), 0, 0, 0, 0, 31_250, 30, 10, 0, 0, 0
         );
         vm.prank(alice);
         vm.expectRevert();
@@ -389,7 +395,7 @@ contract TournamentsTest is BaseTest {
         uint256 a = _new(30, 10, 0);
         uint256 b = _new(20, 5, 0);
         _enter(b, alice);
-        (uint256[] memory ids, Tournaments.Tournament[] memory ts, Tournaments.Entry[] memory es,) = cup.list(alice, 10);
+        (uint256[] memory ids, Tournaments.Tournament[] memory ts, Tournaments.Entry[] memory es,,,) = cup.list(alice, 10);
         assertEq(ids.length, 2);
         assertEq(ids[0], b);
         assertEq(ids[1], a);
@@ -422,6 +428,135 @@ contract TournamentsTest is BaseTest {
 
     /// @notice Writes what the contract drew for a set of casts; web/src/game/tournament.test.ts replays them.
     ///         Regenerate: WRITE_VECTORS=true forge test --match-test test_writeTournamentVectors
+    // ------------------------------------------------------------------ entry fees
+
+    uint96 internal constant FEE = 50 ether;
+
+    /// @dev `n` players with BLEND and an allowance enter a paid tournament and each lands one fish.
+    function _field(uint256 id, uint256 n) internal returns (address[] memory who) {
+        who = new address[](n);
+        for (uint256 i; i < n; i++) {
+            who[i] = makeAddr(string.concat("angler", vm.toString(i)));
+            blend.mint(who[i], FEE);
+            vm.prank(who[i]);
+            blend.approve(address(cup), FEE);
+            _enter(id, who[i]);
+            _fish(id, who[i], keccak256(abi.encode("field", i)), true, 200);
+        }
+    }
+
+    function test_enteringTakesTheFee() public {
+        uint256 id = _paid(30, 1, 0, FEE, 1_500);
+        vm.warp(block.timestamp + 10);
+        vm.prank(alice);
+        vm.expectRevert(); // no BLEND, no allowance
+        cup.enter(id);
+        blend.mint(alice, FEE);
+        vm.startPrank(alice);
+        blend.approve(address(cup), FEE);
+        cup.enter(id);
+        vm.stopPrank();
+        assertEq(blend.balanceOf(alice), 0);
+        assertEq(blend.balanceOf(address(cup)), uint256(PRIZE) + FEE);
+        Tournaments.Terms memory terms = cup.termsOf(id);
+        assertEq(terms.fee, FEE);
+        assertEq(terms.rakeBps, 1_500);
+        assertEq(terms.collected, FEE);
+        assertEq(cup.tournament(id).players, 1);
+    }
+
+    function test_aSmallFieldPlaysForTheGuarantee() public {
+        uint256 id = _paid(30, 1, 0, FEE, 1_500);
+        vm.warp(block.timestamp + 10);
+        address[] memory who = _field(id, 4); // 200 BLEND of fees against a 1,000 BLEND guarantee
+        assertEq(cup.pool(id), PRIZE);
+        _finish(id);
+        (address[] memory players,) = cup.standings(id);
+        uint256 paid;
+        for (uint256 i; i < 3; i++) {
+            vm.prank(players[i]);
+            paid += cup.claim(id);
+        }
+        assertEq(paid, PRIZE);
+        // the fees go to the sponsor, who is out the guarantee less the fees
+        uint256 before = blend.balanceOf(owner);
+        assertEq(cup.reclaim(id), 4 * uint256(FEE));
+        assertEq(blend.balanceOf(owner), before + 4 * uint256(FEE));
+        assertEq(blend.balanceOf(address(cup)), 0);
+        who;
+    }
+
+    function test_aLargeFieldPlaysForItsFees() public {
+        uint256 id = _paid(30, 1, 0, FEE, 1_500);
+        vm.warp(block.timestamp + 10);
+        _field(id, 40); // 2,000 BLEND of fees: 1,700 to the winners, 300 to the organiser
+        assertEq(cup.pool(id), 1_700 ether);
+        _finish(id);
+        (address[] memory players,) = cup.standings(id);
+        uint256[3] memory share = [uint256(850 ether), 510 ether, 340 ether];
+        for (uint256 i; i < 3; i++) {
+            vm.prank(players[i]);
+            assertEq(cup.claim(id), share[i]);
+        }
+        uint256 before = blend.balanceOf(owner);
+        assertEq(cup.reclaim(id), uint256(PRIZE) + 300 ether); // the guarantee comes back with the organiser's share
+        assertEq(blend.balanceOf(owner), before + uint256(PRIZE) + 300 ether);
+        assertEq(blend.balanceOf(address(cup)), 0);
+        vm.expectRevert(Tournaments.NothingToClaim.selector);
+        cup.reclaim(id);
+    }
+
+    function test_unwonPlacesOfAPaidTournamentGoBackWithTheRest() public {
+        uint256 id = _paid(30, 1, 0, FEE, 1_500);
+        vm.warp(block.timestamp + 10);
+        address[] memory who = _field(id, 1);
+        _finish(id);
+        // one player scored: half the pool is theirs, the other half and the fee go back
+        assertEq(cup.reclaim(id), uint256(PRIZE) / 2 + FEE);
+        vm.prank(who[0]);
+        assertEq(cup.claim(id), uint256(PRIZE) / 2);
+        assertEq(blend.balanceOf(address(cup)), 0);
+    }
+
+    function test_paidTournamentsStayApart() public {
+        uint256 a = _paid(30, 1, 0, FEE, 1_500);
+        uint256 b = _paid(30, 1, 0, FEE, 0);
+        vm.warp(block.timestamp + 10);
+        _field(a, 40);
+        assertEq(cup.pool(a), 1_700 ether);
+        assertEq(cup.pool(b), PRIZE);
+        assertEq(cup.termsOf(b).collected, 0);
+    }
+
+    function test_aFreeTournamentHasNoFee() public {
+        uint256 id = _open(30, 1);
+        _enter(id, alice); // no BLEND, no allowance
+        assertEq(cup.pool(id), PRIZE);
+        assertEq(cup.termsOf(id).fee, 0);
+    }
+
+    function test_theOrganiserCannotTakeMoreThanTheFees() public {
+        Tournaments.NewTournament memory t = Tournaments.NewTournament(
+            "x", uint40(block.timestamp + 1), uint40(block.timestamp + 100), 0, 0, 0, 0, 31_250, 30, 10, 0, FEE, 10_001
+        );
+        vm.prank(owner);
+        vm.expectRevert(Tournaments.BadTournament.selector);
+        cup.create(t);
+    }
+
+    function test_listCarriesTheTermsAndThePool() public {
+        _new(30, 10, 0);
+        uint256 b = _paid(30, 1, 0, FEE, 1_500);
+        vm.warp(block.timestamp + 10);
+        _field(b, 40);
+        (,,,, Tournaments.Terms[] memory terms, uint256[] memory pools) = cup.list(alice, 10);
+        assertEq(terms[0].fee, FEE);
+        assertEq(terms[0].collected, 40 * uint256(FEE));
+        assertEq(pools[0], 1_700 ether);
+        assertEq(terms[1].fee, 0);
+        assertEq(pools[1], PRIZE);
+    }
+
     function test_writeTournamentVectors() public {
         if (!vm.envOr("WRITE_VECTORS", false)) return;
         string memory out = "[";
@@ -432,7 +567,7 @@ contract TournamentsTest is BaseTest {
             uint8 tier = uint8(i % 3);
             vm.prank(owner);
             uint256 id = cup.create(
-                Tournaments.NewTournament("v", uint40(block.timestamp), uint40(block.timestamp + 1 hours), loc, rod, lure, tier, 31_250, 30, 10, 0)
+                Tournaments.NewTournament("v", uint40(block.timestamp), uint40(block.timestamp + 1 hours), loc, rod, lure, tier, 31_250, 30, 10, 0, 0, 0)
             );
             _enter(id, alice);
             vm.prank(alice);

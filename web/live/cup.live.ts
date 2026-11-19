@@ -1,7 +1,8 @@
 /**
  * End to end on the deployed contracts: opens a small tournament, enters it, casts, predicts the fish with the
  * client code, fights it with the stand-in player, sends the recording and checks that the contract scored
- * exactly what the client predicted. Spends testnet gas and a little Mock Blend from the deployer.
+ * exactly what the client predicted. The tournament has an entry fee, so that is paid too. Spends testnet gas and a
+ * little Mock Blend from the deployer.
  *
  * Run: pnpm live   (needs DEPLOYER_KEY in ../contracts/.env)
  */
@@ -42,20 +43,26 @@ const catalog = {
 describe('a tournament on the deployed contracts', () => {
   it('scores recorded fights exactly as the client predicts', async () => {
     const prize = parseEther('3');
-    if ((await pub.readContract({ address: dep.blend, abi: erc20Abi, functionName: 'allowance', args: [account.address, cup.address] })) < prize) {
+    const fee = parseEther('1');
+    if ((await pub.readContract({ address: dep.blend, abi: erc20Abi, functionName: 'allowance', args: [account.address, cup.address] })) < prize + fee) {
       await send(await wallet.writeContract({ address: dep.blend, abi: erc20Abi, functionName: 'approve', args: [cup.address, parseEther('1000000')] }));
     }
     const now = Number((await pub.getBlock()).timestamp);
-    const t = { locationId: 3, rod: 2, lure: 4, waterTier: 2, green: 31_250 };
+    const t = { locationId: 3, rod: 0, lure: 4, waterTier: 2, green: 31_250 }; // the starter rod: every account may enter
     const id = await pub.readContract({ ...cup, functionName: 'count' });
     await send(
       await wallet.writeContract({
         ...cup,
         functionName: 'create',
-        args: [{ name: 'Self-test (ignore)', start: now, end: now + 240, ...t, castLimit: 6, counted: 3, prize }],
+        args: [{ name: 'Self-test (ignore)', start: now, end: now + 240, ...t, castLimit: 6, counted: 3, prize, fee, rakeBps: 1500 }],
       }),
     );
+    const blendBefore = await pub.readContract({ address: dep.blend, abi: erc20Abi, functionName: 'balanceOf', args: [account.address] });
     await send(await wallet.writeContract({ ...cup, functionName: 'enter', args: [id] }));
+    // the entry fee is taken, and one fee is far below the guarantee, so the pool is the guarantee
+    expect(blendBefore - (await pub.readContract({ address: dep.blend, abi: erc20Abi, functionName: 'balanceOf', args: [account.address] }))).toBe(fee);
+    expect((await pub.readContract({ ...cup, functionName: 'termsOf', args: [id] })).collected).toBe(fee);
+    expect(await pub.readContract({ ...cup, functionName: 'pool', args: [id] })).toBe(prize);
     const lo = await pub.readContract({ ...game, functionName: 'loadout', args: [BigInt(t.rod), BigInt(t.lure), 0n, BigInt(t.locationId)] });
     const tackle = { locationId: t.locationId, waterTier: t.waterTier, rodCatch: Number(lo[0]), rarity: Number(lo[2]), weightBonus: Number(lo[3]) };
 

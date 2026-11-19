@@ -32,17 +32,17 @@ contract PearlExchangeTest is BaseTest {
     }
 
     function test_boughtPearlSpendsLikeAnyOther() public {
-        blend.mint(alice, 10 * E);
+        blend.mint(alice, 20 * E);
         vm.startPrank(alice);
-        blend.approve(address(exchange), 10 * E);
-        exchange.buyPearl(10 * E);
+        blend.approve(address(exchange), 20 * E);
+        exchange.buyPearl(20 * E);
         game.buyRod(1);
         game.buyLure(0);
         vm.stopPrank();
-        assertEq(pearl.balanceOf(alice), (1000 - 450 - 60) * E);
+        assertEq(pearl.balanceOf(alice), (2000 - 1500 - 100) * E);
         assertEq(game.playerOf(alice).rod, 1);
-        assertEq(exchange.totalBlendIn(), 10 * E);
-        assertEq(exchange.totalPearlOut(), 1000 * E);
+        assertEq(exchange.totalBlendIn(), 20 * E);
+        assertEq(exchange.totalPearlOut(), 2000 * E);
     }
 
     function test_needsApprovalAndBalance() public {

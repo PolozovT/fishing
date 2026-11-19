@@ -54,7 +54,7 @@ library GameSetup {
             maxBiteBps: 9_500,
             maxRarityBonus: 300,
             maxWeightBonus: 60,
-            repairShareBps: 600,
+            repairShareBps: 150,
             energyRefillPrice: uint96(100 * E),
             refillPriceGrowthBps: 20_000,
             emissionSoftCap: 0,
@@ -189,23 +189,37 @@ library GameSetup {
         return FishingGame.Item(uint96(price * E), wear, c, r, w, repairBps, a, b);
     }
 
+    /// @notice Rod prices in whole PEARL, by rod id. The first rod is a first-day purchase, every later one a goal
+    ///         of days or weeks (web/BALANCE.md, "Progression in days"). Also what script/Economy.s.sol sets on a
+    ///         game that is already deployed.
+    function rodPrices() internal pure returns (uint256[6] memory) {
+        return [uint256(0), 1_500, 4_000, 12_000, 30_000, 150_000];
+    }
+
+    /// @notice Lure prices in whole PEARL, by lure id.
+    function lurePrices() internal pure returns (uint256[6] memory) {
+        return [uint256(100), 150, 400, 500, 900, 3_000];
+    }
+
     function _seedTackle(FishingGame g) private {
         FishingGame.Effect memory none = _fx(0, 0, 0, 0);
+        uint256[6] memory rod = rodPrices();
+        uint256[6] memory lure = lurePrices();
         // rods: price, durability, catch, rarity, weight, repair factor, location effects
-        g.addRod(_item(0, 0, 0, 0, 0, 10_000, none, none)); //                                   0 Willow Rod
-        g.addRod(_item(450, 80, 6, 20, 0, 10_000, _fx(POND | RIVER, 3, 15, 0), none)); //        1 Carbon Spinner
-        g.addRod(_item(900, 160, 2, 0, 5, 7_000, _fx(GOLDEN | SWAMP, 3, 0, 12), none)); //       2 Ironwood Rod
+        g.addRod(_item(rod[0], 0, 0, 0, 0, 10_000, none, none)); //                              0 Willow Rod
+        g.addRod(_item(rod[1], 80, 6, 20, 0, 10_000, _fx(POND | RIVER, 3, 15, 0), none)); //     1 Carbon Spinner
+        g.addRod(_item(rod[2], 160, 2, 0, 5, 7_000, _fx(GOLDEN | SWAMP, 3, 0, 12), none)); //    2 Ironwood Rod
         // the fly rod loses 4 catch away from moving water
-        g.addRod(_item(2500, 70, 0, 40, 0, 10_000, _fx(MOVING, 4, 60, 10), _fx(~MOVING & 0xff, -4, 0, 0))); // 3 Taiga Fly Rod
-        g.addRod(_item(4000, 50, 2, 0, 8, 10_000, _fx(DEEP, 5, 30, 12), none)); //               4 Deep Troller
-        g.addRod(_item(25000, 120, 4, 50, 6, 10_000, none, none)); //                            5 Pearl Master
+        g.addRod(_item(rod[3], 70, 0, 40, 0, 10_000, _fx(MOVING, 4, 60, 10), _fx(~MOVING & 0xff, -4, 0, 0))); // 3 Taiga Fly Rod
+        g.addRod(_item(rod[4], 50, 2, 0, 8, 10_000, _fx(DEEP, 5, 30, 12), none)); //             4 Deep Troller
+        g.addRod(_item(rod[5], 120, 4, 50, 6, 10_000, none, none)); //                           5 Pearl Master
         // lures: price, casts, catch, rarity, weight
-        g.addLure(_item(60, 80, 5, 0, 0, 10_000, _fx(LAKE, 2, 0, 0), none)); //                  0 Silver Spoon
-        g.addLure(_item(90, 60, 3, 15, 0, 10_000, _fx(RIVER, 3, 20, 0), none)); //               1 Copper Spinner
-        g.addLure(_item(240, 50, 0, 40, 0, 10_000, _fx(MOVING, 4, 70, 0), none)); //             2 Feather Fly
-        g.addLure(_item(300, 50, 2, 0, 0, 10_000, _fx(DEEP, 8, 15, 0), none)); //                3 Glow Jig
-        g.addLure(_item(600, 40, 0, 0, 15, 10_000, _fx(POND | GOLDEN | SWAMP, 5, 0, 0), none)); // 4 Topwater Popper
-        g.addLure(_item(1500, 25, 0, 150, 10, 10_000, none, none)); //                           5 Abyss Spoon
+        g.addLure(_item(lure[0], 80, 5, 0, 0, 10_000, _fx(LAKE, 2, 0, 0), none)); //             0 Silver Spoon
+        g.addLure(_item(lure[1], 60, 3, 15, 0, 10_000, _fx(RIVER, 3, 20, 0), none)); //          1 Copper Spinner
+        g.addLure(_item(lure[2], 50, 0, 40, 0, 10_000, _fx(MOVING, 4, 70, 0), none)); //         2 Feather Fly
+        g.addLure(_item(lure[3], 50, 2, 0, 0, 10_000, _fx(DEEP, 8, 15, 0), none)); //            3 Glow Jig
+        g.addLure(_item(lure[4], 40, 0, 0, 15, 10_000, _fx(POND | GOLDEN | SWAMP, 5, 0, 0), none)); // 4 Topwater Popper
+        g.addLure(_item(lure[5], 25, 0, 150, 10, 10_000, none, none)); //                        5 Abyss Spoon
     }
 
     function _seedSpecials(FishingGame g) private {

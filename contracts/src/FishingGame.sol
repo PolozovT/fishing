@@ -314,6 +314,11 @@ contract FishingGame is Ownable {
         hiddenSpecies[speciesId] = hidden;
     }
 
+    /// @notice Reprices a rod (or a lure). Rods already bought stay bought; repairs follow the new price.
+    function setPrice(bool lure, uint256 id, uint96 price) external onlyOwner {
+        (lure ? _lures : _rods)[id].price = price;
+    }
+
     // ------------------------------------------------------------------ tackle
 
     function ownsRod(address player, uint256 id) public view returns (bool) {

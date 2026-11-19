@@ -5,3 +5,4 @@
 3 0 _entries t_mapping(t_uint256,t_mapping(t_address,t_struct(Entry)_storage))
 4 0 _top t_mapping(t_uint256,t_array(t_address)dyn_storage)
 5 0 _seq t_uint64
+6 0 _terms t_mapping(t_uint256,t_struct(Terms)_storage)

@@ -5,10 +5,12 @@
  * A tournament scores a catch by how it was fought, and the contract replays the fight itself (FightVerifier), so
  * nothing here decides a score: the client only predicts the fish to stage the fight and records the input.
  */
-import { formatEther, parseEventLogs, type Address, type Hex, type TransactionReceipt } from 'viem';
+import { erc20Abi, formatEther, parseEventLogs, type Address, type Hex, type TransactionReceipt } from 'viem';
 import { fishingGameAbi, tournamentsAbi } from '../abi';
 import { publicClient } from '../clients';
 import { deployment } from '../config';
+import { friendlyError } from '../errors';
+import { fluentSend } from '../fluent';
 import { LOCATIONS, SPECIES } from '../game/content';
 import { fightSeedOf, tournamentCastSeed } from '../game/fight';
 import { tournamentFish, type TournamentFish, type TournamentTackle } from '../game/tournamentRoll';
@@ -50,10 +52,22 @@ export interface Cup {
   ownsRod: boolean;
   reclaimed: boolean;
   players: number;
-  /** BLEND */
+  /** BLEND the sponsor put up: the least the prize pool can be. */
+  guarantee: number;
+  /** BLEND the top three share: the guarantee, or the entry fees less the organiser's share when that is more. */
   prize: number;
+  /** Entry fee in BLEND, 0 = free; `feeWei` is the same number as the contract takes it. */
+  fee: number;
+  feeWei: bigint;
+  /** The organiser's share of the fees, 0…1. */
+  rake: number;
   sponsor: Address;
   entry: CupEntry;
+}
+
+/** The prize pool of `c` with `extra` more anglers in it: what entering does to the prizes. */
+export function poolWith(c: Cup, extra: number): number {
+  return Math.max(c.guarantee, (c.players + extra) * c.fee * (1 - c.rake));
 }
 
 export interface CupStanding {
@@ -69,11 +83,15 @@ export const cups = {
   /** Blocks from the randomness block to the deadline for sending the recording. */
   fightBlocks: 120,
   loaded: false,
+  /** The connected player's BLEND and what the tournaments contract may take of it (entry fees). */
+  blend: { balance: 0, allowance: 0n },
   /** Bumped on every reload, for render signatures. */
   rev: 0,
 };
 
 export const PRIZE_SHARES = [0.5, 0.3, 0.2];
+/** Tournaments whose name starts with this are left out of the list. */
+export const SELF_TEST = 'Self-test';
 
 export type CupStage = 'soon' | 'live' | 'closing' | 'over';
 export function cupStage(c: Cup, nowMs: number): CupStage {
@@ -91,7 +109,14 @@ export async function loadCups(): Promise<void> {
     cups.fightBlocks = Number(blocks);
     constantsRead = true;
   }
-  const [ids, ts, entries] = await publicClient.readContract({ ...cupContract, functionName: 'list', args: [me, 24n] });
+  const [ids, ts, entries, , terms, pools] = await publicClient.readContract({ ...cupContract, functionName: 'list', args: [me, 24n] });
+  if (me !== zero && deployment?.blend && terms.some((t) => t.fee > 0n)) {
+    const token = { address: deployment.blend, abi: erc20Abi } as const;
+    const [balance, allowance] = await Promise.all([publicClient.readContract({ ...token, functionName: 'balanceOf', args: [me] }), publicClient.readContract({ ...token, functionName: 'allowance', args: [me, cupContract.address] })]);
+    cups.blend = { balance: Number(formatEther(balance)), allowance };
+  } else {
+    cups.blend = { balance: 0, allowance: 0n };
+  }
   // rod 0 is everyone's; the rest are a bitmask in the game
   const rodIds = [...new Set(ts.map((t) => t.rod))].filter((r) => r !== 0);
   const owned = new Set<number>([0]);
@@ -99,7 +124,8 @@ export async function loadCups(): Promise<void> {
     const has = await Promise.all(rodIds.map((r) => publicClient.readContract({ ...game, functionName: 'ownsRod', args: [me, BigInt(r)] })));
     rodIds.forEach((r, i) => has[i] && owned.add(r));
   }
-  cups.list = ids.map((id, i) => {
+  cups.list = ids
+    .map((id, i) => {
     const t = ts[i];
     const e = entries[i];
     return {
@@ -117,11 +143,17 @@ export async function loadCups(): Promise<void> {
       ownsRod: owned.has(t.rod),
       reclaimed: t.reclaimed,
       players: t.players,
-      prize: Number(formatEther(t.prize)),
+      guarantee: Number(formatEther(t.prize)),
+      prize: Number(formatEther(pools[i])),
+      fee: Number(formatEther(terms[i].fee)),
+      feeWei: terms[i].fee,
+      rake: terms[i].rakeBps / 10_000,
       sponsor: t.sponsor,
       entry: { entered: e.entered, claimed: e.claimed, castsUsed: e.castsUsed, total: e.total, targetBlock: e.targetBlock, best: [...e.best] },
     };
-  });
+    })
+    // the end-to-end test (live/cup.live.ts) opens short tournaments under this name; they are not for players
+    .filter((c) => !c.name.startsWith(SELF_TEST));
   cups.loaded = true;
   cups.rev++;
   emit();
@@ -189,8 +221,35 @@ async function write(label: string, functionName: 'enter' | 'cast' | 'reel' | 'c
   }
 }
 
+/**
+ * Enters a tournament. One with a fee is a batch: an approval for exactly the fee (when the current one is too
+ * small) and the entry, signed together.
+ */
+async function enter(c: Cup): Promise<boolean> {
+  if (c.feeWei === 0n) return !!(await write('Enter the tournament', 'enter', [BigInt(c.id)]));
+  const w = state.wallet;
+  if (!w || !deployment?.blend) {
+    toast('Connect with Fluent to play', 'info');
+    return false;
+  }
+  const label = 'Enter the tournament';
+  try {
+    const calls = [];
+    if (cups.blend.allowance < c.feeWei) calls.push({ to: deployment.blend, abi: erc20Abi, method: 'approve', args: [cupContract.address, c.feeWei] });
+    calls.push({ to: cupContract.address, abi: tournamentsAbi, method: 'enter', args: [BigInt(c.id)] });
+    const hash = await fluentSend(calls, label);
+    const receipt = await publicClient.waitForTransactionReceipt({ hash, pollingInterval: 300 });
+    if (receipt.status !== 'success') throw new Error('Transaction reverted');
+    return true;
+  } catch (e) {
+    console.warn('[cup] entering failed', e);
+    toast(`${label}: ${friendlyError(e)}`, 'err');
+    return false;
+  }
+}
+
 export const cupOps = {
-  enter: (id: number) => write('Enter the tournament', 'enter', [BigInt(id)]),
+  enter,
   cast: (id: number) => write('Tournament cast', 'cast', [BigInt(id)]),
   reel: (id: number, inputs: Hex) => write('Send the fight', 'reel', [BigInt(id), inputs]),
   claim: (id: number) => write('Claim the prize', 'claim', [BigInt(id)]),
