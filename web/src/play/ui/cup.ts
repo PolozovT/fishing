@@ -18,7 +18,7 @@ import { toast } from '../../ui/toast';
 import { waitPastBlock } from '../chain';
 import { CUP_DEPLOYED, PRIZE_SHARES, castTargetOf, cupOps, cupResultOf, cupStage, cups, hookedFish, loadCupStandings, loadCups, poolWith, type Cup, type CupResult, type HookedCupFish } from '../cup';
 import { fishArt } from '../fishSprite';
-import { CHAIN } from '../ops';
+import { CHAIN, refresh } from '../ops';
 import { pearl, qualityTag, rarityTag } from './fmt';
 
 type Phase = 'idle' | 'casting' | 'waiting' | 'bite' | 'fighting' | 'sending' | 'unsent' | 'result';
@@ -481,6 +481,7 @@ async function doEnter(c: Cup): Promise<void> {
   try {
     if (await cupOps.enter(c)) {
       toast(c.fee > 0 ? `You are in: ${blend(c.fee)} BLEND went into the tournament` : 'You are in', 'ok');
+      if (c.fee > 0) void refresh(); // the BLEND in the header
       await reload();
     }
   } finally {
@@ -530,7 +531,7 @@ function controlsView(): HTMLElement[] {
   } else if (stage === 'over' || stage === 'closing') {
     const share = myPlace >= 0 && myPlace < 3 ? c.prize * PRIZE_SHARES[myPlace] : 0;
     if (stage === 'over' && share > 0 && !e.claimed) {
-      button = h('button', { class: 'btn btn-cast', disabled: busy, onclick: () => void cupOps.claim(c.id).then((r) => r && (toast(`${blend(share)} BLEND is yours`, 'ok'), reload())) }, 'Claim');
+      button = h('button', { class: 'btn btn-cast', disabled: busy, onclick: () => void cupOps.claim(c.id).then((r) => r && (toast(`${blend(share)} BLEND is yours`, 'ok'), void refresh(), reload())) }, 'Claim');
       info = `Place ${myPlace + 1}: ${blend(share)} BLEND is waiting for you`;
     } else {
       button = h('button', { class: 'btn btn-cast', disabled: true }, stage === 'closing' ? 'Closed' : 'Over');
