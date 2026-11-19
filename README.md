@@ -8,7 +8,7 @@ Hypothesis results for the first version are in **[REPORT.md](REPORT.md)**; the 
 
 | Folder | Contents |
 |---|---|
-| `contracts/` | Foundry project: `FishingGame` and `Tournaments` (both behind upgradeable proxies), `FightVerifier`, `BottlePool`, `GameLens`, `FishNFT`, `PearlToken`, `PearlExchange`, `Marketplace` + 102 tests |
+| `contracts/` | Foundry project: `FishingGame` and `Tournaments` (both behind upgradeable proxies), `FightVerifier`, `BottlePool`, `GameLens`, `FishNFT`, `PearlToken`, `PearlExchange`, `Marketplace` + 103 tests |
 | `contracts/script/GameSetup.sol` | catalog: species, locations, rods, lures, special fish, achievements, config |
 | `sim/` | model of the first version's formulas and an agent-based economy simulation (Python) |
 | `web/` | browser client (Vite + TypeScript + viem), see [web/README.md](web/README.md) |
@@ -86,7 +86,7 @@ cd contracts && ./check-layout.sh
 TARGET=game forge script script/Upgrade.s.sol --rpc-url fluent_testnet --broadcast --private-key <owner key>
 ```
 
-`TARGET=tournaments` upgrades the tournaments. `check-layout.sh` compares the storage layout with the one recorded at the last deployment (`contracts/storage/`): a new version may only **append** state variables, anything else would corrupt player state and the script says so. `PearlToken`, `FishNFT`, the market and the exchange are plain contracts and are never replaced. Whoever owns the proxies can change the rules, so on a mainnet the owner should be a multisig with a delay.
+`TARGET=tournaments` upgrades the tournaments; upgrading the game also brings its prices, repairs, energy rate and bottle chance in line with `GameSetup`. `check-layout.sh` compares the storage layout with the one recorded at the last deployment (`contracts/storage/`): a new version may only **append** state variables, anything else would corrupt player state and the script says so. `PearlToken`, `FishNFT`, the market and the exchange are plain contracts and are never replaced. Whoever owns the proxies can change the rules, so on a mainnet the owner should be a multisig with a delay.
 
 ## Tournaments
 
@@ -113,14 +113,14 @@ contracts/new-tournament.sh "Pond Cup" 0 0 0 0 25000 60 10080 30 10 300 5 15
 
 ## The BLEND bottle
 
-Now and then a bite is not a fish but a sealed bottle with BLEND in it, paid to the player's wallet in the same transaction that settles the cast. The game rolls for it (0.1% of bites, one bottle per player ever); `BottlePool` holds the money and says whether there is a bottle to give:
+Now and then a bite is not a fish but a sealed bottle with BLEND in it, paid to the player's wallet in the same transaction that settles the cast. The game rolls for it (0.3% of bites, one bottle per player ever); `BottlePool` holds the money and says whether there is a bottle to give:
 
 | Rule | Value | Where |
 |---|---|---|
 | Prize | 1,000 BLEND | `BottlePool.amount` |
 | Player level | 5 or higher (1,000 XP, about 140 casts at the pond) | `BottlePool.minLevel` |
 | Found per UTC day, all players together | 2 | `BottlePool.dailyMax` |
-| Chance per bite / bottles per player | 0.1% / 1 | `FishingGame.config` |
+| Chance per bite / bottles per player | 0.3% / 1 | `FishingGame.config` |
 
 The pool is the BLEND balance of the `bottles` address in `deployments/<chainId>.json`: send BLEND there to fund it, and the bottles can never cost more than was sent. With less than one whole bottle in the pool, a "bottle" roll lands a fish as usual. The owner changes the rules with `BottlePool.setRules(amount, minLevel, dailyMax)` and takes unspent BLEND back with `withdraw`.
 
@@ -130,24 +130,34 @@ The pool is the BLEND balance of the `bottles` address in `deployments/<chainId>
 
 Two currencies. **PEARL** is earned by selling fish and by achievements, and burned on rods, lures, repairs and energy refills; it never leaves the game. **BLEND** is the outside token: it comes in when a player pays a tournament entry fee or buys PEARL at the exchange (100 PEARL per BLEND, one way, to the treasury), and goes out as tournament prizes and bottles.
 
-| Rod | PEARL | Bought on day (about six energy bars a day) |
-|---|---|---|
-| Willow Rod | free | 1 |
-| Carbon Spinner | 1,500 | 1 |
-| Ironwood Rod | 4,000 | |
-| Taiga Fly Rod | 12,000 | 4 |
-| Deep Troller | 30,000 | 11 |
-| Pearl Master | 150,000 | 29 |
+| Rod | PEARL | Bought on day (one energy bar a day … never a full bar) | Full repair, PEARL | Upkeep per cast |
+|---|---|---|---|---|
+| Willow Rod | free | 1 | never wears out | |
+| Carbon Spinner | 1,500 | 5 … 2 | 120 | 1.5 |
+| Ironwood Rod | 4,000 | | 640 | 4 |
+| Taiga Fly Rod | 12,000 | 21 … 9 | 210 | 3 |
+| Deep Troller | 30,000 | 61 … 26 | 400 | 8 |
+| Pearl Master | 150,000 | 170 … 71 | 1,200 | 10 |
 
-Lures are 100 to 900 PEARL for 40 to 80 casts (Abyss Spoon 3,000 for 25). A full repair is 1.5% of the rod's price. The days are from the balance simulation ([web/BALANCE.md](web/BALANCE.md), "Progression in days") for a player who lands nearly every fish; a script that never lets the energy bar fill gets there about six times sooner, a beginner about three times later. A rod opens the tournaments fished with it (equal tackle inside each), so better rods mean richer leagues, not better odds.
+Lures are 100 to 900 PEARL for 40 to 80 casts (Abyss Spoon 3,000 for 25). Every rod has its own repair price, paid in PEARL for the share of the durability that is gone. It is not a share of what the rod cost (prices differ a hundredfold, what a rod adds to a cast about tenfold) but about a third of what the rod adds over the starter in the weakest of its home waters, so upkeep is felt on every rod and no rod loses money. The days are from the balance simulation ([web/BALANCE.md](web/BALANCE.md), "Progression in days") for a player who lands nearly every fish and buys no energy; a beginner gets there about three times later. Energy is the limit: a point every 30 minutes, 48 a day at most, so a script that never sleeps is only 2.4 times ahead of somebody who plays one bar a day. A refill (100 PEARL, doubling with each further one that day) is the way to go faster, and the first two or three a day earn more than they cost. A rod opens the tournaments fished with it (equal tackle inside each), so better rods mean richer leagues, not better odds.
 
-The prices live in `GameSetup.rodPrices()` / `lurePrices()` and in `web/src/tackle/catalog.ts` (the client warns when the two differ). To change them on a deployed game, edit both and run:
+The prices and repairs live in `GameSetup.rodPrices()` / `lurePrices()` / `rodRepairs()` and in `web/src/tackle/catalog.ts`, the energy rate in `GameSetup.defaultConfig()` and `TUNING.energyRegenSeconds`, the bottle chance in `GameSetup.defaultConfig()` and `BLEND_PRIZE.chance` (the client warns when the two sides differ). To change them on a deployed game, edit both and run:
 
 ```bash
 forge script script/Economy.s.sol --rpc-url fluent_testnet --broadcast --private-key <owner key>
 ```
 
-Rods already bought stay bought.
+Rods already bought stay bought. Upgrading the game (`TARGET=game`, above) runs the same sync in the same broadcast.
+
+## Planned
+
+Decided on, not built yet:
+
+- **Diving, as a location of its own.** A push-your-luck dive instead of a cast: a ticket buys a fixed number of moves on a hidden board, corals pay, whirlpools cost a life, and the diver chooses when to surface with what they have. What a ticket costs and what the corals pay is open. It would be a contract of its own beside the game (`FishingGame` is 240 bytes under the 24,576-byte limit).
+- **Lures for one fish.** A lure that raises the pool weight of a single species (today's lures lift every rarer species at once): the tool for filling the collection and for chasing one prize fish. It changes how a cast is drawn, so it needs room in `FishingGame` first.
+- **Aquarium.** Fish given to a personal collection instead of sold, shown the way the trophies are now, with a level per species. A fish given away is PEARL that is never minted, which slows progression without raising a price.
+
+Looked at and dropped: a recipe of the day (handing in the fish named that day).
 
 ## Game loop (contracts)
 
@@ -160,4 +170,4 @@ Rods already bought stay bought.
 
 What the contract decides, the client cannot. Once a cast's block exists its outcome is fixed and public, so the client computes it, plays the bite, the hook and the fight on it, and settles afterwards: skill there changes how soon you land the fish, never which fish it is. See [ARCHITECTURE.md](ARCHITECTURE.md).
 
-Energy: max 20, regenerates 1 every 2 minutes. If a cast is not reeled in within 256 blocks, the fish gets away.
+Energy: max 20, regenerates 1 every 30 minutes on the contracts (`GameSetup.defaultConfig`, set on a deployed game by `script/Economy.s.sol`) and 1 every minute in the local game, which has nothing at stake. If a cast is not reeled in within 256 blocks, the fish gets away.

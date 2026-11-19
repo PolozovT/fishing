@@ -9,9 +9,11 @@ import {PearlToken} from "../src/PearlToken.sol";
 import {FishNFT} from "../src/FishNFT.sol";
 import {FishingGame, IBottlePool} from "../src/FishingGame.sol";
 import {Tournaments} from "../src/Tournaments.sol";
+import {GameSetup} from "./GameSetup.sol";
 
 /// @notice Points a proxy at the current code, keeping its address and every player's state.
-///         Run ./check-layout.sh first: a new version may only append state variables.
+///         Run ./check-layout.sh first: a new version may only append state variables. Upgrading the game also
+///         brings its prices, repairs, energy and bottle chance in line with GameSetup (the broadcaster must own the game too).
 ///         TARGET=game|tournaments forge script script/Upgrade.s.sol --rpc-url <rpc> --broadcast --private-key <owner>
 contract Upgrade is Script {
     /// @dev ERC-1967 admin slot: the ProxyAdmin contract created together with the proxy.
@@ -31,6 +33,8 @@ contract Upgrade is Script {
             ? address(new FishingGame(pearl, fish, IBottlePool(vm.parseJsonAddress(json, ".bottles"))))
             : address(new Tournaments(FishingGame(vm.parseJsonAddress(json, ".game")), fish, IERC20(vm.parseJsonAddress(json, ".blend"))));
         admin.upgradeAndCall(ITransparentUpgradeableProxy(proxy), impl, "");
+        // a version may read the tackle differently (a rod's repair became its own price): set it right away
+        if (isGame) GameSetup.sync(FishingGame(proxy));
         vm.stopBroadcast();
 
         console2.log("proxy", proxy);

@@ -324,6 +324,8 @@ const FISH_SHADOW = ['x..xxx..', 'xxxxxxx.', 'xxxxxxxx', 'xxxxxxx.', 'x..xxx..']
 const FISH_SHADOW2 = ['...xxx..', 'xxxxxxx.', 'xxxxxxxx', 'xxxxxxx.', '...xxx..'];
 const CATCH_FISH = ['..ggg...', 'gggggggg', 'GgggggEg', 'gggggggg', '..ggg...'];
 const CATCH_PAL: Record<string, string> = { g: '#b8a071', G: '#8c7650', E: '#15171a' };
+const CATCH_BOTTLE = ['.cc.', '.gg.', 'gLLg', 'gyYg', 'gYyg', 'gyyg', '.gg.'];
+const CATCH_BOTTLE_PAL: Record<string, string> = { c: '#b8a071', g: '#3f8f63', L: '#8fe6ad', y: '#f2c94c', Y: '#fff0a8' };
 const LANTERN = ['.k.', 'kkk', 'yYy', 'yYy', 'kkk'];
 const LANTERN_PAL: Record<string, string> = { k: '#2a2522', y: '#e0b35a', Y: '#f6e3a2' };
 const BUOY = ['.l.', '.k.', 'rrr', 'rwr', 'rrr'];
@@ -430,6 +432,8 @@ export class WaterScene {
   private last = performance.now();
   private phase: Phase = 'idle';
   private phaseAt = performance.now();
+  /** When the catch on the line turned out to be the bottle (0 = it is a fish). */
+  private prizeAt = 0;
   private particles: Particle[] = [];
   private ripples: Ripple[] = [];
   private swimmers: Swimmer[] = [];
@@ -486,6 +490,20 @@ export class WaterScene {
     if (p === 'caught') this.splash(b.x, b.y, 44, 1.25);
     if (p === 'missed') this.splash(b.x, b.y, 16, 0.75);
     if (p === 'bite') this.splash(b.x, b.y, 9, 0.5);
+  }
+
+  /** The thing just landed is the bottle: it hangs on the line instead of a fish, in a splash of gold. */
+  prize(): void {
+    const now = performance.now();
+    const b = this.bobberPos(now);
+    this.prizeAt = now;
+    const cols = ['#f2c94c', '#fff0a8', '#f08a4b', '#f2fff6'];
+    for (let i = 0; i < 60; i++) {
+      const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.4;
+      const sp = Math.random() * 70 + 35;
+      this.particles.push({ x: b.x, y: b.y, vx: Math.cos(a) * sp * 0.8, vy: Math.sin(a) * sp, life: 1.25, big: Math.random() < 0.4, c: cols[Math.floor(Math.random() * cols.length)] });
+    }
+    this.ripples.push({ x: b.x, y: b.y + 1, r: 2, life: 1 }, { x: b.x, y: b.y + 1, r: 7, life: 0.9 });
   }
 
   // ---------------------------------------------------------------- sizing
@@ -1103,7 +1121,11 @@ export class WaterScene {
     // the catch dangles under the bobber for a few seconds
     if (this.phase === 'caught' && now - this.phaseAt < 4500) {
       const wig = Math.floor(t * 8) % 2;
-      this.sprite(CATCH_FISH, CATCH_PAL, b.x - 4 + wig, top + 6, wig === 1);
+      if (this.prizeAt >= this.phaseAt) {
+        this.sprite(CATCH_BOTTLE, CATCH_BOTTLE_PAL, b.x - 2 + (Math.floor(t * 5) % 2), top + 6);
+        // it glints
+        if (Math.floor(t * 6) % 3 === 0) this.px(b.x - 3 + (Math.floor(t * 6) % 5) * 2, top + 5 + (Math.floor(t * 9) % 6), '#fff0a8');
+      } else this.sprite(CATCH_FISH, CATCH_PAL, b.x - 4 + wig, top + 6, wig === 1);
     }
     // "!" over the angler's head on a bite
     if (this.phase === 'bite' && Math.floor(t * 4) % 2 === 0) {

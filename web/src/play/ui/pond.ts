@@ -41,6 +41,7 @@ import {
 } from '../../game/minigame';
 import { canEnter, isUnlocked, unlockText } from '../../game/progress';
 import { RARITY_CLASS } from '../../i18n';
+import { ALWAYS_BOTTLE } from '../../config';
 import { WaterScene } from '../../scene';
 import { emit, state } from '../../store';
 import { lureById, rodById } from '../../tackle/catalog';
@@ -53,6 +54,7 @@ import { blocksUntilExpiry, outcomeOf, previewCast, tx, waitPastBlock, world } f
 import { CHAIN, ops, refresh, refreshStandings } from '../ops';
 import { act, commit, getSave, rev } from '../state';
 import { pearl, qualityTag, rarityTag } from './fmt';
+import { showPrizeReveal } from './prize';
 
 /** 'landing' exists on the contracts only: the reel transaction is on its way. */
 type Phase = 'idle' | 'casting' | 'waiting' | 'bite' | 'landing' | 'reeling' | 'result';
@@ -197,13 +199,13 @@ function doCast(): void {
 
 function onWaitOver(): void {
   if (!ticket) return;
-  if (!rollBite(ticket, Math.random)) {
+  if (!ALWAYS_BOTTLE && !rollBite(ticket, Math.random)) {
     scene.setPhase('idle');
     finish();
     showMessage('Nothing is biting', 'The float never moved. A lure with catch brings more bites.');
     return;
   }
-  hooked = hookFish(getSave(), ticket, Math.random);
+  hooked = ALWAYS_BOTTLE ? { speciesId: -1, weight: 0, isSpecial: false, prize: BLEND_PRIZE.amount } : hookFish(getSave(), ticket, Math.random);
   attempt = 0;
   beginBite();
 }
@@ -625,7 +627,8 @@ function endReel(r: ReelState): void {
   }
   if (hk.prize) {
     const amount = hk.prize;
-    const ok = act((s) => landPrize(s, hk), (x) => x) !== undefined;
+    // (temporary) the forced bottle is not held to "once per player, from level 5"
+    const ok = act((s) => (ALWAYS_BOTTLE ? { ...s, blend: s.blend + amount } : landPrize(s, hk)), (x) => x) !== undefined;
     scene.setPhase('caught');
     finish();
     if (ok) {
@@ -653,6 +656,12 @@ function endReel(r: ReelState): void {
 }
 
 function onKey(e: KeyboardEvent): void {
+  // (temporary) B plays the bottle reveal straight away, without a cast
+  if (ALWAYS_BOTTLE && e.code === 'KeyB' && phase === 'idle') {
+    scene.setPhase('caught');
+    phase = 'result';
+    return showPrize(BLEND_PRIZE.amount);
+  }
   if (e.code !== 'Space' && e.code !== 'Enter') return;
   const tag = (e.target as HTMLElement | null)?.tagName;
   if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
@@ -674,8 +683,13 @@ function onKeyUp(e: KeyboardEvent): void {
 
 // ------------------------------------------------------------------ overlays
 
+/** Stops the bottle reveal's animation loop, while one is on screen. */
+let stopPrize: (() => void) | null = null;
+
 function hideOverlay(): void {
   clearTimeout(overlayTimer);
+  stopPrize?.();
+  stopPrize = null;
   overlayEl.classList.add('hidden');
   overlayEl.replaceChildren();
   if (phase === 'result') {
@@ -694,49 +708,19 @@ function showMessage(title: string, text: string): void {
   overlayTimer = setTimeout(hideOverlay, 2600);
 }
 
-/** A sealed bottle, drawn in pixels. */
-function bottleArt(): HTMLElement {
-  const rows = ['....cc....', '....cc....', '...gggg...', '...gLLg...', '..gLLLLg..', '..gLppLg..', '..gLppLg..', '..gLppLg..', '..gLLLLg..', '..gggggg..'];
-  const pal: Record<string, string> = { c: '#b8a071', g: '#3f7f5a', L: '#9ef0b5', p: '#f4f1e8' };
-  const ns = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(ns, 'svg');
-  svg.setAttribute('viewBox', '0 0 10 10');
-  svg.setAttribute('shape-rendering', 'crispEdges');
-  svg.setAttribute('class', 'pxi fish-sprite');
-  svg.setAttribute('role', 'img');
-  svg.setAttribute('aria-label', 'Sealed bottle');
-  rows.forEach((row, y) =>
-    [...row].forEach((ch, x) => {
-      if (!pal[ch]) return;
-      const r = document.createElementNS(ns, 'rect');
-      r.setAttribute('x', String(x));
-      r.setAttribute('y', String(y));
-      r.setAttribute('width', '1');
-      r.setAttribute('height', '1');
-      r.setAttribute('fill', pal[ch]);
-      svg.append(r);
-    }),
-  );
-  const el = h('div', { class: 'nft-img fish-art reveal-img bottle-art' });
-  el.append(svg);
-  return el;
-}
-
+/**
+ * The bottle: the scene shows it coming out of the water in a golden splash, then the reveal takes the screen
+ * (play/ui/prize.ts).
+ */
 function showPrize(amount: number): void {
   clearTimeout(overlayTimer);
-  overlayEl.replaceChildren(
-    h(
-      'div',
-      { class: 'reveal reveal-catch r4 reveal-prize' },
-      h('div', { class: 'reveal-title', text: 'Jackpot!' }),
-      bottleArt(),
-      h('div', { class: 'reveal-name', text: 'A sealed bottle' }),
-      h('div', { class: 'reveal-stats' }, h('span', { class: 'blend', text: `+${amount} BLEND` })),
-      h('div', { class: 'muted small', text: `Not a fish at all: there are tokens inside. ${CHAIN ? 'The game contract has sent them to your wallet.' : 'Local game: the balance is stored in this browser.'}` }),
-      h('div', { class: 'reveal-actions' }, h('button', { class: 'btn btn-primary', text: 'Nice!', onclick: hideOverlay })),
-    ),
-  );
-  overlayEl.classList.remove('hidden');
+  scene.prize();
+  overlayTimer = setTimeout(() => {
+    stopPrize = showPrizeReveal(overlayEl, amount, {
+      note: `Not a fish at all: there are tokens inside. ${CHAIN ? 'The game contract has sent them to your wallet.' : 'Local game: the balance is stored in this browser.'}`,
+      onClose: hideOverlay,
+    });
+  }, 750);
 }
 
 function showCatch(l: Landing, fightLine: string | null = null): void {

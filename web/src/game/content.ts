@@ -5,6 +5,7 @@
  * The first 20 species and 5 locations mirror contracts/script/GameSetup.sol (same ids, weights, pools).
  * Local PEARL is 10× finer than the contract's: a Roach is 9 PEARL here and 0.9 there, so whole numbers work.
  */
+import { LOCAL_GAME } from '../config';
 import { OFFLINE_SPECIES, OFFLINE_SPOTS } from '../offlineCatalog';
 import type { LocationDef, Quality, Rarity, SpecialDef, SpeciesDef } from './types';
 
@@ -223,7 +224,7 @@ export const PEARL_PER_BLEND = 100;
 export const BLEND_PRIZE = {
   amount: 1000,
   /** Chance per bite, at any location. */
-  chance: 0.001,
+  chance: 0.003,
   /** Prizes one player can land in total. */
   maxWins: 1,
   /** Below this level a bite is never a bottle. */
@@ -236,8 +237,8 @@ export const BLEND_PRIZE = {
 
 export const TUNING = {
   maxEnergy: 20,
-  /** Local play regenerates faster than the contract's 15 minutes: nothing is at stake yet. */
-  energyRegenSeconds: 120,
+  /** Seconds per point of energy: half an hour on the contracts (a bar in ten hours), a minute in the local game, where nothing is at stake. */
+  energyRegenSeconds: LOCAL_GAME ? 60 : 30 * 60,
   refillPrice: 100,
   /** Each further refill on the same UTC day costs this many times more. */
   refillGrowth: 2,
@@ -255,8 +256,6 @@ export const TUNING = {
   /** A fish sold within this long of being landed pays `freshBonus` more (FishingGame.FRESH_WINDOW / FRESH_BONUS_BPS). */
   freshWindowMs: 10 * 60_000,
   freshBonus: 0.2,
-  /** Full repair of a rod costs this share of its price. */
-  repairShare: 0.015,
 };
 
 export const QUALITIES: Quality[] = ['D', 'C', 'B', 'A', 'S'];

@@ -52,7 +52,7 @@ export const gameLensAbi = [
                 "internalType": "uint8"
               },
               {
-                "name": "repairBps",
+                "name": "repair",
                 "type": "uint16",
                 "internalType": "uint16"
               },
@@ -143,7 +143,7 @@ export const gameLensAbi = [
                 "internalType": "uint8"
               },
               {
-                "name": "repairBps",
+                "name": "repair",
                 "type": "uint16",
                 "internalType": "uint16"
               },

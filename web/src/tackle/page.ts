@@ -121,7 +121,7 @@ function card(item: TackleItem, selected: boolean, onPick: () => void, shop: boo
   const owned = item.kind === 'rod' ? s.rods[item.id] : s.lures[item.id];
   const equipped = shop && (item.kind === 'rod' ? s.equipped.rod === item.id : s.equipped.lure === item.id);
   let wear: string;
-  if (item.kind === 'rod') wear = item.wear === 0 ? 'Never wears out' : shop && s.rods[item.id] ? `${s.rods[item.id].durability}/${item.wear} durability` : `${item.wear} durability`;
+  if (item.kind === 'rod') wear = item.wear === 0 ? 'Never wears out' : shop && s.rods[item.id] ? `${s.rods[item.id].durability}/${item.wear} durability` : `${item.wear} durability · ${pearl(item.repair ?? 0)} PEARL to mend`;
   else wear = shop && s.lures[item.id] ? `${s.lures[item.id].casts} casts left` : `${item.wear} casts`;
   const current = item.kind === 'rod' ? rodById(s.equipped.rod) : lureById(s.equipped.lure);
   return h(

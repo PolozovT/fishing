@@ -138,8 +138,12 @@ contract FishingGameTest is BaseTest {
         vm.prank(alice);
         vm.expectRevert(FishingGame.NotEnoughEnergy.selector);
         game.cast(0);
-        vm.warp(block.timestamp + 2 minutes);
-        assertEq(game.currentEnergy(alice), 1);
+        vm.warp(block.timestamp + 30 minutes - 1);
+        assertEq(game.currentEnergy(alice), 0);
+        vm.warp(block.timestamp + 1);
+        assertEq(game.currentEnergy(alice), 1); // a point every half an hour
+        vm.warp(block.timestamp + 10 hours);
+        assertEq(game.currentEnergy(alice), 20);
     }
 
     function test_anyoneCanReelForAPlayer() public {
@@ -540,7 +544,7 @@ contract FishingGameTest is BaseTest {
         game.cast(0);
 
         uint256 cost = game.repairCost(alice, 4);
-        assertEq(cost, (30_000 * E * 15) / 1_000); // 1.5% of the price for a full repair
+        assertEq(cost, 400 * E); // the troller's own repair price, whatever the rod cost
         uint256 before = pearl.balanceOf(alice);
         vm.startPrank(alice);
         game.repairRod(4);
@@ -555,28 +559,45 @@ contract FishingGameTest is BaseTest {
         vm.stopPrank();
     }
 
-    function test_ironwoodRepairsCheaper() public {
+    function test_repairIsChargedForTheWearOnly() public {
+        _fund(alice, 4_000 * E);
+        vm.prank(alice);
+        game.buyRod(2); // Ironwood: 160 durability, 640 PEARL for a full repair
+        assertEq(game.repairCost(alice, 2), 0);
+        _fishOnce(alice, 0, bytes32(uint256(1)));
+        assertEq(game.repairCost(alice, 2), 4 * E); // one point of 160
+        assertEq(game.repairCost(bob, 2), 0); // not his rod
+    }
+
+    function test_repairPriceDoesNotFollowTheRodPrice() public {
         _fund(alice, 4_000 * E);
         vm.prank(alice);
         game.buyRod(2);
         _fishOnce(alice, 0, bytes32(uint256(1)));
-        assertEq(game.repairCost(alice, 2), (4_000 * E * 150 * 7_000) / (160 * 1e8));
+        vm.startPrank(owner);
+        game.setPrice(false, 2, uint96(90_000 * E), 640);
+        assertEq(game.repairCost(alice, 2), 4 * E);
+        game.setPrice(false, 2, uint96(90_000 * E), 320);
+        assertEq(game.repairCost(alice, 2), 2 * E);
+        vm.stopPrank();
     }
 
     function test_ownerReprices() public {
         vm.prank(alice);
         vm.expectRevert();
-        game.setPrice(false, 1, 0);
+        game.setPrice(false, 1, 0, 0);
         _fund(alice, 5_000 * E);
         vm.prank(alice);
         game.buyRod(1); // at the old price
         vm.startPrank(owner);
-        game.setPrice(false, 1, uint96(9_000 * E));
-        game.setPrice(true, 0, uint96(7 * E));
+        game.setPrice(false, 1, uint96(9_000 * E), 200);
+        game.setPrice(true, 0, uint96(7 * E), 0);
         vm.expectRevert();
-        game.setPrice(false, 6, 1); // no such rod
+        game.setPrice(false, 6, 1, 1); // no such rod
         vm.stopPrank();
         assertEq(game.rodItem(1).price, 9_000 * E);
+        assertEq(game.rodItem(1).repair, 200);
+        assertEq(game.rodItem(1).wear, 80); // the rest of the rod is as it was
         assertEq(game.rodItem(2).price, 4_000 * E);
         assertEq(game.lureItem(0).price, 7 * E);
         assertTrue(game.ownsRod(alice, 1)); // what is bought stays bought
@@ -589,11 +610,13 @@ contract FishingGameTest is BaseTest {
     function test_economyScriptSetsThePricesAndKeepsTheRest() public {
         Economy economy = new Economy();
         vm.startPrank(owner);
-        game.setPrice(false, 5, uint96(25_000 * E));
-        game.setPrice(true, 0, uint96(60 * E));
+        game.setPrice(false, 5, uint96(25_000 * E), 10_000); // what a rod seeded before the fixed repairs holds
+        game.setPrice(false, 2, uint96(4_000 * E), 7_000);
+        game.setPrice(true, 0, uint96(60 * E), 10_000);
         FishingGame.Config memory c = GameSetup.defaultConfig();
-        c.repairShareBps = 600;
-        c.blendChancePpm = 4_000;
+        c.energyRegenSeconds = 2 minutes;
+        c.blendChancePpm = 1_000;
+        c.baseBiteBps = 7_000;
         game.setConfig(c);
         game.transferOwnership(address(economy));
         vm.stopPrank();
@@ -601,9 +624,14 @@ contract FishingGameTest is BaseTest {
         assertEq(game.rodItem(5).price, 150_000 * E);
         assertEq(game.rodItem(1).price, 1_500 * E);
         assertEq(game.lureItem(0).price, 100 * E);
-        (,,,,,,, uint16 repairShare,,,,,,, uint32 chance,) = game.config();
-        assertEq(repairShare, 150);
-        assertEq(chance, 4_000); // the rest of the config is left alone
+        assertEq(game.rodItem(5).repair, 1_200);
+        assertEq(game.rodItem(2).repair, 640);
+        assertEq(game.rodItem(1).repair, 120);
+        assertEq(game.lureItem(0).repair, 0);
+        (, uint32 regen,, uint16 bite,,,,,,,,,,, uint32 chance,) = game.config();
+        assertEq(regen, 30 minutes);
+        assertEq(chance, 3_000);
+        assertEq(bite, 7_000); // the rest of the config is left alone
     }
 
     function test_refillDoublesWithinADay() public {
@@ -849,7 +877,7 @@ contract FishingGameTest is BaseTest {
 
     function test_defaultBottleSettings() public view {
         (,,,,,,,,,,,,,, uint32 chance, uint8 maxWins) = game.config();
-        assertEq(chance, 1_000);
+        assertEq(chance, 3_000);
         assertEq(maxWins, 1);
         assertEq(bottles.amount(), BOTTLE);
         assertEq(bottles.minLevel(), 5);

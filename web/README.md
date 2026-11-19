@@ -106,7 +106,7 @@ src/play/              the local game's shell
   chain.ts             contract backend: reads via GameLens, transactions, catalog check
   state.ts             the current Save (localStorage in local mode, a view of chain state otherwise)
   fishSprite.ts        pixel fish drawn from shape parameters
-  ui/*.ts              pond, keepnet, collection, trophies, ranks, header
+  ui/*.ts              pond, keepnet, collection, trophies, ranks, header, prize (the bottle reveal)
 sim/balance.sim.ts     balance simulation
 src/tx.ts, errors.ts   simulate → send through Fluent Connect → receipt, readable revert messages
 src/scene.ts           canvas water animation (both modes)

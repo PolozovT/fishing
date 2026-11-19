@@ -422,6 +422,7 @@ export async function catalogMismatches(): Promise<string[]> {
     if (!on) return;
     check(`${item.name} price`, num(on.price), item.price);
     check(`${item.name} wear`, on.wear, item.wear);
+    check(`${item.name} repair`, on.repair, item.repair ?? 0);
     check(`${item.name} catch`, on.catchPts, item.base.catch ?? 0);
     check(`${item.name} rarity`, on.rarity, item.base.rarity ?? 0);
     check(`${item.name} weight`, on.weight, item.base.weight ?? 0);
@@ -466,7 +467,6 @@ export async function catalogMismatches(): Promise<string[]> {
   check('energy regen seconds', cfg[1], TUNING.energyRegenSeconds);
   check('base bite', cfg[3], TUNING.baseBite * 100);
   check('refill price', num(cfg[8]), TUNING.refillPrice);
-  check('repair share', cfg[7], Math.round(TUNING.repairShare * 10_000));
   check('BLEND chance', cfg[14], Math.round(BLEND_PRIZE.chance * 1_000_000));
   check('BLEND bottles per player', cfg[15], BLEND_PRIZE.maxWins);
   if (bottles) {

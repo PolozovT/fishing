@@ -48,20 +48,20 @@ library GameSetup {
     function defaultConfig() internal pure returns (FishingGame.Config memory) {
         return FishingGame.Config({
             maxEnergy: 20,
-            energyRegenSeconds: 2 minutes,
+            energyRegenSeconds: 30 minutes, // a bar of 20 in ten hours, 48 points a day at most
             revealDelay: 2,
             baseBiteBps: 6_500,
             maxBiteBps: 9_500,
             maxRarityBonus: 300,
             maxWeightBonus: 60,
-            repairShareBps: 150,
+            repairShareBps: 0, // not used: every rod has its own repair price
             energyRefillPrice: uint96(100 * E),
             refillPriceGrowthBps: 20_000,
             emissionSoftCap: 0,
             qualityPerCatch: 150,
             qualityPerRarity: 300,
             blendAmount: 0, // not used: the prize is BottlePool.amount
-            blendChancePpm: 1_000,
+            blendChancePpm: 3_000,
             blendMaxWins: 1
         });
     }
@@ -182,18 +182,25 @@ library GameSetup {
         int8 c,
         uint16 r,
         uint8 w,
-        uint16 repairBps,
+        uint16 repair,
         FishingGame.Effect memory a,
         FishingGame.Effect memory b
     ) private pure returns (FishingGame.Item memory) {
-        return FishingGame.Item(uint96(price * E), wear, c, r, w, repairBps, a, b);
+        return FishingGame.Item(uint96(price * E), wear, c, r, w, repair, a, b);
     }
 
-    /// @notice Rod prices in whole PEARL, by rod id. The first rod is a first-day purchase, every later one a goal
-    ///         of days or weeks (web/BALANCE.md, "Progression in days"). Also what script/Economy.s.sol sets on a
+    /// @notice Rod prices in whole PEARL, by rod id. With energy at a point per half an hour the first rod is a goal
+    ///         of days, every later one of weeks or months (web/BALANCE.md, "Progression in days"). Also what script/Economy.s.sol sets on a
     ///         game that is already deployed.
     function rodPrices() internal pure returns (uint256[6] memory) {
         return [uint256(0), 1_500, 4_000, 12_000, 30_000, 150_000];
+    }
+
+    /// @notice What a full repair of each rod costs, in whole PEARL, by rod id. Not a share of the rod's price:
+    ///         prices differ a hundredfold, what a rod adds to a cast about tenfold, so each repair is about a
+    ///         third of what the rod adds over the starter in the weakest of its home waters.
+    function rodRepairs() internal pure returns (uint16[6] memory) {
+        return [uint16(0), 120, 640, 210, 400, 1_200];
     }
 
     /// @notice Lure prices in whole PEARL, by lure id.
@@ -201,25 +208,71 @@ library GameSetup {
         return [uint256(100), 150, 400, 500, 900, 3_000];
     }
 
+    /// @notice Brings the economy of a deployed game in line with this file: rod and lure prices, what a full repair
+    ///         of each rod costs, how fast energy comes back and how often a bite is a bottle. The rest of the config is
+    ///         left as it is.
+    ///         The caller must own the game; only what differs is sent.
+    function sync(FishingGame game) internal {
+        FishingGame.Config memory c = _config(game);
+        FishingGame.Config memory want = defaultConfig();
+        if (c.energyRegenSeconds != want.energyRegenSeconds || c.blendChancePpm != want.blendChancePpm) {
+            (c.energyRegenSeconds, c.blendChancePpm) = (want.energyRegenSeconds, want.blendChancePpm);
+            game.setConfig(c);
+        }
+        uint256[6] memory rod = rodPrices();
+        uint256[6] memory lure = lurePrices();
+        uint16[6] memory fix = rodRepairs();
+        for (uint256 i; i < rod.length; i++) {
+            FishingGame.Item memory it = game.rodItem(i);
+            if (it.price != rod[i] * E || it.repair != fix[i]) game.setPrice(false, i, uint96(rod[i] * E), fix[i]);
+        }
+        for (uint256 i; i < lure.length; i++) {
+            FishingGame.Item memory it = game.lureItem(i);
+            if (it.price != lure[i] * E || it.repair != 0) game.setPrice(true, i, uint96(lure[i] * E), 0);
+        }
+    }
+
+    function _config(FishingGame game) private view returns (FishingGame.Config memory c) {
+        (
+            c.maxEnergy,
+            c.energyRegenSeconds,
+            c.revealDelay,
+            c.baseBiteBps,
+            c.maxBiteBps,
+            c.maxRarityBonus,
+            c.maxWeightBonus,
+            c.repairShareBps,
+            c.energyRefillPrice,
+            c.refillPriceGrowthBps,
+            c.emissionSoftCap,
+            c.qualityPerCatch,
+            c.qualityPerRarity,
+            c.blendAmount,
+            c.blendChancePpm,
+            c.blendMaxWins
+        ) = game.config();
+    }
+
     function _seedTackle(FishingGame g) private {
         FishingGame.Effect memory none = _fx(0, 0, 0, 0);
         uint256[6] memory rod = rodPrices();
         uint256[6] memory lure = lurePrices();
-        // rods: price, durability, catch, rarity, weight, repair factor, location effects
-        g.addRod(_item(rod[0], 0, 0, 0, 0, 10_000, none, none)); //                              0 Willow Rod
-        g.addRod(_item(rod[1], 80, 6, 20, 0, 10_000, _fx(POND | RIVER, 3, 15, 0), none)); //     1 Carbon Spinner
-        g.addRod(_item(rod[2], 160, 2, 0, 5, 7_000, _fx(GOLDEN | SWAMP, 3, 0, 12), none)); //    2 Ironwood Rod
+        uint16[6] memory fix = rodRepairs();
+        // rods: price, durability, catch, rarity, weight, full repair, location effects
+        g.addRod(_item(rod[0], 0, 0, 0, 0, fix[0], none, none)); //                              0 Willow Rod
+        g.addRod(_item(rod[1], 80, 6, 20, 0, fix[1], _fx(POND | RIVER, 3, 15, 0), none)); //     1 Carbon Spinner
+        g.addRod(_item(rod[2], 160, 2, 0, 5, fix[2], _fx(GOLDEN | SWAMP, 3, 0, 12), none)); //    2 Ironwood Rod
         // the fly rod loses 4 catch away from moving water
-        g.addRod(_item(rod[3], 70, 0, 40, 0, 10_000, _fx(MOVING, 4, 60, 10), _fx(~MOVING & 0xff, -4, 0, 0))); // 3 Taiga Fly Rod
-        g.addRod(_item(rod[4], 50, 2, 0, 8, 10_000, _fx(DEEP, 5, 30, 12), none)); //             4 Deep Troller
-        g.addRod(_item(rod[5], 120, 4, 50, 6, 10_000, none, none)); //                           5 Pearl Master
+        g.addRod(_item(rod[3], 70, 0, 40, 0, fix[3], _fx(MOVING, 4, 60, 10), _fx(~MOVING & 0xff, -4, 0, 0))); // 3 Taiga Fly Rod
+        g.addRod(_item(rod[4], 50, 2, 0, 8, fix[4], _fx(DEEP, 5, 30, 12), none)); //             4 Deep Troller
+        g.addRod(_item(rod[5], 120, 4, 50, 6, fix[5], none, none)); //                           5 Pearl Master
         // lures: price, casts, catch, rarity, weight
-        g.addLure(_item(lure[0], 80, 5, 0, 0, 10_000, _fx(LAKE, 2, 0, 0), none)); //             0 Silver Spoon
-        g.addLure(_item(lure[1], 60, 3, 15, 0, 10_000, _fx(RIVER, 3, 20, 0), none)); //          1 Copper Spinner
-        g.addLure(_item(lure[2], 50, 0, 40, 0, 10_000, _fx(MOVING, 4, 70, 0), none)); //         2 Feather Fly
-        g.addLure(_item(lure[3], 50, 2, 0, 0, 10_000, _fx(DEEP, 8, 15, 0), none)); //            3 Glow Jig
-        g.addLure(_item(lure[4], 40, 0, 0, 15, 10_000, _fx(POND | GOLDEN | SWAMP, 5, 0, 0), none)); // 4 Topwater Popper
-        g.addLure(_item(lure[5], 25, 0, 150, 10, 10_000, none, none)); //                        5 Abyss Spoon
+        g.addLure(_item(lure[0], 80, 5, 0, 0, 0, _fx(LAKE, 2, 0, 0), none)); //             0 Silver Spoon
+        g.addLure(_item(lure[1], 60, 3, 15, 0, 0, _fx(RIVER, 3, 20, 0), none)); //          1 Copper Spinner
+        g.addLure(_item(lure[2], 50, 0, 40, 0, 0, _fx(MOVING, 4, 70, 0), none)); //         2 Feather Fly
+        g.addLure(_item(lure[3], 50, 2, 0, 0, 0, _fx(DEEP, 8, 15, 0), none)); //            3 Glow Jig
+        g.addLure(_item(lure[4], 40, 0, 0, 15, 0, _fx(POND | GOLDEN | SWAMP, 5, 0, 0), none)); // 4 Topwater Popper
+        g.addLure(_item(lure[5], 25, 0, 150, 10, 0, none, none)); //                        5 Abyss Spoon
     }
 
     function _seedSpecials(FishingGame g) private {

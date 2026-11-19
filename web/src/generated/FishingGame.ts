@@ -221,7 +221,7 @@ export const fishingGameAbi = [
             "internalType": "uint8"
           },
           {
-            "name": "repairBps",
+            "name": "repair",
             "type": "uint16",
             "internalType": "uint16"
           },
@@ -326,7 +326,7 @@ export const fishingGameAbi = [
             "internalType": "uint8"
           },
           {
-            "name": "repairBps",
+            "name": "repair",
             "type": "uint16",
             "internalType": "uint16"
           },
@@ -1144,7 +1144,7 @@ export const fishingGameAbi = [
             "internalType": "uint8"
           },
           {
-            "name": "repairBps",
+            "name": "repair",
             "type": "uint16",
             "internalType": "uint16"
           },
@@ -1560,7 +1560,7 @@ export const fishingGameAbi = [
             "internalType": "uint8"
           },
           {
-            "name": "repairBps",
+            "name": "repair",
             "type": "uint16",
             "internalType": "uint16"
           },
@@ -1786,6 +1786,11 @@ export const fishingGameAbi = [
         "name": "price",
         "type": "uint96",
         "internalType": "uint96"
+      },
+      {
+        "name": "repair",
+        "type": "uint16",
+        "internalType": "uint16"
       }
     ],
     "outputs": [],

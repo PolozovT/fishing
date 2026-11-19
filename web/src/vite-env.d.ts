@@ -3,6 +3,10 @@
 interface ImportMetaEnv {
   readonly VITE_RPC_URL?: string;
   readonly VITE_CHAIN_ID?: string;
+  /** `local` runs the game in the browser, without the contracts. */
+  readonly VITE_GAME_MODE?: string;
+  /** Temporary: `1` makes every cast of the local dev game land the bottle (see config.ts). */
+  readonly VITE_ALWAYS_BOTTLE?: string;
   /** Fluent Connect app id (app_…) from the Fluent Dashboard. */
   readonly VITE_FLUENT_APP_ID?: string;
   /** Fluent Connect login client (client-…) issued by Fluent. */

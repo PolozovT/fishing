@@ -37,8 +37,8 @@ export interface TackleItem {
   pros: string[];
   cons: string[];
   blurb: string;
-  /** Multiplier on the rod's repair price (default 1). */
-  repairFactor?: number;
+  /** Rods: PEARL for a full repair, charged for the share of the durability that is gone. */
+  repair?: number;
 }
 
 
@@ -62,6 +62,7 @@ export const RODS: TackleItem[] = [
     tier: 1,
     price: 1500,
     wear: 80,
+    repair: 120,
     base: { catch: 6, rarity: 20 },
     spot: { spots: [0, 1], catch: 3, rarity: 15, label: 'on the pond and the river' },
     pros: ['Light and quick: more bites everywhere', 'Shines with spoons and spinners on calm water'],
@@ -75,10 +76,10 @@ export const RODS: TackleItem[] = [
     tier: 1,
     price: 4000,
     wear: 160,
-    repairFactor: 0.7,
+    repair: 640,
     base: { catch: 2, weight: 5 },
     spot: { spots: [5, 6], catch: 3, weight: 12, label: 'on Golden Lake and the swamp' },
-    pros: ['Twice the durability of a carbon rod', 'Repairs cost 30% less', 'Hauls heavy fish out of weeds'],
+    pros: ['Twice the durability of a carbon rod', 'Hauls heavy fish out of weeds'],
     cons: ['Nothing for rare fish'],
     blurb: 'Dense northern wood. It outlasts its owner.',
   },
@@ -89,6 +90,7 @@ export const RODS: TackleItem[] = [
     tier: 2,
     price: 12000,
     wear: 70,
+    repair: 210,
     base: { rarity: 40 },
     spot: { spots: [1, 4], catch: 4, rarity: 60, weight: 10, label: 'on moving water' },
     pros: ['Rare fish come to it on rivers and rapids', 'Best partner for flies'],
@@ -102,6 +104,7 @@ export const RODS: TackleItem[] = [
     tier: 2,
     price: 30000,
     wear: 50,
+    repair: 400,
     base: { catch: 2, weight: 8 },
     spot: { spots: [2, 3, 7], catch: 5, rarity: 30, weight: 12, label: 'in deep water' },
     pros: ['+20% fish weight in deep water: heavier catches sell for more', 'Built for the lake and the sea'],
@@ -115,6 +118,7 @@ export const RODS: TackleItem[] = [
     tier: 3,
     price: 150000,
     wear: 120,
+    repair: 1200,
     base: { catch: 4, rarity: 50, weight: 6 },
     pros: ['Good at everything, everywhere', 'Durable for its power'],
     cons: ['A specialist rod beats it in its home water', 'Very expensive'],

@@ -12,6 +12,7 @@ import {
   landPrize,
   refillEnergy,
   repairRod,
+  rodRepairPrice,
   sellFish,
   setActiveSpecial,
   setLocation,
@@ -416,12 +417,13 @@ describe('purchases', () => {
     expect(s.pearl).toBe(1000 - lure('spoon').price * 2);
     expect(s.equipped.lure).toBe('spoon');
   });
-  it('repair restores durability for a proportional price', () => {
+  it('repair restores durability for the worn share of the rod\'s repair price', () => {
     let s: Save = { ...freshSave(NOW), pearl: 1000, rods: { willow: { durability: 0 }, carbon: { durability: 40 } } };
     const before = s.pearl;
     s = repairRod(s, 'carbon');
     expect(s.rods.carbon.durability).toBe(80);
-    expect(before - s.pearl).toBe(Math.ceil(rod('carbon').price * TUNING.repairShare * 0.5));
+    expect(before - s.pearl).toBe(60); // half of the Carbon Spinner's 120
+    expect(rodRepairPrice({ ...s, rods: { ...s.rods, pearlmaster: { durability: 119 } } }, 'pearlmaster')).toBe(10); // not a share of 150,000
     expect(() => repairRod(s, 'carbon')).toThrow(GameError);
   });
   it('energy refill doubles in price within a day and resets the next day', () => {

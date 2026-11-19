@@ -28,8 +28,8 @@ function mulberry32(seed: number): () => number {
 }
 
 const N = 100_000;
-/** Energy a day of somebody who plays six full bars. */
-const CASUAL_ENERGY = 120;
+/** Energy a day of somebody who plays one full bar: the bar takes ten hours to fill, so that is one sitting a day. */
+const CASUAL_ENERGY = TUNING.maxEnergy;
 const RARITY = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic'];
 const pct = (x: number, d = 1): string => `${(x * 100).toFixed(d)}%`;
 const table = (head: string[], rows: (string | number)[][]): string =>
@@ -108,7 +108,7 @@ function runCombo(rod: TackleItem, lure: TackleItem | null, locId: number, seed:
     pearl += fishPrice(sp, h.weight, q);
     score += tournamentScore(sp, h.weight, q);
   }
-  const wearCost = (lure ? lure.price / lure.wear : 0) + (rod.wear ? (rod.price * TUNING.repairShare * (rod.repairFactor ?? 1)) / rod.wear : 0);
+  const wearCost = (lure ? lure.price / lure.wear : 0) + (rod.wear ? (rod.repair ?? 0) / rod.wear : 0);
   const net = pearl / n - wearCost;
   return { pearlPerCast: net, pearlPerEnergy: net / loc.energyCost, scorePerCatch: score / Math.max(1, landed), rarity: rarity.map((r) => r / Math.max(1, landed)), special: special / Math.max(1, landed), landRate: landed / n };
 }
@@ -185,9 +185,9 @@ const FINDINGS = `## Findings
 What the first runs showed, and what was changed because of it. The tables below are the state after those changes.
 
 - **Rarity odds hold up.** Bonuses are a relative weighting, so even the strongest rarity build (+250) moves Legendary fish from 2.4% to 3.7% at Taimen Rapids and from 0.5% to 1.7% at sea. No loadout makes rare fish common.
-- **Tackle was bought in a day.** With the first numbers a player bought the best rod after ~170 casts; the second pass (XP curve doubled to 50·L·(L−1), the new waters' fish repriced, Pearl Master at 25,000) made it ~500 casts, which is still one day of energy for somebody who never lets the bar fill up. The third pass raised the prices alone, what fish pay is unchanged: Carbon Spinner 450 → 1,500, Ironwood 900 → 4,000, Taiga Fly Rod 2,500 → 12,000, Deep Troller 4,000 → 30,000, Pearl Master 25,000 → 150,000, lures about 1.6× (Abyss Spoon 2×). The first rod is still a first-day purchase; every later one is a goal of days or weeks (see "Progression in days"). A full set is 197,500 PEARL, or 1,975 BLEND at the exchange for somebody who would rather not wait.
+- **Tackle was bought in a day.** With the first numbers a player bought the best rod after ~170 casts; the second pass (XP curve doubled to 50·L·(L−1), the new waters' fish repriced, Pearl Master at 25,000) made it ~500 casts, which is still one day of energy for somebody who never lets the bar fill up. The third pass raised the prices alone, what fish pay is unchanged: Carbon Spinner 450 → 1,500, Ironwood 900 → 4,000, Taiga Fly Rod 2,500 → 12,000, Deep Troller 4,000 → 30,000, Pearl Master 25,000 → 150,000, lures about 1.6× (Abyss Spoon 2×). The fourth pass slowed energy from a point every 2 minutes to one every 30 (48 a day at most instead of 720), so the same purchases are days, weeks and months apart now, the first rod included (see "Progression in days"). A full set is 197,500 PEARL, or 1,975 BLEND at the exchange for somebody who would rather not wait.
 - **Pearl Master was the best rod everywhere.** It is now a generalist (catch 4, rarity 50, weight 6): close to the top in every water but beaten by the specialist at home. Carbon Spinner wins the pond and river, Taiga Fly Rod the rapids, Deep Troller deep water, Ironwood the lake and swamp. Six different best loadouts across eight locations.
-- **Rod upkeep punished expensive rods.** Repair at 20% of the price per full bar made the Fly Rod lose money against the free starter. Repair went to 6% of the price, and to 1.5% when the prices went up, so upkeep per cast stayed about where it was (2.6 PEARL a cast for the Fly Rod, 9 for the Deep Troller, 19 for the Pearl Master).
+- **Rod upkeep punished expensive rods.** Repair at 20% of the price per full bar made the Fly Rod lose money against the free starter. Any share of the price stays lopsided, because prices differ a hundredfold and what a rod adds to a cast about tenfold: at 1.5% the Carbon Spinner cost 0.3 PEARL a cast to keep and the Pearl Master 19, most of what it adds. So every rod has its own repair price now, about a third of what it adds over the starter in the weakest of its home waters: Carbon Spinner 120 PEARL for a full bar (1.5 a cast), Ironwood 640 (4), Taiga Fly Rod 210 (3), Deep Troller 400 (8), Pearl Master 1,200 (10).
 - **Copper Spinner was the best lure everywhere** (rarity 30 for 1.5 PEARL a cast). Its base rarity is 15 now, with the extra moved into its Forest River bonus.
 - **The reel fight.** A bot could not lose the first two versions, so skill meant nothing. The current fight has jerks: a short warning, then a burst that raises tension by itself. A line that is let go at the warning never snaps (tested for every difficulty), so every loss is a missed reaction, not bad luck. How hard a fish fights is its rarity plus how rough the water is. The players below are models (reaction lag, aim error, chance of missing a warning), not measurements: read the rates as estimates to check by hand. Against the targets, calm water is a little easier than asked for the novice (97–99% vs 85–95%), rough water is in range for the novice except Taimen Rapids (too hard) and easier than asked for the experienced player. On the contracts a lost fight is a retry, not a lost fish, so these rates there mean time, not value.
 - **Progression has no dead ends.** All 40 simulated careers of both skill levels opened all eight locations. Pity (120 / 160 / 220 dry catches) caps the worst case for each special fish.
@@ -327,7 +327,7 @@ it('balance simulation', () => {
   out.push(
     '## Progression in days',
     '',
-    `Energy comes back at one point per ${TUNING.energyRegenSeconds / 60} minutes: ${perDay} a day for somebody who never lets the bar fill up (a script, or a player who also buys refills), and about ${CASUAL_ENERGY} for somebody who empties the bar of ${TUNING.maxEnergy} six times a day. Median day on which each rod is bought, experienced player / novice. The bot does not buy the Ironwood Rod, so a full set is later still.`,
+    `Energy comes back at one point per ${TUNING.energyRegenSeconds / 60} minutes: ${perDay} a day for somebody who never lets the bar fill up (a script), and ${CASUAL_ENERGY} for somebody who empties the bar of ${TUNING.maxEnergy} once a day. Energy bought with PEARL is not counted: a refill is ${TUNING.refillPrice} PEARL and doubles with each further one that day, and the first two or three a day earn more than they cost, so in practice a keen player fishes about twice the free energy. Median day on which each rod is bought, experienced player / novice. The bot does not buy the Ironwood Rod, so a full set is later still.`,
     '',
   );
   out.push(

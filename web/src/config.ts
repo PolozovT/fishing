@@ -33,3 +33,10 @@ export function requireDeployment(): Deployment {
  * it runs entirely in the browser on a localStorage save: the same rules, no transactions.
  */
 export const LOCAL_GAME: boolean = import.meta.env.VITE_GAME_MODE === 'local' || !d;
+
+/**
+ * TEMPORARY, while the bottle reveal is being worked on: with `VITE_ALWAYS_BOTTLE=1` every cast of the local game
+ * lands the BLEND bottle, and the B key plays the reveal without a cast. Dev server and local game only: a build,
+ * and the game on the contracts, never see it. Remove together with its uses in play/ui/pond.ts.
+ */
+export const ALWAYS_BOTTLE: boolean = import.meta.env.DEV && LOCAL_GAME && import.meta.env.VITE_ALWAYS_BOTTLE === '1';

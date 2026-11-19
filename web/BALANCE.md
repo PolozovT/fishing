@@ -5,9 +5,9 @@
 What the first runs showed, and what was changed because of it. The tables below are the state after those changes.
 
 - **Rarity odds hold up.** Bonuses are a relative weighting, so even the strongest rarity build (+250) moves Legendary fish from 2.4% to 3.7% at Taimen Rapids and from 0.5% to 1.7% at sea. No loadout makes rare fish common.
-- **Tackle was bought in a day.** With the first numbers a player bought the best rod after ~170 casts; the second pass (XP curve doubled to 50·L·(L−1), the new waters' fish repriced, Pearl Master at 25,000) made it ~500 casts, which is still one day of energy for somebody who never lets the bar fill up. The third pass raised the prices alone, what fish pay is unchanged: Carbon Spinner 450 → 1,500, Ironwood 900 → 4,000, Taiga Fly Rod 2,500 → 12,000, Deep Troller 4,000 → 30,000, Pearl Master 25,000 → 150,000, lures about 1.6× (Abyss Spoon 2×). The first rod is still a first-day purchase; every later one is a goal of days or weeks (see "Progression in days"). A full set is 197,500 PEARL, or 1,975 BLEND at the exchange for somebody who would rather not wait.
+- **Tackle was bought in a day.** With the first numbers a player bought the best rod after ~170 casts; the second pass (XP curve doubled to 50·L·(L−1), the new waters' fish repriced, Pearl Master at 25,000) made it ~500 casts, which is still one day of energy for somebody who never lets the bar fill up. The third pass raised the prices alone, what fish pay is unchanged: Carbon Spinner 450 → 1,500, Ironwood 900 → 4,000, Taiga Fly Rod 2,500 → 12,000, Deep Troller 4,000 → 30,000, Pearl Master 25,000 → 150,000, lures about 1.6× (Abyss Spoon 2×). The fourth pass slowed energy from a point every 2 minutes to one every 30 (48 a day at most instead of 720), so the same purchases are days, weeks and months apart now, the first rod included (see "Progression in days"). A full set is 197,500 PEARL, or 1,975 BLEND at the exchange for somebody who would rather not wait.
 - **Pearl Master was the best rod everywhere.** It is now a generalist (catch 4, rarity 50, weight 6): close to the top in every water but beaten by the specialist at home. Carbon Spinner wins the pond and river, Taiga Fly Rod the rapids, Deep Troller deep water, Ironwood the lake and swamp. Six different best loadouts across eight locations.
-- **Rod upkeep punished expensive rods.** Repair at 20% of the price per full bar made the Fly Rod lose money against the free starter. Repair went to 6% of the price, and to 1.5% when the prices went up, so upkeep per cast stayed about where it was (2.6 PEARL a cast for the Fly Rod, 9 for the Deep Troller, 19 for the Pearl Master).
+- **Rod upkeep punished expensive rods.** Repair at 20% of the price per full bar made the Fly Rod lose money against the free starter. Any share of the price stays lopsided, because prices differ a hundredfold and what a rod adds to a cast about tenfold: at 1.5% the Carbon Spinner cost 0.3 PEARL a cast to keep and the Pearl Master 19, most of what it adds. So every rod has its own repair price now, about a third of what it adds over the starter in the weakest of its home waters: Carbon Spinner 120 PEARL for a full bar (1.5 a cast), Ironwood 640 (4), Taiga Fly Rod 210 (3), Deep Troller 400 (8), Pearl Master 1,200 (10).
 - **Copper Spinner was the best lure everywhere** (rarity 30 for 1.5 PEARL a cast). Its base rarity is 15 now, with the extra moved into its Forest River bonus.
 - **The reel fight.** A bot could not lose the first two versions, so skill meant nothing. The current fight has jerks: a short warning, then a burst that raises tension by itself. A line that is let go at the warning never snaps (tested for every difficulty), so every loss is a missed reaction, not bad luck. How hard a fish fights is its rarity plus how rough the water is. The players below are models (reaction lag, aim error, chance of missing a warning), not measurements: read the rates as estimates to check by hand. Against the targets, calm water is a little easier than asked for the novice (97–99% vs 85–95%), rough water is in range for the novice except Taimen Rapids (too hard) and easier than asked for the experienced player. On the contracts a lost fight is a retry, not a lost fish, so these rates there mean time, not value.
 - **Progression has no dead ends.** All 40 simulated careers of both skill levels opened all eight locations. Pity (120 / 160 / 220 dry catches) caps the worst case for each special fish.
@@ -64,27 +64,27 @@ After lure wear and rod repair costs. Best rod + lure per location, the starter 
 
 | Location | Energy | Starter | Best for PEARL | Net/cast | vs starter | Runner-up | Best tournament score per catch |
 |---|---|---|---|---|---|---|---|
-| Village Pond | 1 | 21.6 | Carbon Spinner + Silver Spoon | 28.7 | 1.3× | Carbon Spinner + no lure (27.9) | Carbon Spinner + Abyss Spoon |
-| Forest River | 1 | 29.0 | Taiga Fly Rod + Silver Spoon | 39.5 | 1.4× | Taiga Fly Rod + no lure (38.8) | Taiga Fly Rod + Abyss Spoon |
-| Deep Lake | 2 | 36.4 | Deep Troller + Copper Spinner | 60.8 | 1.7× | Deep Troller + Silver Spoon (56.7) | Deep Troller + Abyss Spoon |
-| Northern Sea | 3 | 67.5 | Deep Troller + Glow Jig | 121.1 | 1.8× | Deep Troller + Copper Spinner (114.1) | Deep Troller + Abyss Spoon |
-| Taimen Rapids | 4 | 138.9 | Taiga Fly Rod + Silver Spoon | 202.2 | 1.5× | Taiga Fly Rod + Feather Fly (199.4) | Taiga Fly Rod + Abyss Spoon |
-| Golden Lake | 2 | 51.6 | Ironwood Rod + Feather Fly | 74.1 | 1.4× | Ironwood Rod + Copper Spinner (72.1) | Ironwood Rod + Abyss Spoon |
-| Ancient Swamp | 3 | 69.2 | Ironwood Rod + Feather Fly | 111.4 | 1.6× | Ironwood Rod + Silver Spoon (105.9) | Ironwood Rod + Abyss Spoon |
-| Phantom Waters | 4 | 141.6 | Deep Troller + Glow Jig | 247.7 | 1.7× | Deep Troller + Silver Spoon (231.0) | Deep Troller + Abyss Spoon |
+| Village Pond | 1 | 21.6 | Carbon Spinner + Silver Spoon | 27.5 | 1.3× | Carbon Spinner + no lure (26.7) | Carbon Spinner + Abyss Spoon |
+| Forest River | 1 | 29.0 | Taiga Fly Rod + Silver Spoon | 39.1 | 1.3× | Taiga Fly Rod + no lure (38.4) | Taiga Fly Rod + Abyss Spoon |
+| Deep Lake | 2 | 36.4 | Deep Troller + Copper Spinner | 61.8 | 1.7× | Deep Troller + Silver Spoon (57.7) | Deep Troller + Abyss Spoon |
+| Northern Sea | 3 | 67.5 | Deep Troller + Glow Jig | 122.1 | 1.8× | Deep Troller + Copper Spinner (115.1) | Deep Troller + Abyss Spoon |
+| Taimen Rapids | 4 | 138.9 | Taiga Fly Rod + Silver Spoon | 201.7 | 1.5× | Taiga Fly Rod + Feather Fly (198.9) | Taiga Fly Rod + Abyss Spoon |
+| Golden Lake | 2 | 51.6 | Pearl Master + Copper Spinner | 75.7 | 1.5× | Pearl Master + Silver Spoon (72.2) | Ironwood Rod + Abyss Spoon |
+| Ancient Swamp | 3 | 69.2 | Ironwood Rod + Feather Fly | 107.7 | 1.6× | Carbon Spinner + Copper Spinner (104.5) | Ironwood Rod + Abyss Spoon |
+| Phantom Waters | 4 | 141.6 | Deep Troller + Glow Jig | 248.7 | 1.8× | Deep Troller + Silver Spoon (232.0) | Deep Troller + Abyss Spoon |
 
-Distinct best loadouts across 8 locations: 5.
+Distinct best loadouts across 8 locations: 6.
 
 ## 100,000 casts with headline loadouts
 
 | Loadout | Location | Landed | C / U / R / E / L / M | Special | Net PEARL/cast | Score/catch |
 |---|---|---|---|---|---|---|
 | Willow Rod + no lure | Village Pond | 65% | 89.6% / 8.6% / 0.0% / 0.7% / 1.1% / 0.0% | 1.12% | 22.7 | 19 |
-| Carbon Spinner + Silver Spoon | Village Pond | 70% | 86.4% / 10.9% / 0.0% / 1.4% / 1.2% / 0.0% | 1.23% | 28.2 | 23 |
-| Taiga Fly Rod + Feather Fly | Forest River | 69% | 10.9% / 57.2% / 29.1% / 1.7% / 1.1% / 0.0% | 1.14% | 32.0 | 50 |
-| Deep Troller + Glow Jig | Northern Sea | 74% | 34.9% / 38.2% / 19.7% / 5.8% / 0.9% / 0.5% | 0.46% | 121.6 | 54 |
-| Pearl Master + Abyss Spoon | Taimen Rapids | 62% | 0.0% / 0.0% / 41.6% / 54.5% / 3.5% / 0.5% | 0.48% | 67.2 | 157 |
-| Pearl Master + Abyss Spoon | Phantom Waters | 63% | 0.0% / 36.7% / 40.2% / 16.6% / 6.5% / 0.0% | 0.00% | 102.8 | 107 |
+| Carbon Spinner + Silver Spoon | Village Pond | 70% | 86.4% / 10.9% / 0.0% / 1.4% / 1.2% / 0.0% | 1.23% | 26.9 | 23 |
+| Taiga Fly Rod + Feather Fly | Forest River | 69% | 10.9% / 57.2% / 29.1% / 1.7% / 1.1% / 0.0% | 1.14% | 31.6 | 50 |
+| Deep Troller + Glow Jig | Northern Sea | 74% | 34.9% / 38.2% / 19.7% / 5.8% / 0.9% / 0.5% | 0.46% | 122.6 | 54 |
+| Pearl Master + Abyss Spoon | Taimen Rapids | 62% | 0.0% / 0.0% / 41.6% / 54.5% / 3.5% / 0.5% | 0.48% | 75.9 | 157 |
+| Pearl Master + Abyss Spoon | Phantom Waters | 63% | 0.0% / 36.7% / 40.2% / 16.6% / 6.5% / 0.0% | 0.00% | 111.6 | 107 |
 
 ## Progression: casts until each milestone
 
@@ -98,25 +98,25 @@ Median of 40 simulated careers (20,000 casts each). The bot sells every ordinary
 | unlock:Deep Lake | 49 (worst 126) | 62 (worst 170) |
 | special:Golden Koi | 71 (worst 187) | 164 (worst 202) |
 | level 8 | 206 (worst 229) | 246 (worst 299) |
-| buy:flyrod | 238 (worst 320) | 439 (worst 588) |
-| buy:troller | 488 (worst 582) | 1356 (worst 1595) |
+| buy:flyrod | 240 (worst 321) | 452 (worst 613) |
+| buy:troller | 488 (worst 583) | 1343 (worst 1604) |
 | special:Ancient Catfish | 210 (worst 397) | 372 (worst 497) |
-| level 12 | 441 (worst 503) | 700 (worst 880) |
-| buy:pearlmaster | 1037 (worst 1163) | 2804 (worst 3029) |
-| special:Ghost Fish | 466 (worst 725) | 871 (worst 1342) |
+| level 12 | 441 (worst 503) | 693 (worst 875) |
+| buy:pearlmaster | 1035 (worst 1161) | 2787 (worst 3069) |
+| special:Ghost Fish | 466 (worst 725) | 864 (worst 1342) |
 
 ## Progression in days
 
-Energy comes back at one point per 2 minutes: 720 a day for somebody who never lets the bar fill up (a script, or a player who also buys refills), and about 120 for somebody who empties the bar of 20 six times a day. Median day on which each rod is bought, experienced player / novice. The bot does not buy the Ironwood Rod, so a full set is later still.
+Energy comes back at one point per 30 minutes: 48 a day for somebody who never lets the bar fill up (a script), and 20 for somebody who empties the bar of 20 once a day. Energy bought with PEARL is not counted: a refill is 100 PEARL and doubles with each further one that day, and the first two or three a day earn more than they cost, so in practice a keen player fishes about twice the free energy. Median day on which each rod is bought, experienced player / novice. The bot does not buy the Ironwood Rod, so a full set is later still.
 
-| Rod | Price | Energy spent (experienced) | At 120 energy a day | At 720 energy a day |
+| Rod | Price | Energy spent (experienced) | At 20 energy a day | At 48 energy a day |
 |---|---|---|---|---|
-| Carbon Spinner | 1,500 | 83 | day 1 / day 2 | day 1 / day 1 |
-| Taiga Fly Rod | 12,000 | 418 | day 4 / day 8 | day 1 / day 2 |
-| Deep Troller | 30,000 | 1231 | day 11 / day 36 | day 2 / day 6 |
-| Pearl Master | 150,000 | 3402 | day 29 / day 84 | day 5 / day 14 |
+| Carbon Spinner | 1,500 | 83 | day 5 / day 7 | day 2 / day 3 |
+| Taiga Fly Rod | 12,000 | 418 | day 21 / day 44 | day 9 / day 19 |
+| Deep Troller | 30,000 | 1218 | day 61 / day 213 | day 26 / day 89 |
+| Pearl Master | 150,000 | 3394 | day 170 / day 498 | day 71 / day 208 |
 
-PEARL earned in the first 1,000 casts (median): experienced 191345, novice 35357.
+PEARL earned in the first 1,000 casts (median): experienced 191383, novice 36046.
 
 All 8 locations open after 20,000 casts: experienced 40/40, novice 40/40.
 

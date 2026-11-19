@@ -99,7 +99,7 @@ export function rodRepairPrice(s: Save, id: string): number {
   const rod = rodById(id);
   const own = s.rods[id];
   if (!rod || !own) return 0;
-  return repairCost(rod.price, rod.wear, own.durability, rod.repairFactor);
+  return repairCost(rod.repair ?? 0, rod.wear, own.durability);
 }
 
 export function repairRod(s: Save, id: string): Save {

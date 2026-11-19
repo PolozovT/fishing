@@ -2386,8 +2386,221 @@ div.item {
   background: color-mix(in srgb, var(--blend) 12%, var(--panel));
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--blend) 50%, var(--panel));
 }
-.bottle-art .fish-sprite {
-  width: 56%;
+
+/* The bottle reveal (play/ui/prize.ts): a full-screen pixel scene on a canvas, the words on top of it. */
+.scene-overlay:has(.prize-stage) {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  padding: 0;
+  background: none;
+}
+.prize-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: color-mix(in srgb, #050a16 97%, transparent);
+  animation: prize-in 0.3s steps(3, end);
+  cursor: pointer;
+  --gold: #ffd95a;
+  --gold-lo: #8a4a14;
+  /* always a night sky, whatever the theme: the words on it keep the night colours */
+  --text: #e8eef7;
+  --text-2: #c3cede;
+  color: var(--text);
+}
+.prize-stage.prize-done {
+  cursor: default;
+}
+@keyframes prize-in {
+  from {
+    opacity: 0;
+  }
+}
+.prize-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  image-rendering: pixelated;
+}
+.prize-pop .prize-canvas {
+  animation: prize-shake 0.36s steps(1, end);
+}
+@keyframes prize-shake {
+  0% {
+    transform: translate(8px, -6px);
+  }
+  15% {
+    transform: translate(-8px, 4px);
+  }
+  30% {
+    transform: translate(6px, 6px);
+  }
+  45% {
+    transform: translate(-6px, -4px);
+  }
+  60% {
+    transform: translate(4px, 2px);
+  }
+  80% {
+    transform: translate(-2px, 0);
+  }
+  100% {
+    transform: none;
+  }
+}
+.prize-hud {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  text-align: center;
+  pointer-events: none;
+}
+.prize-head {
+  display: grid;
+  place-items: center;
+  min-height: clamp(40px, 10vw, 68px);
+}
+.prize-head > * {
+  grid-area: 1 / 1;
+}
+.prize-teaser {
+  font: 400 14px/1.3 var(--font-px);
+  color: var(--text-2);
+  animation: prize-blink 0.9s steps(1, end) infinite;
+}
+@keyframes prize-blink {
+  50% {
+    opacity: 0.45;
+  }
+}
+.prize-pop .prize-teaser {
+  display: none;
+}
+.prize-title {
+  display: flex;
+  gap: 0.04em;
+  font: 400 clamp(34px, 9vw, 64px) / 1 var(--font-px);
+  visibility: hidden;
+}
+.prize-pop .prize-title {
+  visibility: visible;
+}
+/* each letter drops in after the one before it and then runs through the colours on its own beat */
+.prize-title span {
+  color: var(--gold);
+  text-shadow: 0.06em 0.06em 0 var(--gold-lo), 0.12em 0.12em 0 #050a16;
+  animation:
+    prize-letter 0.32s steps(4, end) both,
+    prize-hue 1.5s step-end infinite;
+  animation-delay: calc(var(--i) * 0.05s), calc(var(--i) * -0.19s);
+}
+@keyframes prize-letter {
+  from {
+    transform: translateY(-0.9em);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(0.12em);
+    opacity: 1;
+  }
+}
+@keyframes prize-hue {
+  0% {
+    color: #ffd95a;
+  }
+  20% {
+    color: #ff9f5a;
+  }
+  40% {
+    color: #ff7fa1;
+  }
+  60% {
+    color: #b99cff;
+  }
+  80% {
+    color: #6fe0d8;
+  }
+}
+.prize-slot {
+  flex: none;
+  width: min(320px, 80vw);
+  height: clamp(130px, 36vh, 320px);
+}
+.prize-amount {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35em;
+  font: 400 clamp(28px, 7.5vw, 52px) / 1 var(--font-px);
+  color: var(--gold);
+  text-shadow: 0.07em 0.07em 0 var(--gold-lo), 0.14em 0.14em 0 #050a16;
+  font-variant-numeric: tabular-nums;
+  visibility: hidden;
+}
+.prize-counting .prize-amount {
+  visibility: visible;
+}
+.prize-unit {
+  font-size: 0.5em;
+  color: #fff0a8;
+}
+.prize-done .prize-amount {
+  animation: prize-stamp 0.42s steps(6, end);
+}
+@keyframes prize-stamp {
+  from {
+    transform: scale(1.45);
+  }
+}
+.prize-name,
+.prize-note,
+.prize-btn {
+  visibility: hidden;
+}
+.prize-done :is(.prize-name, .prize-note, .prize-btn) {
+  visibility: visible;
+  animation: pop 0.24s steps(3, end) both;
+}
+.prize-done .prize-note {
+  animation-delay: 0.1s;
+}
+.prize-done .prize-btn {
+  animation-delay: 0.2s;
+}
+.prize-name {
+  font: 600 18px/1.2 var(--font-body);
+  color: var(--text);
+}
+.prize-note {
+  max-width: 36ch;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-2);
+  text-wrap: balance;
+}
+.prize-btn {
+  pointer-events: auto;
+  margin-top: 8px;
+  min-width: 140px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .prize-stage,
+  .prize-stage * {
+    animation: none !important;
+  }
 }
 .trophy.prize.active {
   box-shadow: 0 0 0 2px var(--bg-deep), inset 0 0 0 2px color-mix(in srgb, var(--blend) 50%, var(--panel));

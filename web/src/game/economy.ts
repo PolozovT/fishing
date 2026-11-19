@@ -29,10 +29,10 @@ export function levelOf(xp: number): number {
   return l;
 }
 
-/** Full repair price of a rod from `durability`, in PEARL. `repairFactor` < 1 for rods that are cheap to mend. */
-export function repairCost(price: number, max: number, durability: number, repairFactor = 1): number {
-  if (max <= 0 || durability >= max) return 0;
-  return Math.max(1, Math.ceil(price * TUNING.repairShare * repairFactor * ((max - durability) / max)));
+/** What mending a rod from `durability` back to `max` costs, in PEARL: `full` (the rod's own repair price) for the share that is gone. */
+export function repairCost(full: number, max: number, durability: number): number {
+  if (max <= 0 || durability >= max || full <= 0) return 0;
+  return Math.max(1, Math.ceil((full * (max - durability)) / max));
 }
 
 export function refillCost(countToday: number): number {

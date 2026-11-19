@@ -42,7 +42,7 @@ contract FishingGame is Ownable {
         int8 catchPts;
         uint16 rarity;
         uint8 weight;
-        uint16 repairBps; // multiplier on the repair price, 10_000 = 1x
+        uint16 repair; // rods: what a full repair costs, in whole PEARL
         Effect a;
         Effect b;
     }
@@ -112,7 +112,7 @@ contract FishingGame is Ownable {
         uint16 maxBiteBps;
         uint16 maxRarityBonus;
         uint8 maxWeightBonus;
-        uint16 repairShareBps; // a full repair costs this share of the rod's price
+        uint16 repairShareBps; // not used since a rod's repair has its own price (Item.repair)
         uint96 energyRefillPrice;
         uint32 refillPriceGrowthBps; // each further refill on the same UTC day costs this much more (20000 = x2)
         uint256 emissionSoftCap; // PEARL per UTC day from selling fish; above it payouts shrink. 0 = off
@@ -260,7 +260,7 @@ contract FishingGame is Ownable {
     function _setConfig(Config memory c) internal {
         if (
             c.maxEnergy == 0 || c.energyRegenSeconds == 0 || c.revealDelay == 0 || c.maxBiteBps > 10_000
-                || c.baseBiteBps > c.maxBiteBps || c.refillPriceGrowthBps < 10_000 || c.repairShareBps > 10_000
+                || c.baseBiteBps > c.maxBiteBps || c.refillPriceGrowthBps < 10_000
         ) revert BadConfig();
         config = c;
     }
@@ -314,9 +314,11 @@ contract FishingGame is Ownable {
         hiddenSpecies[speciesId] = hidden;
     }
 
-    /// @notice Reprices a rod (or a lure). Rods already bought stay bought; repairs follow the new price.
-    function setPrice(bool lure, uint256 id, uint96 price) external onlyOwner {
-        (lure ? _lures : _rods)[id].price = price;
+    /// @notice Reprices a rod (or a lure) and its full repair (whole PEARL, rods only). Rods already bought stay
+    ///         bought.
+    function setPrice(bool lure, uint256 id, uint96 price, uint16 repair) external onlyOwner {
+        Item storage it = (lure ? _lures : _rods)[id];
+        (it.price, it.repair) = (price, repair);
     }
 
     // ------------------------------------------------------------------ tackle
@@ -368,8 +370,8 @@ contract FishingGame is Ownable {
         Item storage it = _rods[id];
         uint256 left = rodDurability[player][id];
         if (it.wear == 0 || left >= it.wear) return 0;
-        // price * share * repairFactor * missing / wear
-        return (uint256(it.price) * config.repairShareBps * it.repairBps * (it.wear - left)) / (uint256(it.wear) * 1e8);
+        // the rod's own repair price, for the share of the durability that is gone
+        return (uint256(it.repair) * 1e18 * (it.wear - left)) / it.wear;
     }
 
     function repairRod(uint8 id) external {
