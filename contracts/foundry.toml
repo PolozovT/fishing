@@ -17,6 +17,10 @@ fs_permissions = [
   { access = "read-write", path = "../deployments" },
   # test/Vectors.t.sol writes the outcome vectors the web client checks its preview against
   { access = "read-write", path = "../web/src/game/fixtures" },
+  # the upgrade tests start from the released bytecode
+  { access = "read", path = "releases" },
+  # script/Upgrade.s.sol compares the implementation with the build artifact
+  { access = "read", path = "out" },
 ]
 
 [fuzz]

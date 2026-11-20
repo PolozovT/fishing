@@ -6,6 +6,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {BaseTest} from "./Base.t.sol";
 import {GameSetup} from "../script/GameSetup.sol";
 import {Tournaments} from "../src/Tournaments.sol";
+import {FishingGame} from "../src/FishingGame.sol";
+import {FishNFT} from "../src/FishNFT.sol";
 import {FightVerifier, IFightVerifier} from "../src/FightVerifier.sol";
 
 /// @dev Says whatever the test tells it to, so the tournament rules can be tested apart from the fight itself.
@@ -23,7 +25,8 @@ contract ScriptedVerifier is IFightVerifier {
     }
 }
 
-contract TournamentsTest is BaseTest {
+/// @dev The tournaments on top of the game, and the helpers that play them. Shared with the upgrade tests.
+abstract contract TournamentsBase is BaseTest {
     Tournaments internal cup;
     FightVerifier internal realVerifier;
     ScriptedVerifier internal judge;
@@ -32,16 +35,21 @@ contract TournamentsTest is BaseTest {
 
     uint96 internal constant PRIZE = 1_000 ether;
 
-    function setUp() public override {
+    function setUp() public virtual override {
         super.setUp();
         judge = new ScriptedVerifier();
         vm.startPrank(owner);
-        (cup, realVerifier) = GameSetup.deployTournaments(owner, game, fish, IERC20(address(blend)));
+        (cup, realVerifier) = GameSetup.deployTournaments(owner, game, fish, IERC20(address(blend)), _tournamentsImplementation);
         cup.setVerifier(judge);
         vm.stopPrank();
         blend.mint(owner, 10 * uint256(PRIZE));
         vm.prank(owner);
         blend.approve(address(cup), type(uint256).max);
+    }
+
+    /// @dev The code behind the tournaments' proxy: the current source, unless a test starts from a release.
+    function _tournamentsImplementation(FishingGame game_, FishNFT fish_, IERC20 blend_) internal virtual returns (address) {
+        return address(new Tournaments(game_, fish_, blend_));
     }
 
     function _new(uint16 castLimit, uint8 counted, uint8 rod) internal returns (uint256 id) {
@@ -53,8 +61,9 @@ contract TournamentsTest is BaseTest {
         id = cup.create(
             Tournaments.NewTournament({
                 name: "Pond Sprint",
-                start: uint40(block.timestamp + 10),
-                end: uint40(block.timestamp + 10 + 30 minutes),
+                // vm.getBlockTimestamp, not block.timestamp: with via_ir the compiler may reuse a value read before a warp
+                start: uint40(vm.getBlockTimestamp() + 10),
+                end: uint40(vm.getBlockTimestamp() + 10 + 30 minutes),
                 locationId: 0,
                 rod: rod,
                 lure: 0,
@@ -71,7 +80,7 @@ contract TournamentsTest is BaseTest {
 
     function _open(uint16 castLimit, uint8 counted) internal returns (uint256 id) {
         id = _new(castLimit, counted, 0);
-        vm.warp(block.timestamp + 10);
+        vm.warp(vm.getBlockTimestamp() + 10);
     }
 
     function _enter(uint256 id, address who) internal {
@@ -103,6 +112,9 @@ contract TournamentsTest is BaseTest {
     function _finish(uint256 id) internal {
         vm.warp(uint256(cup.tournament(id).end) + cup.GRACE() + 1);
     }
+}
+
+contract TournamentsTest is TournamentsBase {
 
     // ------------------------------------------------------------------ organising
 

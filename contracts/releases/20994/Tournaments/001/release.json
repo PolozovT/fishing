@@ -1,0 +1,56 @@
+{
+  "chainId": 20994,
+  "compiler": {
+    "evmVersion": "cancun",
+    "metadata": {
+      "bytecodeHash": "ipfs"
+    },
+    "optimizer": {
+      "enabled": true,
+      "runs": 100
+    },
+    "solc": "0.8.28+commit.7893614a",
+    "viaIR": true
+  },
+  "contract": "Tournaments",
+  "dependencies": {
+    "blend": "0x83Fed707A8dDDC2535aE591CF19fB6C91D542D8E",
+    "fishNft": "0x3Ec62368e2cEDE35C2027cf0BbDc78a0eCaAC037",
+    "game": "0x743595326b8DbbFF85885503AaBA1515aa48A42b"
+  },
+  "immutableOffsets": {
+    "blend": [
+      1660,
+      2930,
+      3614,
+      6979,
+      7308
+    ],
+    "fishNft": [
+      4535,
+      9232,
+      10286
+    ],
+    "game": [
+      1987,
+      2152,
+      2307,
+      3038,
+      3367,
+      8994
+    ]
+  },
+  "implementation": "0x795E5c7bf18DC83A3653e2d7098Bd3Edcc0F5171",
+  "network": "Fluent Testnet",
+  "proxy": "0xf30af836B8054975FFF54D96db5eD4382640E951",
+  "proxyAdmin": "0x24325b99AE3E71170637eA56605341A1AF689017",
+  "release": 1,
+  "runtimeCodeHash": "0x35eea0ec291bb4167de734885be73c687228a35751b4bdf3d2aacf25b4f04bed",
+  "runtimeCodeSize": 14246,
+  "sha256": {
+    "abi.json": "872a118aaeba7bd899e8324ccb7b8fda34fb156031b1c485ab7d4e3336c5c9ac",
+    "runtime.hex": "cc0ca6575e6aca99172e82a2e2b3b0d0bee0d2bb727dc8d67950c1e8766554a6",
+    "storage-layout.json": "954a73aca5df6366c99897604c224a68ebdf7c500858fbe3527e6007cea7209e"
+  },
+  "sourceCommit": "b252c37c129aecd06c5c5b414f6aa107ca7316af"
+}

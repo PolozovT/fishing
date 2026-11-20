@@ -7,7 +7,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {GameSetup} from "../script/GameSetup.sol";
 import {PearlToken} from "../src/PearlToken.sol";
 import {FishNFT} from "../src/FishNFT.sol";
-import {FishingGame} from "../src/FishingGame.sol";
+import {FishingGame, IBottlePool} from "../src/FishingGame.sol";
 import {Marketplace} from "../src/Marketplace.sol";
 import {GameLens} from "../src/GameLens.sol";
 import {BottlePool} from "../src/BottlePool.sol";
@@ -40,7 +40,7 @@ abstract contract BaseTest is Test {
         vm.roll(1_000);
         blend = new MockBlend();
         vm.startPrank(owner);
-        GameSetup.Deployment memory d = GameSetup.deploy(owner, IERC20(address(blend)));
+        GameSetup.Deployment memory d = GameSetup.deploy(owner, IERC20(address(blend)), _gameImplementation);
         // the test contract can mint PEARL to fund players
         d.pearl.setMinter(address(this), true);
         vm.stopPrank();
@@ -52,13 +52,18 @@ abstract contract BaseTest is Test {
         bottles = d.bottles;
     }
 
+    /// @dev The code behind the game's proxy: the current source, unless a test starts from a release.
+    function _gameImplementation(PearlToken pearl_, FishNFT fish_, IBottlePool bottles_) internal virtual returns (address) {
+        return address(new FishingGame(pearl_, fish_, bottles_));
+    }
+
     function _fund(address who, uint256 amount) internal {
         pearl.mint(who, amount);
     }
 
     /// @dev Keeps energy from running out in long loops.
     function _rest() internal {
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(vm.getBlockTimestamp() + 1 days); // not block.timestamp: via_ir may reuse a value read before a warp
     }
 
     /// @dev Casts, sets the randomness block's hash to `entropy` and reels. Returns the fish id or 0.

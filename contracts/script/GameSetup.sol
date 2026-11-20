@@ -68,12 +68,30 @@ library GameSetup {
 
     /// @param blend the token in the bottles
     function deploy(address owner, IERC20 blend) internal returns (Deployment memory d) {
+        return deploy(owner, blend, _newGame);
+    }
+
+    /// @param implementation builds the game's implementation for the given tokens. The deploy script uses the
+    ///        current code; the upgrade tests pass the code of a release (contracts/releases).
+    function deploy(
+        address owner,
+        IERC20 blend,
+        function(PearlToken, FishNFT, IBottlePool) returns (address) implementation
+    ) internal returns (Deployment memory d) {
         d.pearl = new PearlToken(owner);
         d.fish = new FishNFT(owner);
         d.market = new Marketplace(owner, d.pearl, 500);
         d.market.setCollection(address(d.fish), true);
         _seedSpecies(d.fish);
-        (d.game, d.lens, d.bottles) = deployGame(owner, d.pearl, d.fish, blend);
+        (d.game, d.lens, d.bottles) = deployGame(owner, d.pearl, d.fish, blend, implementation);
+    }
+
+    function _newGame(PearlToken pearl, FishNFT fish, IBottlePool bottles) private returns (address) {
+        return address(new FishingGame(pearl, fish, bottles));
+    }
+
+    function _newTournaments(FishingGame game, FishNFT fish, IERC20 blend) private returns (address) {
+        return address(new Tournaments(game, fish, blend));
     }
 
     /// @notice Puts `implementation` behind an upgradeable proxy and runs `init` on it. The proxy's address and state
@@ -90,10 +108,20 @@ library GameSetup {
         internal
         returns (FishingGame game, GameLens lens, BottlePool bottles)
     {
+        return deployGame(owner, pearl, fish, blend, _newGame);
+    }
+
+    function deployGame(
+        address owner,
+        PearlToken pearl,
+        FishNFT fish,
+        IERC20 blend,
+        function(PearlToken, FishNFT, IBottlePool) returns (address) implementation
+    ) internal returns (FishingGame game, GameLens lens, BottlePool bottles) {
         bottles = new BottlePool(owner, blend, BOTTLE_AMOUNT, BOTTLE_MIN_LEVEL, BOTTLE_DAILY_MAX);
         game = FishingGame(
             proxied(
-                address(new FishingGame(pearl, fish, IBottlePool(address(bottles)))),
+                implementation(pearl, fish, IBottlePool(address(bottles))),
                 owner,
                 abi.encodeCall(FishingGame.initialize, (owner))
             )
@@ -117,10 +145,20 @@ library GameSetup {
         internal
         returns (Tournaments tournaments, FightVerifier verifier)
     {
+        return deployTournaments(owner, game, fish, blend, _newTournaments);
+    }
+
+    function deployTournaments(
+        address owner,
+        FishingGame game,
+        FishNFT fish,
+        IERC20 blend,
+        function(FishingGame, FishNFT, IERC20) returns (address) implementation
+    ) internal returns (Tournaments tournaments, FightVerifier verifier) {
         verifier = new FightVerifier();
         tournaments = Tournaments(
             proxied(
-                address(new Tournaments(game, fish, blend)),
+                implementation(game, fish, blend),
                 owner,
                 abi.encodeCall(Tournaments.initialize, (owner, IFightVerifier(address(verifier))))
             )

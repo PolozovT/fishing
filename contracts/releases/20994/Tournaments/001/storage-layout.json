@@ -1,0 +1,326 @@
+{
+  "storage": [
+    {
+      "label": "_owner",
+      "offset": 0,
+      "slot": 0,
+      "type": "t_address"
+    },
+    {
+      "label": "verifier",
+      "offset": 0,
+      "slot": 1,
+      "type": "t_contract(IFightVerifier)"
+    },
+    {
+      "label": "fightBlocks",
+      "offset": 20,
+      "slot": 1,
+      "type": "t_uint64"
+    },
+    {
+      "label": "_tournaments",
+      "offset": 0,
+      "slot": 2,
+      "type": "t_array(t_struct(Tournament)_storage)dyn_storage"
+    },
+    {
+      "label": "_entries",
+      "offset": 0,
+      "slot": 3,
+      "type": "t_mapping(t_uint256,t_mapping(t_address,t_struct(Entry)_storage))"
+    },
+    {
+      "label": "_top",
+      "offset": 0,
+      "slot": 4,
+      "type": "t_mapping(t_uint256,t_array(t_address)dyn_storage)"
+    },
+    {
+      "label": "_seq",
+      "offset": 0,
+      "slot": 5,
+      "type": "t_uint64"
+    },
+    {
+      "label": "_terms",
+      "offset": 0,
+      "slot": 6,
+      "type": "t_mapping(t_uint256,t_struct(Terms)_storage)"
+    }
+  ],
+  "types": {
+    "t_address": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": 20
+    },
+    "t_array(t_address)dyn_storage": {
+      "base": "t_address",
+      "encoding": "dynamic_array",
+      "label": "address[]",
+      "numberOfBytes": 32
+    },
+    "t_array(t_struct(Tournament)_storage)dyn_storage": {
+      "base": "t_struct(Tournament)_storage",
+      "encoding": "dynamic_array",
+      "label": "struct Tournaments.Tournament[]",
+      "numberOfBytes": 32
+    },
+    "t_array(t_uint32)dyn_storage": {
+      "base": "t_uint32",
+      "encoding": "dynamic_array",
+      "label": "uint32[]",
+      "numberOfBytes": 32
+    },
+    "t_bool": {
+      "encoding": "inplace",
+      "label": "bool",
+      "numberOfBytes": 1
+    },
+    "t_contract(IFightVerifier)": {
+      "encoding": "inplace",
+      "label": "contract IFightVerifier",
+      "numberOfBytes": 20
+    },
+    "t_mapping(t_address,t_struct(Entry)_storage)": {
+      "encoding": "mapping",
+      "key": "t_address",
+      "label": "mapping(address => struct Tournaments.Entry)",
+      "numberOfBytes": 32,
+      "value": "t_struct(Entry)_storage"
+    },
+    "t_mapping(t_uint256,t_array(t_address)dyn_storage)": {
+      "encoding": "mapping",
+      "key": "t_uint256",
+      "label": "mapping(uint256 => address[])",
+      "numberOfBytes": 32,
+      "value": "t_array(t_address)dyn_storage"
+    },
+    "t_mapping(t_uint256,t_mapping(t_address,t_struct(Entry)_storage))": {
+      "encoding": "mapping",
+      "key": "t_uint256",
+      "label": "mapping(uint256 => mapping(address => struct Tournaments.Entry))",
+      "numberOfBytes": 32,
+      "value": "t_mapping(t_address,t_struct(Entry)_storage)"
+    },
+    "t_mapping(t_uint256,t_struct(Terms)_storage)": {
+      "encoding": "mapping",
+      "key": "t_uint256",
+      "label": "mapping(uint256 => struct Tournaments.Terms)",
+      "numberOfBytes": 32,
+      "value": "t_struct(Terms)_storage"
+    },
+    "t_string_storage": {
+      "encoding": "bytes",
+      "label": "string",
+      "numberOfBytes": 32
+    },
+    "t_struct(Entry)_storage": {
+      "encoding": "inplace",
+      "label": "struct Tournaments.Entry",
+      "members": [
+        {
+          "label": "entered",
+          "offset": 0,
+          "slot": 0,
+          "type": "t_bool"
+        },
+        {
+          "label": "claimed",
+          "offset": 1,
+          "slot": 0,
+          "type": "t_bool"
+        },
+        {
+          "label": "castsUsed",
+          "offset": 2,
+          "slot": 0,
+          "type": "t_uint16"
+        },
+        {
+          "label": "total",
+          "offset": 4,
+          "slot": 0,
+          "type": "t_uint32"
+        },
+        {
+          "label": "seq",
+          "offset": 8,
+          "slot": 0,
+          "type": "t_uint64"
+        },
+        {
+          "label": "targetBlock",
+          "offset": 16,
+          "slot": 0,
+          "type": "t_uint64"
+        },
+        {
+          "label": "best",
+          "offset": 0,
+          "slot": 1,
+          "type": "t_array(t_uint32)dyn_storage"
+        }
+      ],
+      "numberOfBytes": 64
+    },
+    "t_struct(Terms)_storage": {
+      "encoding": "inplace",
+      "label": "struct Tournaments.Terms",
+      "members": [
+        {
+          "label": "fee",
+          "offset": 0,
+          "slot": 0,
+          "type": "t_uint96"
+        },
+        {
+          "label": "rakeBps",
+          "offset": 12,
+          "slot": 0,
+          "type": "t_uint16"
+        },
+        {
+          "label": "collected",
+          "offset": 14,
+          "slot": 0,
+          "type": "t_uint96"
+        }
+      ],
+      "numberOfBytes": 32
+    },
+    "t_struct(Tournament)_storage": {
+      "encoding": "inplace",
+      "label": "struct Tournaments.Tournament",
+      "members": [
+        {
+          "label": "start",
+          "offset": 0,
+          "slot": 0,
+          "type": "t_uint40"
+        },
+        {
+          "label": "end",
+          "offset": 5,
+          "slot": 0,
+          "type": "t_uint40"
+        },
+        {
+          "label": "locationId",
+          "offset": 10,
+          "slot": 0,
+          "type": "t_uint8"
+        },
+        {
+          "label": "rod",
+          "offset": 11,
+          "slot": 0,
+          "type": "t_uint8"
+        },
+        {
+          "label": "lure",
+          "offset": 12,
+          "slot": 0,
+          "type": "t_uint8"
+        },
+        {
+          "label": "waterTier",
+          "offset": 13,
+          "slot": 0,
+          "type": "t_uint8"
+        },
+        {
+          "label": "green",
+          "offset": 14,
+          "slot": 0,
+          "type": "t_uint32"
+        },
+        {
+          "label": "castLimit",
+          "offset": 18,
+          "slot": 0,
+          "type": "t_uint16"
+        },
+        {
+          "label": "counted",
+          "offset": 20,
+          "slot": 0,
+          "type": "t_uint8"
+        },
+        {
+          "label": "unused",
+          "offset": 21,
+          "slot": 0,
+          "type": "t_bool"
+        },
+        {
+          "label": "reclaimed",
+          "offset": 22,
+          "slot": 0,
+          "type": "t_bool"
+        },
+        {
+          "label": "players",
+          "offset": 23,
+          "slot": 0,
+          "type": "t_uint32"
+        },
+        {
+          "label": "prize",
+          "offset": 0,
+          "slot": 1,
+          "type": "t_uint96"
+        },
+        {
+          "label": "sponsor",
+          "offset": 12,
+          "slot": 1,
+          "type": "t_address"
+        },
+        {
+          "label": "name",
+          "offset": 0,
+          "slot": 2,
+          "type": "t_string_storage"
+        }
+      ],
+      "numberOfBytes": 96
+    },
+    "t_uint16": {
+      "encoding": "inplace",
+      "label": "uint16",
+      "numberOfBytes": 2
+    },
+    "t_uint256": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": 32
+    },
+    "t_uint32": {
+      "encoding": "inplace",
+      "label": "uint32",
+      "numberOfBytes": 4
+    },
+    "t_uint40": {
+      "encoding": "inplace",
+      "label": "uint40",
+      "numberOfBytes": 5
+    },
+    "t_uint64": {
+      "encoding": "inplace",
+      "label": "uint64",
+      "numberOfBytes": 8
+    },
+    "t_uint8": {
+      "encoding": "inplace",
+      "label": "uint8",
+      "numberOfBytes": 1
+    },
+    "t_uint96": {
+      "encoding": "inplace",
+      "label": "uint96",
+      "numberOfBytes": 12
+    }
+  }
+}

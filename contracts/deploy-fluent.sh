@@ -28,5 +28,5 @@ forge script script/Deploy.s.sol --rpc-url "$RPC" --broadcast --slow "${SIGNER[@
   echo "If only verification failed, the contracts are already deployed; addresses are in ../deployments/20994.json" >&2
   exit 1
 }
-./check-layout.sh --record
+./release.sh record "$RPC"   # the snapshot every later upgrade is checked against (commit contracts/releases)
 echo "Done: ../deployments/20994.json. Next: cd ../web && pnpm dev"

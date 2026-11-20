@@ -1,0 +1,1251 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "contract FishingGame",
+        "name": "game_",
+        "type": "address"
+      },
+      {
+        "internalType": "contract FishNFT",
+        "name": "fish_",
+        "type": "address"
+      },
+      {
+        "internalType": "contract IERC20",
+        "name": "blend_",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "GRACE",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "blend",
+    "outputs": [
+      {
+        "internalType": "contract IERC20",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
+    "name": "cast",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "player",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "castNo",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "blockHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "castSeed",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
+    "name": "claim",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "count",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "uint40",
+            "name": "start",
+            "type": "uint40"
+          },
+          {
+            "internalType": "uint40",
+            "name": "end",
+            "type": "uint40"
+          },
+          {
+            "internalType": "uint8",
+            "name": "locationId",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "rod",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "lure",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "waterTier",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint32",
+            "name": "green",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint16",
+            "name": "castLimit",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint8",
+            "name": "counted",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint96",
+            "name": "prize",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint96",
+            "name": "fee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint16",
+            "name": "rakeBps",
+            "type": "uint16"
+          }
+        ],
+        "internalType": "struct Tournaments.NewTournament",
+        "name": "t",
+        "type": "tuple"
+      }
+    ],
+    "name": "create",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
+    "name": "enter",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "player",
+        "type": "address"
+      }
+    ],
+    "name": "entryOf",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "bool",
+            "name": "entered",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "claimed",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint16",
+            "name": "castsUsed",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint32",
+            "name": "total",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "seq",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "targetBlock",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint32[]",
+            "name": "best",
+            "type": "uint32[]"
+          }
+        ],
+        "internalType": "struct Tournaments.Entry",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "fightBlocks",
+    "outputs": [
+      {
+        "internalType": "uint64",
+        "name": "",
+        "type": "uint64"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "seed",
+        "type": "uint256"
+      }
+    ],
+    "name": "fightSeed",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "fishNft",
+    "outputs": [
+      {
+        "internalType": "contract FishNFT",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "game",
+    "outputs": [
+      {
+        "internalType": "contract FishingGame",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "owner_",
+        "type": "address"
+      },
+      {
+        "internalType": "contract IFightVerifier",
+        "name": "verifier_",
+        "type": "address"
+      }
+    ],
+    "name": "initialize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
+    "name": "isOver",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "player",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "limit",
+        "type": "uint256"
+      }
+    ],
+    "name": "list",
+    "outputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "ids",
+        "type": "uint256[]"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint40",
+            "name": "start",
+            "type": "uint40"
+          },
+          {
+            "internalType": "uint40",
+            "name": "end",
+            "type": "uint40"
+          },
+          {
+            "internalType": "uint8",
+            "name": "locationId",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "rod",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "lure",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "waterTier",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint32",
+            "name": "green",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint16",
+            "name": "castLimit",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint8",
+            "name": "counted",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bool",
+            "name": "unused",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "reclaimed",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint32",
+            "name": "players",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint96",
+            "name": "prize",
+            "type": "uint96"
+          },
+          {
+            "internalType": "address",
+            "name": "sponsor",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          }
+        ],
+        "internalType": "struct Tournaments.Tournament[]",
+        "name": "ts",
+        "type": "tuple[]"
+      },
+      {
+        "components": [
+          {
+            "internalType": "bool",
+            "name": "entered",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "claimed",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint16",
+            "name": "castsUsed",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint32",
+            "name": "total",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint64",
+            "name": "seq",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint64",
+            "name": "targetBlock",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint32[]",
+            "name": "best",
+            "type": "uint32[]"
+          }
+        ],
+        "internalType": "struct Tournaments.Entry[]",
+        "name": "entries",
+        "type": "tuple[]"
+      },
+      {
+        "internalType": "uint64",
+        "name": "blockNumber",
+        "type": "uint64"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint96",
+            "name": "fee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint16",
+            "name": "rakeBps",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint96",
+            "name": "collected",
+            "type": "uint96"
+          }
+        ],
+        "internalType": "struct Tournaments.Terms[]",
+        "name": "terms",
+        "type": "tuple[]"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "pools",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "base",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "ticks",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "good",
+        "type": "uint256"
+      }
+    ],
+    "name": "pointsFor",
+    "outputs": [
+      {
+        "internalType": "uint32",
+        "name": "",
+        "type": "uint32"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
+    "name": "pool",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "place",
+        "type": "uint256"
+      }
+    ],
+    "name": "prizeShareBps",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
+    "name": "reclaim",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes",
+        "name": "inputs",
+        "type": "bytes"
+      }
+    ],
+    "name": "reel",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "renounceOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint64",
+        "name": "blocks",
+        "type": "uint64"
+      }
+    ],
+    "name": "setFightBlocks",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract IFightVerifier",
+        "name": "verifier_",
+        "type": "address"
+      }
+    ],
+    "name": "setVerifier",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
+    "name": "standings",
+    "outputs": [
+      {
+        "internalType": "address[]",
+        "name": "players",
+        "type": "address[]"
+      },
+      {
+        "internalType": "uint32[]",
+        "name": "totals",
+        "type": "uint32[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
+    "name": "termsOf",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint96",
+            "name": "fee",
+            "type": "uint96"
+          },
+          {
+            "internalType": "uint16",
+            "name": "rakeBps",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint96",
+            "name": "collected",
+            "type": "uint96"
+          }
+        ],
+        "internalType": "struct Tournaments.Terms",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
+    "name": "tournament",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint40",
+            "name": "start",
+            "type": "uint40"
+          },
+          {
+            "internalType": "uint40",
+            "name": "end",
+            "type": "uint40"
+          },
+          {
+            "internalType": "uint8",
+            "name": "locationId",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "rod",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "lure",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "waterTier",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint32",
+            "name": "green",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint16",
+            "name": "castLimit",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint8",
+            "name": "counted",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bool",
+            "name": "unused",
+            "type": "bool"
+          },
+          {
+            "internalType": "bool",
+            "name": "reclaimed",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint32",
+            "name": "players",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint96",
+            "name": "prize",
+            "type": "uint96"
+          },
+          {
+            "internalType": "address",
+            "name": "sponsor",
+            "type": "address"
+          },
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          }
+        ],
+        "internalType": "struct Tournaments.Tournament",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "verifier",
+    "outputs": [
+      {
+        "internalType": "contract IFightVerifier",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "player",
+        "type": "address"
+      }
+    ],
+    "name": "Entered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "player",
+        "type": "address"
+      }
+    ],
+    "name": "FightForfeited",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previousOwner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnershipTransferred",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "player",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "place",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "PrizeClaimed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "PrizeReclaimed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "player",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "castNo",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "targetBlock",
+        "type": "uint64"
+      }
+    ],
+    "name": "TournamentCast",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "player",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "speciesId",
+        "type": "uint16"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint32",
+        "name": "weight",
+        "type": "uint32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "quality",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint32",
+        "name": "base",
+        "type": "uint32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint32",
+        "name": "points",
+        "type": "uint32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "landed",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint32",
+        "name": "ticks",
+        "type": "uint32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint32",
+        "name": "good",
+        "type": "uint32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint32",
+        "name": "total",
+        "type": "uint32"
+      }
+    ],
+    "name": "TournamentCatch",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint40",
+        "name": "start",
+        "type": "uint40"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint40",
+        "name": "end",
+        "type": "uint40"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint96",
+        "name": "prize",
+        "type": "uint96"
+      }
+    ],
+    "name": "TournamentCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint96",
+        "name": "fee",
+        "type": "uint96"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint16",
+        "name": "rakeBps",
+        "type": "uint16"
+      }
+    ],
+    "name": "TournamentTerms",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "AlreadyEntered",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "BadTournament",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NoFight",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotEntered",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotOpen",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotOver",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NothingToClaim",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "OutOfCasts",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnableInvalidOwner",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "OwnableUnauthorizedAccount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "RodRequired",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "SafeERC20FailedOperation",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "TooEarly",
+    "type": "error"
+  }
+]

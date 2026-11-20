@@ -1,0 +1,48 @@
+name: Contracts
+
+# Upgrade safety of the proxied contracts. An incompatible storage layout, a finding of OpenZeppelin's validator,
+# a contract over the size limit or a failing test (the upgrade from the released bytecode is one) fails the build.
+on:
+  push:
+    branches: [main]
+    paths: ["contracts/**", "deployments/**", ".github/workflows/contracts.yml"]
+  pull_request:
+    paths: ["contracts/**", "deployments/**", ".github/workflows/contracts.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the released source is rebuilt from its commit
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.5.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Layout, OpenZeppelin validation, sizes, tests
+        working-directory: contracts
+        run: ./preflight.sh
+
+  # Needs the public testnet RPC, so it is a job of its own: a network hiccup here does not hide the result above.
+  rehearsal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.5.1
+      - name: Releases against Fluent Testnet, rebuilt from their commits
+        working-directory: contracts
+        run: ./release.sh verify fluent_testnet --source
+      - name: Upgrade rehearsed on a fork of Fluent Testnet
+        working-directory: contracts
+        run: FORK_RPC=fluent_testnet forge test --match-contract UpgradeForkTest -vv

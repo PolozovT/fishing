@@ -1,0 +1,940 @@
+{
+  "storage": [
+    {
+      "label": "_owner",
+      "offset": 0,
+      "slot": 0,
+      "type": "t_address"
+    },
+    {
+      "label": "config",
+      "offset": 0,
+      "slot": 1,
+      "type": "t_struct(Config)_storage"
+    },
+    {
+      "label": "_rods",
+      "offset": 0,
+      "slot": 5,
+      "type": "t_array(t_struct(Item)_storage)dyn_storage"
+    },
+    {
+      "label": "_lures",
+      "offset": 0,
+      "slot": 6,
+      "type": "t_array(t_struct(Item)_storage)dyn_storage"
+    },
+    {
+      "label": "_locations",
+      "offset": 0,
+      "slot": 7,
+      "type": "t_array(t_struct(Location)_storage)dyn_storage"
+    },
+    {
+      "label": "_specials",
+      "offset": 0,
+      "slot": 8,
+      "type": "t_array(t_struct(Special)_storage)dyn_storage"
+    },
+    {
+      "label": "_achievements",
+      "offset": 0,
+      "slot": 9,
+      "type": "t_array(t_struct(Achievement)_storage)dyn_storage"
+    },
+    {
+      "label": "hiddenSpecies",
+      "offset": 0,
+      "slot": 10,
+      "type": "t_mapping(t_uint256,t_bool)"
+    },
+    {
+      "label": "players",
+      "offset": 0,
+      "slot": 11,
+      "type": "t_mapping(t_address,t_struct(Player)_storage)"
+    },
+    {
+      "label": "casts",
+      "offset": 0,
+      "slot": 12,
+      "type": "t_mapping(t_address,t_struct(Cast)_storage)"
+    },
+    {
+      "label": "rodDurability",
+      "offset": 0,
+      "slot": 13,
+      "type": "t_mapping(t_address,t_mapping(t_uint256,t_uint16))"
+    },
+    {
+      "label": "lureCasts",
+      "offset": 0,
+      "slot": 14,
+      "type": "t_mapping(t_address,t_mapping(t_uint256,t_uint32))"
+    },
+    {
+      "label": "dex",
+      "offset": 0,
+      "slot": 15,
+      "type": "t_mapping(t_address,t_mapping(t_uint256,t_struct(DexEntry)_storage))"
+    },
+    {
+      "label": "dryCatches",
+      "offset": 0,
+      "slot": 16,
+      "type": "t_mapping(t_address,t_mapping(t_uint256,t_uint16))"
+    },
+    {
+      "label": "bestCatch",
+      "offset": 0,
+      "slot": 17,
+      "type": "t_mapping(t_address,t_struct(Record)_storage)"
+    },
+    {
+      "label": "bestAt",
+      "offset": 0,
+      "slot": 18,
+      "type": "t_mapping(t_address,t_mapping(t_uint256,t_struct(Record)_storage))"
+    },
+    {
+      "label": "blendWon",
+      "offset": 0,
+      "slot": 19,
+      "type": "t_mapping(t_address,t_uint256)"
+    },
+    {
+      "label": "refillState",
+      "offset": 0,
+      "slot": 20,
+      "type": "t_mapping(t_address,t_struct(RefillState)_storage)"
+    },
+    {
+      "label": "mintedOnDay",
+      "offset": 0,
+      "slot": 21,
+      "type": "t_mapping(t_uint256,t_uint256)"
+    },
+    {
+      "label": "_week",
+      "offset": 0,
+      "slot": 22,
+      "type": "t_mapping(t_uint256,t_mapping(t_address,t_array(t_struct(WeekEntry)_storage)dyn_storage))"
+    },
+    {
+      "label": "weekTotal",
+      "offset": 0,
+      "slot": 23,
+      "type": "t_mapping(t_uint256,t_mapping(t_address,t_uint32))"
+    },
+    {
+      "label": "_weekPlayers",
+      "offset": 0,
+      "slot": 24,
+      "type": "t_mapping(t_uint256,t_array(t_address)dyn_storage)"
+    },
+    {
+      "label": "totalCasts",
+      "offset": 0,
+      "slot": 25,
+      "type": "t_uint256"
+    },
+    {
+      "label": "totalBlendWon",
+      "offset": 0,
+      "slot": 26,
+      "type": "t_uint256"
+    }
+  ],
+  "types": {
+    "t_address": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": 20
+    },
+    "t_array(t_address)dyn_storage": {
+      "base": "t_address",
+      "encoding": "dynamic_array",
+      "label": "address[]",
+      "numberOfBytes": 32
+    },
+    "t_array(t_struct(Achievement)_storage)dyn_storage": {
+      "base": "t_struct(Achievement)_storage",
+      "encoding": "dynamic_array",
+      "label": "struct FishingGame.Achievement[]",
+      "numberOfBytes": 32
+    },
+    "t_array(t_struct(Item)_storage)dyn_storage": {
+      "base": "t_struct(Item)_storage",
+      "encoding": "dynamic_array",
+      "label": "struct FishingGame.Item[]",
+      "numberOfBytes": 32
+    },
+    "t_array(t_struct(Location)_storage)dyn_storage": {
+      "base": "t_struct(Location)_storage",
+      "encoding": "dynamic_array",
+      "label": "struct FishingGame.Location[]",
+      "numberOfBytes": 32
+    },
+    "t_array(t_struct(Special)_storage)dyn_storage": {
+      "base": "t_struct(Special)_storage",
+      "encoding": "dynamic_array",
+      "label": "struct FishingGame.Special[]",
+      "numberOfBytes": 32
+    },
+    "t_array(t_struct(WeekEntry)_storage)dyn_storage": {
+      "base": "t_struct(WeekEntry)_storage",
+      "encoding": "dynamic_array",
+      "label": "struct FishingGame.WeekEntry[]",
+      "numberOfBytes": 32
+    },
+    "t_array(t_uint16)dyn_storage": {
+      "base": "t_uint16",
+      "encoding": "dynamic_array",
+      "label": "uint16[]",
+      "numberOfBytes": 32
+    },
+    "t_bool": {
+      "encoding": "inplace",
+      "label": "bool",
+      "numberOfBytes": 1
+    },
+    "t_int8": {
+      "encoding": "inplace",
+      "label": "int8",
+      "numberOfBytes": 1
+    },
+    "t_mapping(t_address,t_array(t_struct(WeekEntry)_storage)dyn_storage)": {
+      "encoding": "mapping",
+      "key": "t_address",
+      "label": "mapping(address => struct FishingGame.WeekEntry[])",
+      "numberOfBytes": 32,
+      "value": "t_array(t_struct(WeekEntry)_storage)dyn_storage"
+    },
+    "t_mapping(t_address,t_mapping(t_uint256,t_struct(DexEntry)_storage))": {
+      "encoding": "mapping",
+      "key": "t_address",
+      "label": "mapping(address => mapping(uint256 => struct FishingGame.DexEntry))",
+      "numberOfBytes": 32,
+      "value": "t_mapping(t_uint256,t_struct(DexEntry)_storage)"
+    },
+    "t_mapping(t_address,t_mapping(t_uint256,t_struct(Record)_storage))": {
+      "encoding": "mapping",
+      "key": "t_address",
+      "label": "mapping(address => mapping(uint256 => struct FishingGame.Record))",
+      "numberOfBytes": 32,
+      "value": "t_mapping(t_uint256,t_struct(Record)_storage)"
+    },
+    "t_mapping(t_address,t_mapping(t_uint256,t_uint16))": {
+      "encoding": "mapping",
+      "key": "t_address",
+      "label": "mapping(address => mapping(uint256 => uint16))",
+      "numberOfBytes": 32,
+      "value": "t_mapping(t_uint256,t_uint16)"
+    },
+    "t_mapping(t_address,t_mapping(t_uint256,t_uint32))": {
+      "encoding": "mapping",
+      "key": "t_address",
+      "label": "mapping(address => mapping(uint256 => uint32))",
+      "numberOfBytes": 32,
+      "value": "t_mapping(t_uint256,t_uint32)"
+    },
+    "t_mapping(t_address,t_struct(Cast)_storage)": {
+      "encoding": "mapping",
+      "key": "t_address",
+      "label": "mapping(address => struct FishingGame.Cast)",
+      "numberOfBytes": 32,
+      "value": "t_struct(Cast)_storage"
+    },
+    "t_mapping(t_address,t_struct(Player)_storage)": {
+      "encoding": "mapping",
+      "key": "t_address",
+      "label": "mapping(address => struct FishingGame.Player)",
+      "numberOfBytes": 32,
+      "value": "t_struct(Player)_storage"
+    },
+    "t_mapping(t_address,t_struct(Record)_storage)": {
+      "encoding": "mapping",
+      "key": "t_address",
+      "label": "mapping(address => struct FishingGame.Record)",
+      "numberOfBytes": 32,
+      "value": "t_struct(Record)_storage"
+    },
+    "t_mapping(t_address,t_struct(RefillState)_storage)": {
+      "encoding": "mapping",
+      "key": "t_address",
+      "label": "mapping(address => struct FishingGame.RefillState)",
+      "numberOfBytes": 32,
+      "value": "t_struct(RefillState)_storage"
+    },
+    "t_mapping(t_address,t_uint256)": {
+      "encoding": "mapping",
+      "key": "t_address",
+      "label": "mapping(address => uint256)",
+      "numberOfBytes": 32,
+      "value": "t_uint256"
+    },
+    "t_mapping(t_address,t_uint32)": {
+      "encoding": "mapping",
+      "key": "t_address",
+      "label": "mapping(address => uint32)",
+      "numberOfBytes": 32,
+      "value": "t_uint32"
+    },
+    "t_mapping(t_uint256,t_array(t_address)dyn_storage)": {
+      "encoding": "mapping",
+      "key": "t_uint256",
+      "label": "mapping(uint256 => address[])",
+      "numberOfBytes": 32,
+      "value": "t_array(t_address)dyn_storage"
+    },
+    "t_mapping(t_uint256,t_bool)": {
+      "encoding": "mapping",
+      "key": "t_uint256",
+      "label": "mapping(uint256 => bool)",
+      "numberOfBytes": 32,
+      "value": "t_bool"
+    },
+    "t_mapping(t_uint256,t_mapping(t_address,t_array(t_struct(WeekEntry)_storage)dyn_storage))": {
+      "encoding": "mapping",
+      "key": "t_uint256",
+      "label": "mapping(uint256 => mapping(address => struct FishingGame.WeekEntry[]))",
+      "numberOfBytes": 32,
+      "value": "t_mapping(t_address,t_array(t_struct(WeekEntry)_storage)dyn_storage)"
+    },
+    "t_mapping(t_uint256,t_mapping(t_address,t_uint32))": {
+      "encoding": "mapping",
+      "key": "t_uint256",
+      "label": "mapping(uint256 => mapping(address => uint32))",
+      "numberOfBytes": 32,
+      "value": "t_mapping(t_address,t_uint32)"
+    },
+    "t_mapping(t_uint256,t_struct(DexEntry)_storage)": {
+      "encoding": "mapping",
+      "key": "t_uint256",
+      "label": "mapping(uint256 => struct FishingGame.DexEntry)",
+      "numberOfBytes": 32,
+      "value": "t_struct(DexEntry)_storage"
+    },
+    "t_mapping(t_uint256,t_struct(Record)_storage)": {
+      "encoding": "mapping",
+      "key": "t_uint256",
+      "label": "mapping(uint256 => struct FishingGame.Record)",
+      "numberOfBytes": 32,
+      "value": "t_struct(Record)_storage"
+    },
+    "t_mapping(t_uint256,t_uint16)": {
+      "encoding": "mapping",
+      "key": "t_uint256",
+      "label": "mapping(uint256 => uint16)",
+      "numberOfBytes": 32,
+      "value": "t_uint16"
+    },
+    "t_mapping(t_uint256,t_uint256)": {
+      "encoding": "mapping",
+      "key": "t_uint256",
+      "label": "mapping(uint256 => uint256)",
+      "numberOfBytes": 32,
+      "value": "t_uint256"
+    },
+    "t_mapping(t_uint256,t_uint32)": {
+      "encoding": "mapping",
+      "key": "t_uint256",
+      "label": "mapping(uint256 => uint32)",
+      "numberOfBytes": 32,
+      "value": "t_uint32"
+    },
+    "t_struct(Achievement)_storage": {
+      "encoding": "inplace",
+      "label": "struct FishingGame.Achievement",
+      "members": [
+        {
+          "label": "kind",
+          "offset": 0,
+          "slot": 0,
+          "type": "t_uint8"
+        },
+        {
+          "label": "arg",
+          "offset": 1,
+          "slot": 0,
+          "type": "t_uint16"
+        },
+        {
+          "label": "reward",
+          "offset": 3,
+          "slot": 0,
+          "type": "t_uint96"
+        }
+      ],
+      "numberOfBytes": 32
+    },
+    "t_struct(Cast)_storage": {
+      "encoding": "inplace",
+      "label": "struct FishingGame.Cast",
+      "members": [
+        {
+          "label": "targetBlock",
+          "offset": 0,
+          "slot": 0,
+          "type": "t_uint64"
+        },
+        {
+          "label": "nonce",
+          "offset": 8,
+          "slot": 0,
+          "type": "t_uint64"
+        },
+        {
+          "label": "locationId",
+          "offset": 16,
+          "slot": 0,
+          "type": "t_uint8"
+        },
+        {
+          "label": "rod",
+          "offset": 17,
+          "slot": 0,
+          "type": "t_uint8"
+        },
+        {
+          "label": "lure",
+          "offset": 18,
+          "slot": 0,
+          "type": "t_uint8"
+        },
+        {
+          "label": "special",
+          "offset": 19,
+          "slot": 0,
+          "type": "t_uint8"
+        }
+      ],
+      "numberOfBytes": 32
+    },
+    "t_struct(Config)_storage": {
+      "encoding": "inplace",
+      "label": "struct FishingGame.Config",
+      "members": [
+        {
+          "label": "maxEnergy",
+          "offset": 0,
+          "slot": 0,
+          "type": "t_uint32"
+        },
+        {
+          "label": "energyRegenSeconds",
+          "offset": 4,
+          "slot": 0,
+          "type": "t_uint32"
+        },
+        {
+          "label": "revealDelay",
+          "offset": 8,
+          "slot": 0,
+          "type": "t_uint8"
+        },
+        {
+          "label": "baseBiteBps",
+          "offset": 9,
+          "slot": 0,
+          "type": "t_uint16"
+        },
+        {
+          "label": "maxBiteBps",
+          "offset": 11,
+          "slot": 0,
+          "type": "t_uint16"
+        },
+        {
+          "label": "maxRarityBonus",
+          "offset": 13,
+          "slot": 0,
+          "type": "t_uint16"
+        },
+        {
+          "label": "maxWeightBonus",
+          "offset": 15,
+          "slot": 0,
+          "type": "t_uint8"
+        },
+        {
+          "label": "repairShareBps",
+          "offset": 16,
+          "slot": 0,
+          "type": "t_uint16"
+        },
+        {
+          "label": "energyRefillPrice",
+          "offset": 18,
+          "slot": 0,
+          "type": "t_uint96"
+        },
+        {
+          "label": "refillPriceGrowthBps",
+          "offset": 0,
+          "slot": 1,
+          "type": "t_uint32"
+        },
+        {
+          "label": "emissionSoftCap",
+          "offset": 0,
+          "slot": 2,
+          "type": "t_uint256"
+        },
+        {
+          "label": "qualityPerCatch",
+          "offset": 0,
+          "slot": 3,
+          "type": "t_uint16"
+        },
+        {
+          "label": "qualityPerRarity",
+          "offset": 2,
+          "slot": 3,
+          "type": "t_uint16"
+        },
+        {
+          "label": "blendAmount",
+          "offset": 4,
+          "slot": 3,
+          "type": "t_uint96"
+        },
+        {
+          "label": "blendChancePpm",
+          "offset": 16,
+          "slot": 3,
+          "type": "t_uint32"
+        },
+        {
+          "label": "blendMaxWins",
+          "offset": 20,
+          "slot": 3,
+          "type": "t_uint8"
+        }
+      ],
+      "numberOfBytes": 128
+    },
+    "t_struct(DexEntry)_storage": {
+      "encoding": "inplace",
+      "label": "struct FishingGame.DexEntry",
+      "members": [
+        {
+          "label": "count",
+          "offset": 0,
+          "slot": 0,
+          "type": "t_uint32"
+        },
+        {
+          "label": "best",
+          "offset": 4,
+          "slot": 0,
+          "type": "t_uint32"
+        }
+      ],
+      "numberOfBytes": 32
+    },
+    "t_struct(Effect)_storage": {
+      "encoding": "inplace",
+      "label": "struct FishingGame.Effect",
+      "members": [
+        {
+          "label": "mask",
+          "offset": 0,
+          "slot": 0,
+          "type": "t_uint16"
+        },
+        {
+          "label": "catchPts",
+          "offset": 2,
+          "slot": 0,
+          "type": "t_int8"
+        },
+        {
+          "label": "rarity",
+          "offset": 3,
+          "slot": 0,
+          "type": "t_uint16"
+        },
+        {
+          "label": "weight",
+          "offset": 5,
+          "slot": 0,
+          "type": "t_uint8"
+        }
+      ],
+      "numberOfBytes": 32
+    },
+    "t_struct(Item)_storage": {
+      "encoding": "inplace",
+      "label": "struct FishingGame.Item",
+      "members": [
+        {
+          "label": "price",
+          "offset": 0,
+          "slot": 0,
+          "type": "t_uint96"
+        },
+        {
+          "label": "wear",
+          "offset": 12,
+          "slot": 0,
+          "type": "t_uint16"
+        },
+        {
+          "label": "catchPts",
+          "offset": 14,
+          "slot": 0,
+          "type": "t_int8"
+        },
+        {
+          "label": "rarity",
+          "offset": 15,
+          "slot": 0,
+          "type": "t_uint16"
+        },
+        {
+          "label": "weight",
+          "offset": 17,
+          "slot": 0,
+          "type": "t_uint8"
+        },
+        {
+          "label": "repair",
+          "offset": 18,
+          "slot": 0,
+          "type": "t_uint16"
+        },
+        {
+          "label": "a",
+          "offset": 0,
+          "slot": 1,
+          "type": "t_struct(Effect)_storage"
+        },
+        {
+          "label": "b",
+          "offset": 0,
+          "slot": 2,
+          "type": "t_struct(Effect)_storage"
+        }
+      ],
+      "numberOfBytes": 96
+    },
+    "t_struct(Location)_storage": {
+      "encoding": "inplace",
+      "label": "struct FishingGame.Location",
+      "members": [
+        {
+          "label": "energyCost",
+          "offset": 0,
+          "slot": 0,
+          "type": "t_uint8"
+        },
+        {
+          "label": "unlockType",
+          "offset": 1,
+          "slot": 0,
+          "type": "t_uint8"
+        },
+        {
+          "label": "unlockArg",
+          "offset": 2,
+          "slot": 0,
+          "type": "t_uint16"
+        },
+        {
+          "label": "special",
+          "offset": 4,
+          "slot": 0,
+          "type": "t_uint8"
+        },
+        {
+          "label": "active",
+          "offset": 5,
+          "slot": 0,
+          "type": "t_bool"
+        },
+        {
+          "label": "speciesIds",
+          "offset": 0,
+          "slot": 1,
+          "type": "t_array(t_uint16)dyn_storage"
+        },
+        {
+          "label": "weights",
+          "offset": 0,
+          "slot": 2,
+          "type": "t_array(t_uint16)dyn_storage"
+        }
+      ],
+      "numberOfBytes": 96
+    },
+    "t_struct(Player)_storage": {
+      "encoding": "inplace",
+      "label": "struct FishingGame.Player",
+      "members": [
+        {
+          "label": "energy",
+          "offset": 0,
+          "slot": 0,
+          "type": "t_uint32"
+        },
+        {
+          "label": "energyUpdatedAt",
+          "offset": 4,
+          "slot": 0,
+          "type": "t_uint40"
+        },
+        {
+          "label": "xp",
+          "offset": 9,
+          "slot": 0,
+          "type": "t_uint64"
+        },
+        {
+          "label": "catches",
+          "offset": 17,
+          "slot": 0,
+          "type": "t_uint32"
+        },
+        {
+          "label": "casts",
+          "offset": 21,
+          "slot": 0,
+          "type": "t_uint32"
+        },
+        {
+          "label": "rods",
+          "offset": 25,
+          "slot": 0,
+          "type": "t_uint16"
+        },
+        {
+          "label": "rod",
+          "offset": 27,
+          "slot": 0,
+          "type": "t_uint8"
+        },
+        {
+          "label": "lure",
+          "offset": 28,
+          "slot": 0,
+          "type": "t_uint8"
+        },
+        {
+          "label": "unlocks",
+          "offset": 29,
+          "slot": 0,
+          "type": "t_uint16"
+        },
+        {
+          "label": "specialsFound",
+          "offset": 31,
+          "slot": 0,
+          "type": "t_uint8"
+        },
+        {
+          "label": "activeSpecial",
+          "offset": 0,
+          "slot": 1,
+          "type": "t_uint8"
+        },
+        {
+          "label": "dexCount",
+          "offset": 1,
+          "slot": 1,
+          "type": "t_uint16"
+        },
+        {
+          "label": "legends",
+          "offset": 3,
+          "slot": 1,
+          "type": "t_uint16"
+        },
+        {
+          "label": "claimed",
+          "offset": 5,
+          "slot": 1,
+          "type": "t_uint32"
+        },
+        {
+          "label": "blendWins",
+          "offset": 9,
+          "slot": 1,
+          "type": "t_uint8"
+        }
+      ],
+      "numberOfBytes": 64
+    },
+    "t_struct(Record)_storage": {
+      "encoding": "inplace",
+      "label": "struct FishingGame.Record",
+      "members": [
+        {
+          "label": "speciesId",
+          "offset": 0,
+          "slot": 0,
+          "type": "t_uint16"
+        },
+        {
+          "label": "weight",
+          "offset": 2,
+          "slot": 0,
+          "type": "t_uint32"
+        },
+        {
+          "label": "at",
+          "offset": 6,
+          "slot": 0,
+          "type": "t_uint40"
+        }
+      ],
+      "numberOfBytes": 32
+    },
+    "t_struct(RefillState)_storage": {
+      "encoding": "inplace",
+      "label": "struct FishingGame.RefillState",
+      "members": [
+        {
+          "label": "day",
+          "offset": 0,
+          "slot": 0,
+          "type": "t_uint32"
+        },
+        {
+          "label": "count",
+          "offset": 4,
+          "slot": 0,
+          "type": "t_uint32"
+        }
+      ],
+      "numberOfBytes": 32
+    },
+    "t_struct(Special)_storage": {
+      "encoding": "inplace",
+      "label": "struct FishingGame.Special",
+      "members": [
+        {
+          "label": "speciesId",
+          "offset": 0,
+          "slot": 0,
+          "type": "t_uint16"
+        },
+        {
+          "label": "chancePpm",
+          "offset": 2,
+          "slot": 0,
+          "type": "t_uint32"
+        },
+        {
+          "label": "pity",
+          "offset": 6,
+          "slot": 0,
+          "type": "t_uint16"
+        },
+        {
+          "label": "mask",
+          "offset": 8,
+          "slot": 0,
+          "type": "t_uint16"
+        },
+        {
+          "label": "catchPts",
+          "offset": 10,
+          "slot": 0,
+          "type": "t_int8"
+        },
+        {
+          "label": "rarity",
+          "offset": 11,
+          "slot": 0,
+          "type": "t_uint16"
+        },
+        {
+          "label": "weight",
+          "offset": 13,
+          "slot": 0,
+          "type": "t_uint8"
+        },
+        {
+          "label": "hiddenMult",
+          "offset": 14,
+          "slot": 0,
+          "type": "t_uint8"
+        }
+      ],
+      "numberOfBytes": 32
+    },
+    "t_struct(WeekEntry)_storage": {
+      "encoding": "inplace",
+      "label": "struct FishingGame.WeekEntry",
+      "members": [
+        {
+          "label": "score",
+          "offset": 0,
+          "slot": 0,
+          "type": "t_uint16"
+        },
+        {
+          "label": "speciesId",
+          "offset": 2,
+          "slot": 0,
+          "type": "t_uint16"
+        },
+        {
+          "label": "weight",
+          "offset": 4,
+          "slot": 0,
+          "type": "t_uint32"
+        },
+        {
+          "label": "quality",
+          "offset": 8,
+          "slot": 0,
+          "type": "t_uint8"
+        },
+        {
+          "label": "at",
+          "offset": 9,
+          "slot": 0,
+          "type": "t_uint40"
+        }
+      ],
+      "numberOfBytes": 32
+    },
+    "t_uint16": {
+      "encoding": "inplace",
+      "label": "uint16",
+      "numberOfBytes": 2
+    },
+    "t_uint256": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": 32
+    },
+    "t_uint32": {
+      "encoding": "inplace",
+      "label": "uint32",
+      "numberOfBytes": 4
+    },
+    "t_uint40": {
+      "encoding": "inplace",
+      "label": "uint40",
+      "numberOfBytes": 5
+    },
+    "t_uint64": {
+      "encoding": "inplace",
+      "label": "uint64",
+      "numberOfBytes": 8
+    },
+    "t_uint8": {
+      "encoding": "inplace",
+      "label": "uint8",
+      "numberOfBytes": 1
+    },
+    "t_uint96": {
+      "encoding": "inplace",
+      "label": "uint96",
+      "numberOfBytes": 12
+    }
+  }
+}

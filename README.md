@@ -8,7 +8,7 @@ Hypothesis results for the first version are in **[REPORT.md](REPORT.md)**; the 
 
 | Folder | Contents |
 |---|---|
-| `contracts/` | Foundry project: `FishingGame` and `Tournaments` (both behind upgradeable proxies), `FightVerifier`, `BottlePool`, `GameLens`, `FishNFT`, `PearlToken`, `PearlExchange`, `Marketplace` + 103 tests |
+| `contracts/` | Foundry project: `FishingGame` and `Tournaments` (both behind upgradeable proxies), `FightVerifier`, `BottlePool`, `GameLens`, `FishNFT`, `PearlToken`, `PearlExchange`, `Marketplace` + 112 tests, upgrade tooling ([UPGRADES.md](contracts/UPGRADES.md)) |
 | `contracts/script/GameSetup.sol` | catalog: species, locations, rods, lures, special fish, achievements, config |
 | `sim/` | model of the first version's formulas and an agent-based economy simulation (Python) |
 | `web/` | browser client (Vite + TypeScript + viem), see [web/README.md](web/README.md) |
@@ -79,14 +79,24 @@ cd web && pnpm dev
 `FishingGame` and `Tournaments` sit behind transparent proxies (OpenZeppelin). Their addresses and all player state are permanent; a new version is new code behind the same address:
 
 ```bash
-cd contracts && ./check-layout.sh
+cd contracts && ./preflight.sh fluent_testnet
 ```
 
 ```bash
 TARGET=game forge script script/Upgrade.s.sol --rpc-url fluent_testnet --broadcast --private-key <owner key>
 ```
 
-`TARGET=tournaments` upgrades the tournaments; upgrading the game also brings its prices, repairs, energy rate and bottle chance in line with `GameSetup`. `check-layout.sh` compares the storage layout with the one recorded at the last deployment (`contracts/storage/`): a new version may only **append** state variables, anything else would corrupt player state and the script says so. `PearlToken`, `FishNFT`, the market and the exchange are plain contracts and are never replaced. Whoever owns the proxies can change the rules, so on a mainnet the owner should be a multisig with a delay.
+```bash
+./release.sh record fluent_testnet
+```
+
+`TARGET=tournaments` upgrades the tournaments. The procedure, what each check protects against and the contract size limit are in [contracts/UPGRADES.md](contracts/UPGRADES.md). In short:
+
+- `preflight.sh` compares the storage layout of the new code with the code that is released (inside every struct too), runs OpenZeppelin's upgrade validation against the build of the released source, runs the tests (they start from the bytecode recorded from the chain, not from the current source) and, given a network, rehearses the upgrade on a fork of it. CI runs it on every change to `contracts/`.
+- `Upgrade.s.sol` changes the code and nothing else: no price, config or catalog entry. It refuses to run unless the proxy runs the recorded release, the token addresses match and the new implementation is this build. The economy is its own step (`script/Economy.s.sol`).
+- `release.sh record` snapshots what the proxies run into `contracts/releases/` (addresses, code hash, bytecode, storage layout, ABI, compiler settings, source commit); `release.sh verify --source` rebuilds every release from its commit and compares it with the chain.
+
+`PearlToken`, `FishNFT`, the market and the exchange are plain contracts and are never replaced. Whoever owns the proxies can change the rules, so on a mainnet the owner should be a multisig with a delay.
 
 ## Tournaments
 
