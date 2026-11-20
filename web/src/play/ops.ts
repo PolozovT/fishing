@@ -137,6 +137,16 @@ export const ops = {
     return ok ? list[index].reward : undefined;
   },
 
+  /**
+   * Permanent access to a secret water for PEARL. Local game only: the contracts have no such purchase yet, so on
+   * chain nothing is sent and nothing changes.
+   */
+  buyLocation(id: number): Promise<boolean> {
+    if (!CHAIN) return local((s) => A.buyLocation(s, id));
+    toast('Buying access is not available on the contracts yet', 'info');
+    return Promise.resolve(false);
+  },
+
   /** Picking a location is free: on the contracts it is only sent with the cast. */
   setLocation(id: number): boolean {
     if (!CHAIN) return apply((s) => A.setLocation(s, id));

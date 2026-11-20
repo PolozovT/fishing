@@ -1972,6 +1972,14 @@ div.item {
 .loc-info p {
   margin: 0;
 }
+.loc-buy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  margin: 2px 0 4px;
+}
 .loc-head {
   display: flex;
   justify-content: space-between;

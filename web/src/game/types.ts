@@ -43,6 +43,8 @@ export interface LocationDef {
   unlock: Unlock;
   /** Special collectible that can be hooked here. */
   special?: string;
+  /** A second way in: permanent access for PEARL, on offer from this level. The level alone opens nothing. */
+  purchase?: { level: number; price: number };
   /** Tackle ids that suit the place, shown as a hint. */
   recommended: string[];
   blurb: string;

@@ -21,6 +21,7 @@ import {
 import { BLEND_PRIZE, LOCATIONS, QUALITIES, SPECIES, TUNING, special } from '../../game/content';
 import { fishPrice, levelOf } from '../../game/economy';
 import type { CastOutcome } from '../../game/chainOutcome';
+import type { LocationDef, Save } from '../../game/types';
 import {
   CLEAN_HOOK_HEAD_START,
   START_DIST,
@@ -39,7 +40,7 @@ import {
   type ReelParams,
   type ReelState,
 } from '../../game/minigame';
-import { canEnter, isUnlocked, unlockText } from '../../game/progress';
+import { canEnter, isUnlocked, purchaseState, unlockText } from '../../game/progress';
 import { RARITY_CLASS } from '../../i18n';
 import { WaterScene } from '../../scene';
 import { emit, state } from '../../store';
@@ -763,6 +764,33 @@ function showCatch(l: Landing, fightLine: string | null = null): void {
 
 // ------------------------------------------------------------------ controls
 
+/**
+ * The PEARL way into a locked secret water: the price, the level it is sold from, and the button. Local game only:
+ * the contracts have no such purchase yet, and there the chain decides what is unlocked.
+ */
+function purchaseOffer(s: Save, loc: LocationDef): HTMLElement | null {
+  const offer = loc.purchase;
+  const st = CHAIN ? null : purchaseState(s, loc);
+  if (!offer || !st) return null;
+  const label = st === 'level' ? `Requires Level ${offer.level}` : st === 'pearl' ? 'Not enough PEARL' : `Unlock for ${pearl(offer.price)} PEARL`;
+  return h(
+    'div',
+    { class: 'loc-buy' },
+    h('p', { class: 'small' }, h('span', { class: 'muted', text: 'Or buy access: ' }), `${pearl(offer.price)} PEARL, from level ${offer.level} (you are level ${levelOf(s.xp)})`),
+    h(
+      'button',
+      {
+        class: 'btn btn-sm btn-primary',
+        disabled: st !== 'ok' || pondBusy(),
+        onclick: async () => {
+          if (await ops.buyLocation(loc.id)) toast(`${loc.name} unlocked: ${pearl(offer.price)} PEARL paid`, 'ok');
+        },
+      },
+      label,
+    ),
+  );
+}
+
 function locationInfo(id: number): HTMLElement {
   const s = getSave();
   const loc = LOCATIONS[id];
@@ -776,6 +804,7 @@ function locationInfo(id: number): HTMLElement {
     h('div', { class: 'loc-head' }, h('b', { text: loc.name }), h('span', { class: 'muted small' }, icon('bolt', 'Energy'), ` ${loc.energyCost} per cast · ${loc.water} water`)),
     h('p', { class: 'muted small', text: loc.blurb }),
     open ? null : h('p', { class: 'warn small' }, icon('lock', 'Locked'), ` ${unlockText(loc.unlock, s)}`),
+    open ? null : purchaseOffer(s, loc),
     h('p', { class: 'small' }, h('span', { class: 'muted', text: 'Fish: ' }), names.join(', ')),
     sp ? h('p', { class: 'small' }, h('span', { class: 'muted', text: 'Special: ' }), s.specialsFound.includes(sp.id) ? sp.name : 'a very rare fish lives here') : null,
     rec.length ? h('p', { class: 'small' }, h('span', { class: 'muted', text: 'Good tackle: ' }), rec.join(', ')) : null,

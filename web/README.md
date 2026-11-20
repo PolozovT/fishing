@@ -42,6 +42,11 @@ buy tackle → rarer fish, new waters.
   × quality, fixed when the fish lands; selling keeps the points.
 - **Special fish** (Golden Koi, Ancient Catfish, Ghost Fish) are very rare, open a new water for good and carry a
   passive bonus (one active slot, needs a specimen in hand). They are local collectibles, not NFTs.
+- **Buying access** (local game only): the three secret waters can also be opened for PEARL once the player has
+  the level: Golden Lake 2,500 from level 5, Ancient Swamp 5,000 from level 8, Phantom Waters 10,000 from
+  level 12 (`purchase` on the location in `game/content.ts`, `buyLocation` in `game/actions.ts`). The level alone
+  opens nothing, the special fish still opens its water for free at any level, and buying grants neither the fish
+  nor its bonus. The contracts have no such purchase yet, so on the contracts the offer is not shown.
 - **Weekly cup**: the ten best catches of the week. Weeks roll over Thursday 00:00 UTC, the same as the
   contract's `currentWeek()`. Opponents are generated and labelled DEMO; no rank rewards are paid.
 - Numbers and the reasoning behind them: [BALANCE.md](BALANCE.md).

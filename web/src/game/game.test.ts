@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { LURES, RODS, lureById, rodById } from '../tackle/catalog';
 import {
   GameError,
+  buyLocation,
   buyLure,
   buyPearl,
   buyRod,
@@ -25,7 +26,7 @@ import { avgWeight, fishPrice, levelOf, xpForLevel } from './economy';
 import { totals } from './equipment';
 import { rollSpecial, rollWeight, speciesOdds } from './generate';
 import { CLEAN_HOOK_HEAD_START, SKILLS, START_DIST, biteDelay, difficultyOf, hookWindow, isCleanHook, qualityOf, reelParams, reelStart, reelStep, simulateFight, type Difficulty } from './minigame';
-import { achievements, canEnter, grantUnlocks, isUnlocked, unlockMet } from './progress';
+import { achievements, canEnter, grantUnlocks, holdsSpecial, isUnlocked, purchaseState, unlockMet } from './progress';
 import { SAVE_VERSION, freshSave, loadSave } from './save';
 import { WEEK_MS, addEntry, demoStandings, standings, tournamentScore, weekId, weekStart, weekTotal } from './tournament';
 import type { FishInstance, Save } from './types';
@@ -273,6 +274,108 @@ describe('special fish and location unlocks', () => {
     expect(s.dry.koi).toBe(2);
     s = land(s, 20).save;
     expect(s.dry.koi).toBe(0);
+  });
+});
+
+describe('buying access to a secret location', () => {
+  /** A player at exactly this level with this much PEARL. */
+  const player = (level: number, pearl: number): Save => ({ ...freshSave(NOW), xp: xpForLevel(level), pearl });
+  const OFFERS: [number, number, number][] = [
+    [5, 5, 2500],
+    [6, 8, 5000],
+    [7, 12, 10000],
+  ];
+
+  it('the three secret waters are on offer at their levels and prices, and nothing else is', () => {
+    for (const [id, level, price] of OFFERS) expect(LOCATIONS[id].purchase).toEqual({ level, price });
+    expect(LOCATIONS.filter((l) => l.purchase).map((l) => l.id)).toEqual([5, 6, 7]);
+    for (const l of LOCATIONS) if (l.purchase) expect(l.unlock.type).toBe('special');
+  });
+  it('is refused below the level, however much PEARL there is, and changes nothing', () => {
+    for (const [id, level] of OFFERS) {
+      const s = player(level - 1, 1_000_000);
+      expect(purchaseState(s, LOCATIONS[id])).toBe('level');
+      expect(() => buyLocation(s, id)).toThrow(`Requires Level ${level}`);
+      expect(s.pearl).toBe(1_000_000);
+      expect(isUnlocked(s, LOCATIONS[id])).toBe(false);
+    }
+  });
+  it('reaching the level opens nothing by itself', () => {
+    const s = grantUnlocks(player(20, 1_000_000)).save;
+    for (const [id] of OFFERS) expect(isUnlocked(s, LOCATIONS[id])).toBe(false);
+    expect(s.pearl).toBe(1_000_000);
+  });
+  it('is refused when PEARL is short', () => {
+    for (const [id, level, price] of OFFERS) {
+      const s = player(level, price - 1);
+      expect(purchaseState(s, LOCATIONS[id])).toBe('pearl');
+      expect(() => buyLocation(s, id)).toThrow('Not enough PEARL');
+      expect(isUnlocked(s, LOCATIONS[id])).toBe(false);
+    }
+  });
+  it('takes the price once and unlocks the location for good', () => {
+    for (const [id, level, price] of OFFERS) {
+      const before = player(level, price + 40);
+      expect(purchaseState(before, LOCATIONS[id])).toBe('ok');
+      const s = buyLocation(before, id);
+      expect(s.pearl).toBe(40);
+      expect(s.permanentUnlocks.filter((x) => x === id)).toEqual([id]);
+      expect(canEnter(s, LOCATIONS[id])).toBe(true);
+      expect(setLocation(s, id).location).toBe(id);
+      expect(purchaseState(s, LOCATIONS[id])).toBeNull();
+      // the unlock is part of the save: it survives a reload
+      const back = loadSave(JSON.stringify(s), NOW).save;
+      expect(isUnlocked(back, LOCATIONS[id])).toBe(true);
+      expect(back.pearl).toBe(40);
+    }
+  });
+  it('cannot be bought twice', () => {
+    const s = buyLocation(player(5, 6000), 5);
+    expect(() => buyLocation(s, 5)).toThrow('already unlocked');
+    expect(s.pearl).toBe(3500);
+    expect(s.permanentUnlocks.filter((x) => x === 5)).toHaveLength(1);
+  });
+  it('a location opened by its special fish cannot be bought on top', () => {
+    const l = land({ ...player(5, 6000) }, 20);
+    expect(l.unlocked).toContain(5);
+    expect(purchaseState(l.save, LOCATIONS[5])).toBeNull();
+    expect(() => buyLocation(l.save, 5)).toThrow('already unlocked');
+    expect(l.save.pearl).toBe(6000);
+  });
+  it('the special fish still opens its water for free, at any level', () => {
+    const l = land(freshSave(NOW), 20);
+    expect(levelOf(l.save.xp)).toBeLessThan(5);
+    expect(isUnlocked(l.save, LOCATIONS[5])).toBe(true);
+    expect(l.save.pearl).toBe(0);
+  });
+  it('grants neither the special fish nor its bonus, and the fish stays collectible', () => {
+    const s = buyLocation(player(5, 2500), 5);
+    expect(s.specialsFound).toEqual([]);
+    expect(holdsSpecial(s, 'koi')).toBe(false);
+    expect(s.activeSpecial).toBeNull();
+    expect(() => setActiveSpecial(s, 'koi')).toThrow(GameError);
+    // catching the koi afterwards works as before and does not unlock or charge anything twice
+    const l = land(s, 20);
+    expect(l.fish.isSpecial).toBe(true);
+    expect(l.save.specialsFound).toEqual(['koi']);
+    expect(l.save.activeSpecial).toBe('koi');
+    expect(l.unlocked).not.toContain(5);
+    expect(l.save.permanentUnlocks.filter((x) => x === 5)).toHaveLength(1);
+    expect(l.save.pearl).toBe(0);
+  });
+  it('locations without an offer are not for sale, and unknown ones do not exist', () => {
+    expect(() => buyLocation(player(20, 1_000_000), 3)).toThrow('not for sale');
+    expect(() => buyLocation(player(20, 1_000_000), 99)).toThrow(GameError);
+    expect(purchaseState(player(20, 1_000_000), LOCATIONS[3])).toBeNull();
+  });
+  it('leaves the rest of the save untouched, and a save from before the feature loads as it was', () => {
+    const before = land({ ...player(8, 9000), lures: { spoon: { casts: 7 } }, claimed: ['dex:10'] }, 0).save;
+    const s = buyLocation(before, 6);
+    expect({ ...s, pearl: 0, permanentUnlocks: [] }).toEqual({ ...before, pearl: 0, permanentUnlocks: [] });
+    expect(s.permanentUnlocks).toEqual([...before.permanentUnlocks, 6]);
+    const old = loadSave(JSON.stringify(before), NOW);
+    expect(old.status).toBe('ok');
+    expect(old.save).toEqual(before);
   });
 });
 

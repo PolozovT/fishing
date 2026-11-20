@@ -40,6 +40,13 @@ export function unlockText(u: Unlock, s: Save): string {
 
 export const isUnlocked = (s: Save, loc: LocationDef): boolean => s.permanentUnlocks.includes(loc.id);
 
+/** Where a locked location's PEARL offer stands for this player: short of the level, short of PEARL, or ready. Null when there is nothing to buy. */
+export function purchaseState(s: Save, loc: LocationDef): 'level' | 'pearl' | 'ok' | null {
+  if (!loc.purchase || isUnlocked(s, loc)) return null;
+  if (levelOf(s.xp) < loc.purchase.level) return 'level';
+  return s.pearl < loc.purchase.price ? 'pearl' : 'ok';
+}
+
 /** Holding a specimen of a special right now (the future "owns the NFT" check). */
 export const holdsSpecial = (s: Save, specialId: string): boolean => {
   const sp = special(specialId);

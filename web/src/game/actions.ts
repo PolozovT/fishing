@@ -8,7 +8,7 @@ import { BLEND_PRIZE, LOCATIONS, PEARL_PER_BLEND, SPECIES, TUNING, special } fro
 import { fishPrice, levelOf, refillCost, repairCost, xpForCatch } from './economy';
 import { totals, type Totals } from './equipment';
 import { pickSpecies, rollSpecial, rollWeight, speciesOdds } from './generate';
-import { achievements, canEnter, grantUnlocks, holdsSpecial } from './progress';
+import { achievements, canEnter, grantUnlocks, holdsSpecial, isUnlocked } from './progress';
 import { addEntry, tournamentScore, weekId } from './tournament';
 import type { CatchRecord, FishInstance, Quality, Rng, Save } from './types';
 
@@ -122,6 +122,19 @@ export function setLocation(s: Save, id: number): Save {
   const loc = LOCATIONS[id] ?? fail('Unknown location');
   if (!canEnter(s, loc)) fail('This location is locked');
   return { ...s, location: id };
+}
+
+/**
+ * Buys permanent access to a location that offers it (LocationDef.purchase). The special fish stays the free way
+ * in at any level; buying grants neither the fish nor its bonus.
+ */
+export function buyLocation(s: Save, id: number): Save {
+  const loc = LOCATIONS[id] ?? fail('Unknown location');
+  if (isUnlocked(s, loc)) fail('This location is already unlocked');
+  const offer = loc.purchase ?? fail('Access to this location is not for sale');
+  if (levelOf(s.xp) < offer.level) fail(`Requires Level ${offer.level}`);
+  if (s.pearl < offer.price) fail('Not enough PEARL');
+  return { ...s, pearl: s.pearl - offer.price, permanentUnlocks: [...s.permanentUnlocks, loc.id] };
 }
 
 /** Why a cast cannot start right now, or null. */
