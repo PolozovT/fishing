@@ -630,7 +630,7 @@ contract FishingGameTest is BaseTest {
         assertEq(game.lureItem(0).repair, 0);
         (, uint32 regen,, uint16 bite,,,,,,,,,,, uint32 chance,) = game.config();
         assertEq(regen, 30 minutes);
-        assertEq(chance, 3_000);
+        assertEq(chance, 0);
         assertEq(bite, 7_000); // the rest of the config is left alone
     }
 
@@ -877,7 +877,7 @@ contract FishingGameTest is BaseTest {
 
     function test_defaultBottleSettings() public view {
         (,,,,,,,,,,,,,, uint32 chance, uint8 maxWins) = game.config();
-        assertEq(chance, 3_000);
+        assertEq(chance, 0); // switched off for now
         assertEq(maxWins, 1);
         assertEq(bottles.amount(), BOTTLE);
         assertEq(bottles.minLevel(), 5);

@@ -307,25 +307,32 @@ describe('BLEND prize', () => {
   const ticket: CastTicket = { locationId: 0, totals: totals(rod('willow'), null, LOCATIONS[0]) };
   /** A player who has just reached the level the bottle asks for. */
   const seasoned = (): Save => ({ ...freshSave(NOW), xp: xpForLevel(BLEND_PRIZE.minLevel) });
+  /** The rules are tested at a chance of their own: the shipped one may be zero (the bottle switched off). */
+  const CHANCE = 0.003;
   it('never bites below its level', () => {
     const rng = seeded(5);
     const novice = { ...freshSave(NOW), xp: xpForLevel(BLEND_PRIZE.minLevel) - 1 };
-    for (let i = 0; i < 20_000; i++) expect(hookFish(novice, ticket, rng).prize).toBeUndefined();
-    expect(hookFish(seasoned(), ticket, () => 0).prize).toBe(BLEND_PRIZE.amount);
+    for (let i = 0; i < 20_000; i++) expect(hookFish(novice, ticket, rng, CHANCE).prize).toBeUndefined();
+    expect(hookFish(seasoned(), ticket, () => 0, CHANCE).prize).toBe(BLEND_PRIZE.amount);
+  });
+  it('never bites at a chance of zero', () => {
+    const rng = seeded(7);
+    for (let i = 0; i < 20_000; i++) expect(hookFish(seasoned(), ticket, rng, 0).prize).toBeUndefined();
+    expect(hookFish(seasoned(), ticket, () => 0, 0).prize).toBeUndefined();
   });
   it('turns up at its configured rate and never after the limit', () => {
     const rng = seeded(11);
     const s = seasoned();
     let hits = 0;
     const n = 200_000;
-    for (let i = 0; i < n; i++) if (hookFish(s, ticket, rng).prize) hits++;
-    expect(hits / n).toBeGreaterThan(BLEND_PRIZE.chance * 0.8);
-    expect(hits / n).toBeLessThan(BLEND_PRIZE.chance * 1.2);
+    for (let i = 0; i < n; i++) if (hookFish(s, ticket, rng, CHANCE).prize) hits++;
+    expect(hits / n).toBeGreaterThan(CHANCE * 0.8);
+    expect(hits / n).toBeLessThan(CHANCE * 1.2);
     const done = { ...s, blendWins: BLEND_PRIZE.maxWins };
-    for (let i = 0; i < 20_000; i++) expect(hookFish(done, ticket, rng).prize).toBeUndefined();
+    for (let i = 0; i < 20_000; i++) expect(hookFish(done, ticket, rng, CHANCE).prize).toBeUndefined();
   });
   it('credits the amount exactly once', () => {
-    const hooked = hookFish(seasoned(), ticket, () => 0);
+    const hooked = hookFish(seasoned(), ticket, () => 0, CHANCE);
     expect(hooked.prize).toBe(BLEND_PRIZE.amount);
     const s = landPrize(seasoned(), hooked);
     expect(s.blend).toBe(BLEND_PRIZE.amount);

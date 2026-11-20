@@ -15,7 +15,7 @@ import { emit, state } from '../../store';
 import { LURES, RODS } from '../../tackle/catalog';
 import { fmtCountdown, fmtWeight, h, icon, mount, shortAddr, sigOf } from '../../ui/dom';
 import { toast } from '../../ui/toast';
-import { waitPastBlock } from '../chain';
+import { bottleOn, waitPastBlock } from '../chain';
 import { CUP_DEPLOYED, PRIZE_SHARES, castTargetOf, cupOps, cupResultOf, cupStage, cups, hookedFish, loadCupStandings, loadCups, poolWith, type Cup, type CupResult, type HookedCupFish } from '../cup';
 import { fishArt } from '../fishSprite';
 import { CHAIN, refresh } from '../ops';
@@ -542,7 +542,7 @@ function controlsView(): HTMLElement[] {
     const short = c.fee > 0 && cups.blend.balance < c.fee;
     button = h('button', { class: 'btn btn-cast', disabled: busy || entering || !c.ownsRod || short, onclick: () => void doEnter(c) }, entering ? 'Entering…' : c.fee > 0 ? `Enter · ${blend(c.fee)} BLEND` : 'Enter');
     if (!c.ownsRod) info = `This tournament is for anglers who own the ${rodName}. Buy it in the tackle shop to enter`;
-    else if (short) info = `Entry is ${blend(c.fee)} BLEND and your wallet holds ${blend(cups.blend.balance)}. The first BLEND comes from a free tournament or from a bottle in the water`;
+    else if (short) info = `Entry is ${blend(c.fee)} BLEND and your wallet holds ${blend(cups.blend.balance)}. The first BLEND comes from a free tournament${bottleOn() ? ' or from a bottle in the water' : ''}`;
     else if (c.fee > 0) info = `Entry is ${blend(c.fee)} BLEND, paid once and not returned. First place takes at least ${blend(poolWith(c, 1) * PRIZE_SHARES[0])} BLEND. Everyone fishes with the ${rodName}`;
     else info = `Free to enter. Everyone fishes with the ${rodName}`;
     warn = !c.ownsRod || short;

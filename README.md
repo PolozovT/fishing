@@ -113,14 +113,16 @@ contracts/new-tournament.sh "Pond Cup" 0 0 0 0 25000 60 10080 30 10 300 5 15
 
 ## The BLEND bottle
 
-Now and then a bite is not a fish but a sealed bottle with BLEND in it, paid to the player's wallet in the same transaction that settles the cast. The game rolls for it (0.3% of bites, one bottle per player ever); `BottlePool` holds the money and says whether there is a bottle to give:
+> The bottle is **switched off for now** (`blendChancePpm` is 0 in `GameSetup.defaultConfig()` and on the testnet game, `BLEND_PRIZE.chance` is 0 in the client, which then does not mention it). A prize paid out of a reserve earns nothing and is the first thing a script farms; it comes back as a jackpot fed by what players spend. The contracts, the pool and the reveal stay. What follows is how it works when the chance is above zero.
+
+Now and then a bite is not a fish but a sealed bottle with BLEND in it, paid to the player's wallet in the same transaction that settles the cast. The game rolls for it (a share of the bites, one bottle per player ever); `BottlePool` holds the money and says whether there is a bottle to give:
 
 | Rule | Value | Where |
 |---|---|---|
 | Prize | 1,000 BLEND | `BottlePool.amount` |
 | Player level | 5 or higher (1,000 XP, about 140 casts at the pond) | `BottlePool.minLevel` |
 | Found per UTC day, all players together | 2 | `BottlePool.dailyMax` |
-| Chance per bite / bottles per player | 0.3% / 1 | `FishingGame.config` |
+| Chance per bite / bottles per player | 0 (off; it was 0.3%) / 1 | `FishingGame.config` |
 
 The pool is the BLEND balance of the `bottles` address in `deployments/<chainId>.json`: send BLEND there to fund it, and the bottles can never cost more than was sent. With less than one whole bottle in the pool, a "bottle" roll lands a fish as usual. The owner changes the rules with `BottlePool.setRules(amount, minLevel, dailyMax)` and takes unspent BLEND back with `withdraw`.
 

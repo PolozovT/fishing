@@ -61,7 +61,7 @@ library GameSetup {
             qualityPerCatch: 150,
             qualityPerRarity: 300,
             blendAmount: 0, // not used: the prize is BottlePool.amount
-            blendChancePpm: 3_000,
+            blendChancePpm: 0, // the bottle is switched off for now
             blendMaxWins: 1
         });
     }

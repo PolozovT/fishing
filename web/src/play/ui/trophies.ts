@@ -8,7 +8,7 @@ import { toast } from '../../ui/toast';
 import { fishArt } from '../fishSprite';
 import { CHAIN, ops } from '../ops';
 import { levelOf } from '../../game/economy';
-import { world } from '../chain';
+import { bottleOn, world } from '../chain';
 import { getSave, rev } from '../state';
 import { ago, pearl, qualityTag, rarityTag } from './fmt';
 
@@ -17,7 +17,7 @@ let confirming: string | null = null;
 export function initTrophies(host: HTMLElement): () => void {
   const rerender = mount(
     host,
-    () => sigOf(rev(), confirming, world.bottle?.left, world.bottle?.today),
+    () => sigOf(rev(), confirming, world.bottle?.left, world.bottle?.today, world.bottle?.chancePpm),
     () => render(rerender),
   );
   return rerender;
@@ -111,6 +111,8 @@ function render(rerender: () => void): HTMLElement[] {
       ),
     );
   }
+  // a bottle that is switched off is not mentioned, unless the player already has theirs
+  if (!bottleOn() && s.blendWins === 0) return out;
   out.push(
     h(
       'section',

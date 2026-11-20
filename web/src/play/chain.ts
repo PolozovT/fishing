@@ -6,7 +6,7 @@
 import { erc20Abi, formatEther, parseEther, parseEventLogs, type Address, type TransactionReceipt } from 'viem';
 import { bottlePoolAbi, fishingGameAbi, gameLensAbi, pearlExchangeAbi } from '../abi';
 import { publicClient } from '../clients';
-import { deployment } from '../config';
+import { LOCAL_GAME, deployment } from '../config';
 import { resolveCast, type CastOutcome, type ChainCatalog } from '../game/chainOutcome';
 import { LOCATIONS, QUALITIES, SPECIALS, SPECIES, TUNING, BLEND_PRIZE } from '../game/content';
 import { achievements } from '../game/progress';
@@ -45,7 +45,7 @@ export interface World {
   /** The BLEND → PEARL exchange, when one is deployed. Balances are of the BLEND token in the player's wallet. */
   blend: { balance: number; allowance: bigint; pearlPerBlend: number; paused: boolean } | null;
   /** The bottle as the contracts have it now: the prize, who may hook it, and how many are left to find. */
-  bottle: { amount: number; minLevel: number; maxWins: number; dailyMax: number; today: number; left: number } | null;
+  bottle: { amount: number; chancePpm: number; minLevel: number; maxWins: number; dailyMax: number; today: number; left: number } | null;
 }
 
 export const world: World = { cast: null, rolls: { blendWins: 0, xp: 0n, specialsFound: 0, dry: [] }, week: 0, standings: [], history: [], loaded: false, blend: null, bottle: null };
@@ -203,11 +203,17 @@ async function loadBottle(): Promise<World['bottle']> {
       publicClient.readContract({ ...bottles, functionName: 'left' }),
       publicClient.readContract({ ...bottles, functionName: 'foundOnDay', args: [head.timestamp / 86_400n] }),
     ]);
-    return { amount: num(amount), maxWins: cfg[15], minLevel, dailyMax, today: Number(today), left: Number(left) };
+    return { amount: num(amount), chancePpm: cfg[14], maxWins: cfg[15], minLevel, dailyMax, today: Number(today), left: Number(left) };
   } catch {
     return null;
   }
 }
+
+/**
+ * Whether a bottle can bite at all: the game's chance on the contracts, the local rule otherwise. At zero the bottle
+ * is switched off and the client says nothing about it.
+ */
+export const bottleOn = (): boolean => (LOCAL_GAME ? BLEND_PRIZE.chance > 0 : (world.bottle?.chancePpm ?? 0) > 0);
 
 const exchange = deployment?.exchange && deployment.blend ? { address: deployment.exchange, token: deployment.blend } : null;
 export const EXCHANGE_DEPLOYED = exchange !== null;

@@ -195,9 +195,9 @@ export interface Hooked {
 /** Local game: the bottle can bite once the player has the level and has not found it yet. */
 export const blendPrizeAvailable = (s: Save): boolean => s.blendWins < BLEND_PRIZE.maxWins && levelOf(s.xp) >= BLEND_PRIZE.minLevel;
 
-export function hookFish(s: Save, t: CastTicket, rng: Rng): Hooked {
+export function hookFish(s: Save, t: CastTicket, rng: Rng, prizeChance: number = BLEND_PRIZE.chance): Hooked {
   const loc = LOCATIONS[t.locationId];
-  if (blendPrizeAvailable(s) && rng() < BLEND_PRIZE.chance) return { speciesId: -1, weight: 0, isSpecial: false, prize: BLEND_PRIZE.amount };
+  if (blendPrizeAvailable(s) && rng() < prizeChance) return { speciesId: -1, weight: 0, isSpecial: false, prize: BLEND_PRIZE.amount };
   const sp = loc.special ? special(loc.special) : undefined;
   if (sp && rollSpecial(sp, s.specialsFound.includes(sp.id), s.dry[sp.id] ?? 0, rng)) {
     return { speciesId: sp.speciesId, weight: rollWeight(SPECIES[sp.speciesId], t.totals.total.weight, rng), isSpecial: true };

@@ -223,8 +223,8 @@ export const PEARL_PER_BLEND = 100;
 
 export const BLEND_PRIZE = {
   amount: 1000,
-  /** Chance per bite, at any location. */
-  chance: 0.003,
+  /** Chance per bite, at any location. Zero: the bottle is switched off for now, and the client does not mention it. */
+  chance: 0,
   /** Prizes one player can land in total. */
   maxWins: 1,
   /** Below this level a bite is never a bottle. */

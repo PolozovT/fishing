@@ -6,7 +6,7 @@ import { TIME_SETTINGS, setTimeSetting, timeOfDay, timeSetting, type TimeSetting
 import { state } from '../../store';
 import { fmtCountdown, h, icon, mount, segBar, shortAddr, sigOf } from '../../ui/dom';
 import { fluentButton, type HeaderHandlers } from '../../ui/header';
-import { world } from '../chain';
+import { bottleOn, world } from '../chain';
 import { CHAIN, ops } from '../ops';
 import { getSave, rev } from '../state';
 import { pearl } from './fmt';
@@ -16,7 +16,7 @@ let regenEl: HTMLElement | null = null;
 export function initLocalHeader(host: HTMLElement, on: HeaderHandlers): () => void {
   return mount(
     host,
-    () => sigOf(rev(), energyNow(getSave(), Date.now()), state.wallet?.address, state.fluentStatus, location.hash, world.blend?.balance, timeSetting(), timeOfDay()),
+    () => sigOf(rev(), energyNow(getSave(), Date.now()), state.wallet?.address, state.fluentStatus, location.hash, world.blend?.balance, world.bottle?.chancePpm, timeSetting(), timeOfDay()),
     () => render(on),
   );
 }
@@ -81,7 +81,11 @@ function render(on: HeaderHandlers): HTMLElement[] {
         'div',
         {
           class: 'stat',
-          title: `From level ${world.bottle?.minLevel ?? BLEND_PRIZE.minLevel} there is a small chance to fish out a sealed bottle with ${(world.bottle?.amount ?? BLEND_PRIZE.amount).toLocaleString('en-US')} BLEND in any water. ${CHAIN ? (world.blend ? 'Shown here: the BLEND in your wallet, which buys PEARL on the Tackle page. A bottle is paid straight into it.' : 'A bottle is paid straight to your wallet.') : 'Local game: this is a counter in this browser.'}`,
+          title: bottleOn()
+            ? `From level ${world.bottle?.minLevel ?? BLEND_PRIZE.minLevel} there is a small chance to fish out a sealed bottle with ${(world.bottle?.amount ?? BLEND_PRIZE.amount).toLocaleString('en-US')} BLEND in any water. ${CHAIN ? (world.blend ? 'Shown here: the BLEND in your wallet, which buys PEARL on the Tackle page. A bottle is paid straight into it.' : 'A bottle is paid straight to your wallet.') : 'Local game: this is a counter in this browser.'}`
+            : CHAIN
+              ? 'The BLEND in your wallet: it pays tournament entries and buys PEARL on the Tackle page.'
+              : 'Local game: this is a counter in this browser.',
         },
         h('span', { class: 'k', text: 'BLEND' }),
         h('span', { class: 'v blend', text: (CHAIN && world.blend ? world.blend.balance : s.blend).toLocaleString('en-US', { maximumFractionDigits: 2 }) }),

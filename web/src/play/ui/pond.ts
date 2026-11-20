@@ -41,7 +41,6 @@ import {
 } from '../../game/minigame';
 import { canEnter, isUnlocked, unlockText } from '../../game/progress';
 import { RARITY_CLASS } from '../../i18n';
-import { ALWAYS_BOTTLE } from '../../config';
 import { WaterScene } from '../../scene';
 import { emit, state } from '../../store';
 import { lureById, rodById } from '../../tackle/catalog';
@@ -199,13 +198,13 @@ function doCast(): void {
 
 function onWaitOver(): void {
   if (!ticket) return;
-  if (!ALWAYS_BOTTLE && !rollBite(ticket, Math.random)) {
+  if (!rollBite(ticket, Math.random)) {
     scene.setPhase('idle');
     finish();
     showMessage('Nothing is biting', 'The float never moved. A lure with catch brings more bites.');
     return;
   }
-  hooked = ALWAYS_BOTTLE ? { speciesId: -1, weight: 0, isSpecial: false, prize: BLEND_PRIZE.amount } : hookFish(getSave(), ticket, Math.random);
+  hooked = hookFish(getSave(), ticket, Math.random);
   attempt = 0;
   beginBite();
 }
@@ -627,8 +626,7 @@ function endReel(r: ReelState): void {
   }
   if (hk.prize) {
     const amount = hk.prize;
-    // (temporary) the forced bottle is not held to "once per player, from level 5"
-    const ok = act((s) => (ALWAYS_BOTTLE ? { ...s, blend: s.blend + amount } : landPrize(s, hk)), (x) => x) !== undefined;
+    const ok = act((s) => landPrize(s, hk), (x) => x) !== undefined;
     scene.setPhase('caught');
     finish();
     if (ok) {
@@ -656,12 +654,6 @@ function endReel(r: ReelState): void {
 }
 
 function onKey(e: KeyboardEvent): void {
-  // (temporary) B plays the bottle reveal straight away, without a cast
-  if (ALWAYS_BOTTLE && e.code === 'KeyB' && phase === 'idle') {
-    scene.setPhase('caught');
-    phase = 'result';
-    return showPrize(BLEND_PRIZE.amount);
-  }
   if (e.code !== 'Space' && e.code !== 'Enter') return;
   const tag = (e.target as HTMLElement | null)?.tagName;
   if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
